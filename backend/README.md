@@ -1,24 +1,41 @@
 # VitalLink backend
 
-**Status: step 1 of phase 1 is built (app skeleton, `/health`, error format, tests). Everything else is a plan.** It has the
-design docs and the planned folder layout, with a short description in each module folder. Code gets
-written after the owner signs off on the decisions in [docs/10-open-decisions.md](docs/10-open-decisions.md).
+**Status: phase 1 is under way.** Built so far: the app skeleton (`/health`, `/ready`, the error
+format, request ids), the database connection, Alembic, and the baseline migration (private schema
+lockdown and the append-only audit log). There are 11 tests, run against real Postgres. Everything
+else in this folder is the plan: the design docs and a short description in each planned module folder.
 
 The plan builds on the reviewed design doc
 ["VitalLink Backend System Design"](https://claude.ai/code/artifact/d83166e0-f781-45e9-80e8-d0f399be60cf)
 (30 Sep 2026) and adds the domains that the finished frontend needs.
 
-## Run locally (step 1: no database yet)
+## Run locally
 
-Needs Python 3.12 (`py -3.12`). From `backend/`:
+Needs Python 3.12 (`py -3.12`) and Docker. On this machine Docker runs inside WSL Ubuntu, so Docker
+Desktop isn't needed. From `backend/`:
 
 ```bash
+cp .env.example .env                      # then set a password in POSTGRES_PASSWORD and DATABASE_URL
 py -3.12 -m venv .venv
 .venv/Scripts/python -m pip install -e ".[dev]"
-.venv/Scripts/python -m uvicorn app.main:app --reload   # http://localhost:8000/health, /docs
-.venv/Scripts/python -m pytest
-.venv/Scripts/python -m ruff check .
 ```
+
+Start Postgres. Keep this terminal open, because WSL stops (and the database with it) when no window uses it:
+
+```bash
+wsl -d Ubuntu -e sh -c "cd /mnt/c/Users/abhin/Documents/vitallink-app/backend && docker compose up"
+```
+
+Then, in another terminal:
+
+```bash
+.venv/Scripts/python -m alembic upgrade head            # apply migrations
+.venv/Scripts/python -m uvicorn app.main:app --reload   # http://localhost:8000/health, /ready, /docs
+.venv/Scripts/python -m pytest                          # uses a separate <db>_test database
+.venv/Scripts/python -m ruff check . && .venv/Scripts/python -m ruff format --check .
+```
+
+Tests that need the database are skipped, not failed, when Postgres isn't running.
 
 ## In one paragraph
 

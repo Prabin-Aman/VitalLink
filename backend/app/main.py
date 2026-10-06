@@ -5,7 +5,8 @@ import uuid
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.core.errors import install_error_handlers
+from app.core import db
+from app.core.errors import ApiError, install_error_handlers
 from app.core.settings import get_settings
 
 
@@ -32,8 +33,15 @@ def create_app() -> FastAPI:
 
     @app.get("/health", tags=["ops"])
     async def health() -> dict[str, str]:
-        """The process is up. (/ready, which also checks the database, comes with Postgres.)"""
+        """The process is up."""
         return {"status": "ok"}
+
+    @app.get("/ready", tags=["ops"])
+    async def ready() -> dict[str, str]:
+        """The database is reachable. The uptime monitor pings this, which also keeps Supabase awake."""
+        if not await db.ping():
+            raise ApiError(503, "db_unavailable", "The database isn't reachable.")
+        return {"status": "ready"}
 
     return app
 
