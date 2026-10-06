@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, Query, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.db import get_session
+from app.modules.account import service as account
 from app.modules.account.service import CurrentUser, current_user
 from app.modules.health import service
 from app.modules.health.schemas import (
@@ -39,7 +40,8 @@ async def add_manual(body: ManualIn, session: Session, me: Caller) -> ReadingOut
 
 @router.get("/health/dashboard", response_model=Dashboard)
 async def dashboard(session: Session, me: Caller) -> Dashboard:
-    return await service.dashboard(session, me)
+    goal = (await account.get_targets(session, me)).sleep_goal_min
+    return await service.dashboard(session, me.id, me.user.timezone, goal)
 
 
 # Declared before /series/{metric} so it wins the match.

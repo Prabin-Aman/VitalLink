@@ -1,11 +1,13 @@
 # VitalLink backend
 
-**Status: phases 1–3 are built.** That's the skeleton (`/health`, `/ready`, the error format,
+**Status: phases 1–4 are built.** That's the skeleton (`/health`, `/ready`, the error format,
 request ids), the database connection and Alembic, the baseline lockdown with the append-only audit log,
 the Docker image and CI, and accounts. Accounts means `users` and `profiles`, token checking,
 `GET /v1/me`, `GET/PATCH /v1/me/account` and `GET/PATCH /v1/me/targets`, and the health core (metric
 catalogue, idempotent sync ingest, manual readings, series, latest readings, dashboard with readiness,
-devices). 69 tests run against real Postgres, including a check that models and migrations match. The Render and Supabase accounts don't
+devices), and sharing (consent engine, append-only audit, shares, shared-with-me, access log, consent-checked
+shared views). 105 tests run against real Postgres, including every consent rule, a models-vs-migrations
+drift check and guardrails (every shared route passes the consent gate, shared routes are read-only). The Render and Supabase accounts don't
 exist yet. Everything else in this folder is still the plan.
 
 The plan builds on the reviewed design doc

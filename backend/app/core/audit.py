@@ -1,9 +1,12 @@
-"""The audit log (docs/06-security-and-consent.md §6.1). Append-only; the writer arrives with sharing.
+"""The audit log (docs/06-security-and-consent.md §6.1): append-only, no foreign keys on purpose.
 
-The table is mapped here so the schema drift check covers it. No foreign keys on purpose.
+`write_audit` is the only code that inserts into it. It uses its own connection and transaction, so
+a refused read (which raises and rolls back the request) still leaves its entry behind.
 """
 
+import logging
 import uuid
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 
@@ -11,7 +14,10 @@ from sqlalchemy import BigInteger, CheckConstraint, Identity, Index, Text, Uuid,
 from sqlalchemy.dialects.postgresql import TIMESTAMP
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.core.db import get_engine
 from app.core.models import Base, pg_enum
+
+log = logging.getLogger(__name__)
 
 
 class Scope(StrEnum):
@@ -66,3 +72,48 @@ class AuditEntry(Base):
     reason: Mapped[RefusalReason | None] = mapped_column(pg_enum(RefusalReason, "refusal_reason"))
     consent_id: Mapped[uuid.UUID | None] = mapped_column(Uuid)
     request_id: Mapped[str | None] = mapped_column(Text)
+
+
+@dataclass(frozen=True)
+class AuditEvent:
+    actor_user_id: uuid.UUID | None
+    subject_user_id: uuid.UUID
+    action: AuditAction
+    scope: Scope | None
+    outcome: AccessOutcome
+    reason: RefusalReason | None = None
+    consent_id: uuid.UUID | None = None
+    request_id: str | None = None
+
+
+_INSERT = text(
+    """
+    INSERT INTO vitallink.audit_log
+      (actor_user_id, subject_user_id, action, scope, outcome, reason, consent_id, request_id)
+    VALUES (:actor, :subject, CAST(:action AS vitallink.audit_action), CAST(:scope AS vitallink.share_scope),
+            CAST(:outcome AS vitallink.access_outcome), CAST(:reason AS vitallink.refusal_reason),
+            :consent_id, :request_id)
+    """
+)
+
+
+async def write_audit(event: AuditEvent) -> None:
+    """Commit one entry on its own connection. A failure is logged, never shown to the user: the access
+    decision stands either way (docs/08 failure handling)."""
+    try:
+        async with get_engine().begin() as conn:
+            await conn.execute(
+                _INSERT,
+                {
+                    "actor": event.actor_user_id,
+                    "subject": event.subject_user_id,
+                    "action": event.action.value,
+                    "scope": event.scope.value if event.scope else None,
+                    "outcome": event.outcome.value,
+                    "reason": event.reason.value if event.reason else None,
+                    "consent_id": event.consent_id,
+                    "request_id": event.request_id,
+                },
+            )
+    except Exception:
+        log.exception("audit write failed for %s on %s", event.action, event.subject_user_id)

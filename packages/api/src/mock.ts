@@ -85,16 +85,16 @@ const medications: Medication[] = [
 ];
 
 const shares: Share[] = [
-  { id: "s1", grantee_label: "Dr. Laura Bennett", grantee_kind: "doctor", scopes: ["vitals", "records"], expires_at: "2026-12-01T00:00:00-06:00", active: true },
-  { id: "s2", grantee_label: "Dr. Marcus Hale", grantee_kind: "doctor", scopes: ["records"], expires_at: "2026-10-31T00:00:00-05:00", active: true },
-  { id: "s3", grantee_label: "Dr. Priya Raman", grantee_kind: "doctor", scopes: ["vitals"], expires_at: null, active: true },
-  { id: "s4", grantee_label: "Dr. Chidi Okafor", grantee_kind: "doctor", scopes: ["activity"], expires_at: null, active: true },
-  { id: "s5", grantee_label: "Trinity Valley", grantee_kind: "hospital", scopes: ["vitals", "records"], expires_at: null, active: true },
-  { id: "s6", grantee_label: "Oak Cliff", grantee_kind: "hospital", scopes: ["records"], expires_at: null, active: true },
-  { id: "s7", grantee_label: "Susan", grantee_kind: "family", scopes: ["activity", "sleep"], expires_at: null, active: true },
-  { id: "s8", grantee_label: "Ray", grantee_kind: "family", scopes: ["activity"], expires_at: null, active: true },
-  { id: "s9", grantee_label: "Emma", grantee_kind: "family", scopes: ["activity"], expires_at: null, active: true },
-  { id: "s10", grantee_label: "MyFitness", grantee_kind: "app", scopes: ["activity"], expires_at: null, active: true },
+  { id: "s1", grantee_label: "Dr. Laura Bennett", grantee_email: "dr.laura.bennett@example.com", grantee_kind: "doctor", scopes: ["vitals", "records"], purpose: "Treatment", starts_at: "2026-08-01T00:00:00-05:00", expires_at: "2026-12-01T00:00:00-06:00", active: true },
+  { id: "s2", grantee_label: "Dr. Marcus Hale", grantee_email: "dr.marcus.hale@example.com", grantee_kind: "doctor", scopes: ["records"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: "2026-10-31T00:00:00-05:00", active: true },
+  { id: "s3", grantee_label: "Dr. Priya Raman", grantee_email: "dr.priya.raman@example.com", grantee_kind: "doctor", scopes: ["vitals"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s4", grantee_label: "Dr. Chidi Okafor", grantee_email: "dr.chidi.okafor@example.com", grantee_kind: "doctor", scopes: ["activity"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s5", grantee_label: "Trinity Valley", grantee_email: "trinity.valley@example.com", grantee_kind: "hospital", scopes: ["vitals", "records"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s6", grantee_label: "Oak Cliff", grantee_email: "oak.cliff@example.com", grantee_kind: "hospital", scopes: ["records"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s7", grantee_label: "Susan", grantee_email: "susan@example.com", grantee_kind: "family", scopes: ["activity", "sleep"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s8", grantee_label: "Ray", grantee_email: "ray@example.com", grantee_kind: "family", scopes: ["activity"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s9", grantee_label: "Emma", grantee_email: "emma@example.com", grantee_kind: "family", scopes: ["activity"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
+  { id: "s10", grantee_label: "MyFitness", grantee_email: "myfitness@example.com", grantee_kind: "app", scopes: ["activity"], purpose: "", starts_at: "2026-08-01T00:00:00-05:00", expires_at: null, active: true },
 ];
 
 const accessLog: AccessLogEntry[] = [

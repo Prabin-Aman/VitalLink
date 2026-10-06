@@ -113,10 +113,14 @@ the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs 
   Create Account "Entries don't match yet." helper, mobile Emergency "Show QR" reveals the web QR card.
 - Workouts/Records use km (as in Figma) while Activity uses miles — units should follow Settings › Units.
 
-## Backend (phases 1–3 built: skeleton, DB, CI, accounts, health core)
+## Backend (phases 1–4 built: skeleton, DB, CI, accounts, health core, sharing)
 Built in `backend/` (FastAPI, Python 3.12): `/health`, `/ready`, Alembic (0001 lockdown + audit_log,
-0002 users/profiles, 0003 metrics/readings/ingest/devices), `/v1/me`, `/me/account`, `/me/targets`,
-`/me/health/{ingest,manual,dashboard,series/{metric},latest}`, `/me/devices`. Seed: `python -m seeds.demo`
+0002 users/profiles, 0003 metrics/readings/ingest/devices, 0004 consents), `/v1/me`, `/me/account`, `/me/targets`,
+`/me/health/{ingest,manual,dashboard,series/{metric},latest}`, `/me/devices`, `/me/shares`, `/me/shared-with-me`,
+`/me/access-log`, and consent-checked shared views `/users/{id}/health/{dashboard,series/{metric},latest}`.
+Consent: pure `decide()` in `app/core/consent.py` + `ConsentGate` (audit in its own transaction); every
+`/users/{id}` route must depend on `sharing.service.shared_access` (guardrail test). Share kinds are
+doctor/family/other only (D4 recommendation applied; owner hasn't decided). Seed: `python -m seeds.demo`
 (demo@example.com, 90 days, last week = Figma values). Live web: `VITE_API_URL=http://localhost:8000` and a dev
 token in `sessionStorage["vl.token"]`. Use 127.0.0.1 (not localhost) in DATABASE_URL on Windows: localhost costs 2 s
 per connection. Local/test
@@ -133,9 +137,9 @@ decisions D1–D16) with a README per planned module under `backend/app/`. It ex
 - Readings upserted as 5-minute aggregates. Health data from Health Connect (Android) / HealthKit (iOS);
   Google Fit APIs end late 2026 — don't use them.
 - Compliance: FTC Health Breach Notification Rule (not HIPAA).
-- Live client calls (built): me, account, targets, dashboard, series, blood pressure, latest, devices.
-  Pending (mock-only, `null` live → "isn't available yet"): workouts, goals, today's medications, shares,
-  access log, streaks, next appointment, latest lab, privacy settings, and everything behind the newer
+- Live client calls (built): me, account, targets, dashboard, series, blood pressure, latest, devices,
+  shares, shared-with-me, access log. Pending (mock-only, `null` live → "isn't available yet"): workouts,
+  goals, today's medications, streaks, next appointment, latest lab, privacy settings, and everything behind the newer
   screens — training, nutrition, goals overview, prescriptions, appointments, conversations, notifications,
   family, emergency profile, library, records + lab panels, and the My Health tabs.
   Their shapes are in `packages/api/src/types.ts` (one interface per endpoint) for the backend to match.

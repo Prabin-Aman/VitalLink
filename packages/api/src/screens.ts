@@ -1,7 +1,7 @@
 // Screen view-models: everything a screen renders, already formatted.
 // Web and mobile render the same view-model; only layout differs.
 import type { ColorToken } from "@vitallink/tokens";
-import { need, VitalLinkClient } from "./client";
+import { VitalLinkClient } from "./client";
 import {
   dayKey,
   greeting,
@@ -340,14 +340,12 @@ const statusChip = (s: AccessLogEntry["status"]): [ChipVM, string] => {
 };
 
 export async function loadPrivacy(api: VitalLinkClient): Promise<PrivacyVM> {
-  const [me, sharesOrNull, logOrNull, settings] = await Promise.all([
+  const [me, shares, log, settings] = await Promise.all([
     api.me(),
     api.shares(),
     api.accessLog(),
     api.privacySettings(),
   ]);
-  const shares = need(sharesOrNull, "Privacy");
-  const log = need(logOrNull, "The access log");
   const active = shares.filter((s) => s.active);
   const of = (k: Share["grantee_kind"]) => active.filter((s) => s.grantee_kind === k);
   const doctors = of("doctor");

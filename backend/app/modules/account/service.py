@@ -137,3 +137,34 @@ async def update_targets(session: AsyncSession, me: CurrentUser, patch: TargetsP
     if changes:
         await session.execute(update(Profile).where(Profile.user_id == me.id).values(**changes))
     return await get_targets(session, me)
+
+
+# ---------------------------------------------------------------- for other modules
+
+
+@dataclass(frozen=True)
+class PersonInfo:
+    id: object
+    email: str
+    name: str | None
+    timezone: str
+    email_confirmed: bool
+
+
+async def people(session: AsyncSession, ids: set) -> dict:
+    """Name, email and time zone for users other modules need to show (owners, viewers)."""
+    if not ids:
+        return {}
+    rows = await session.execute(
+        select(User, Profile).join(Profile, Profile.user_id == User.id).where(User.id.in_(ids))
+    )
+    return {
+        u.id: PersonInfo(u.id, u.email, _display_name(p), u.timezone, u.email_confirmed_at is not None)
+        for u, p in rows
+    }
+
+
+async def targets_for(session: AsyncSession, user_id) -> Targets:
+    profile = await session.get(Profile, user_id)
+    assert profile is not None
+    return Targets.model_validate(profile, from_attributes=True)

@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.errors import ApiError
 from app.core.ids import uuid7
-from app.modules.account.service import CurrentUser, get_targets
+from app.modules.account.service import CurrentUser
 from app.modules.health.catalogue import BLOOD_PRESSURE, BY_CODE, BY_ID, Agg, Metric
 from app.modules.health.models import Device, DeviceKind, IngestBatch, ReadingSource
 from app.modules.health.schemas import (
@@ -484,14 +484,17 @@ async def readiness(
     return round(sum(parts) / len(parts)) if len(parts) >= 2 else None
 
 
-async def dashboard(session: AsyncSession, me: CurrentUser) -> Dashboard:
-    tz = ZoneInfo(me.user.timezone)
+async def dashboard(
+    session: AsyncSession, user_id: uuid.UUID, tz_name: str, sleep_goal_min: int, include_score: bool = True
+) -> Dashboard:
+    """The owner's dashboard. Shared views pass include_score=False: readiness also uses sleep data."""
+    tz = ZoneInfo(tz_name)
     now = _now()
     week_ago = now - timedelta(days=7)
     cards = []
     for code in DASHBOARD_CARDS:
         if code == BLOOD_PRESSURE:
-            row = await _latest_bp(session, me.id)
+            row = await _latest_bp(session, user_id)
             cards.append(
                 MetricSummary(
                     metric=BLOOD_PRESSURE,
@@ -504,7 +507,7 @@ async def dashboard(session: AsyncSession, me: CurrentUser) -> Dashboard:
             )
             continue
         metric = BY_CODE[code]
-        row = (await session.execute(_LATEST, {"user_id": me.id, "metric_id": metric.id})).first()
+        row = (await session.execute(_LATEST, {"user_id": user_id, "metric_id": metric.id})).first()
         value = row.value if row else None
         cards.append(
             MetricSummary(
@@ -512,15 +515,16 @@ async def dashboard(session: AsyncSession, me: CurrentUser) -> Dashboard:
                 unit=metric.unit,
                 latest=_round(metric, value),
                 latest_at=row.recorded_at.astimezone(tz) if row else None,
-                avg_7d=_round(metric, await _avg(session, me.id, metric, week_ago)),
+                avg_7d=_round(metric, await _avg(session, user_id, metric, week_ago)),
                 range=_range(metric, value),
             )
         )
 
-    goal = (await get_targets(session, me)).sleep_goal_min
     today = now.astimezone(tz).date()
-    score = await readiness(session, me.id, tz, today, goal)
-    before = await readiness(session, me.id, tz, today - timedelta(days=7), goal)
+    score = before = None
+    if include_score:
+        score = await readiness(session, user_id, tz, today, sleep_goal_min)
+        before = await readiness(session, user_id, tz, today - timedelta(days=7), sleep_goal_min)
     return Dashboard(
         generated_at=now.astimezone(tz),
         health_score=score,

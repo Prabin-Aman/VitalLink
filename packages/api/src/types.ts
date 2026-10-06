@@ -85,15 +85,28 @@ export type Scope = "vitals" | "activity" | "sleep" | "nutrition" | "records";
 export interface Share {
   id: string;
   grantee_label: string;
+  grantee_email: string;
   /**
-   * "hospital" exists only because the desktop Privacy Centre design shows a
-   * "Hospitals with access" card. VitalLink is consumer-only and the API never
-   * returns it. Remove once the design is corrected.
+   * The API returns doctor, family or other. "hospital" and "app" exist only because the
+   * desktop Privacy Centre design shows them; consumers only and no third parties (decision
+   * D4), so the API never returns them. Remove once the design is corrected.
    */
-  grantee_kind: "doctor" | "family" | "app" | "hospital";
+  grantee_kind: "doctor" | "family" | "other" | "app" | "hospital";
+  scopes: Scope[];
+  purpose: string;
+  starts_at: ISODate;
+  expires_at: ISODate | null;
+  /** False once expired (revoked shares aren't listed). */
+  active: boolean;
+}
+
+/** GET /me/shared-with-me: live shares other people gave me. */
+export interface SharedWithMe {
+  id: string;
+  owner_id: string;
+  owner_name: string;
   scopes: Scope[];
   expires_at: ISODate | null;
-  active: boolean;
 }
 
 export interface AccessLogEntry {

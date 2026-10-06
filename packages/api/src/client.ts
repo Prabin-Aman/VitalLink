@@ -28,6 +28,7 @@ import type {
   RecordsOverview,
   Series,
   Share,
+  SharedWithMe,
   Targets,
   Training,
   Workout,
@@ -125,6 +126,9 @@ export class VitalLinkClient {
     return bp && bp.value2 !== undefined ? { systolic: bp.value, diastolic: bp.value2 } : null;
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
+  shares = () => this.get<Share[]>("/me/shares", () => mock.shares);
+  sharedWithMe = () => this.get<SharedWithMe[]>("/me/shared-with-me", () => []);
+  accessLog = () => this.get<AccessLogEntry[]>("/me/access-log?limit=20", () => mock.accessLog);
 
   // ---- Shown in the designs but not yet in the API (system design §5). ----
   // Mock mode returns sample data; live mode returns null so the card is hidden.
@@ -136,12 +140,11 @@ export class VitalLinkClient {
   nextAppointment = () => this.pending(() => mock.appointment);
   latestLab = () => this.pending(() => mock.labResult);
   privacySettings = () => this.pending(() => mock.privacy);
-  // Built in later backend phases: workouts + goals (5), shares + access log (4), medications (7).
+  // Built in later backend phases: workouts + goals (5), medications (7).
   workouts = (_days = 7) => this.pending<Workout[]>(() => mock.workouts);
   goals = () => this.pending<Goal[]>(() => mock.goals);
   medications = () => this.pending<Medication[]>(() => mock.medications);
-  shares = () => this.pending<Share[]>(() => mock.shares);
-  accessLog = () => this.pending<AccessLogEntry[]>(() => mock.accessLog);
+
   training = () => this.pending<Training>(() => mock.training);
   nutrition = () => this.pending<NutritionDay>(() => mock.nutrition);
   goalsOverview = () => this.pending<GoalsOverview>(() => mock.goalsOverview);
