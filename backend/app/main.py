@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.core import db
 from app.core.errors import ApiError, install_error_handlers
 from app.core.settings import get_settings
+from app.modules.account.router import router as account_router
 
 
 def create_app() -> FastAPI:
@@ -42,6 +43,8 @@ def create_app() -> FastAPI:
         if not await db.ping():
             raise ApiError(503, "db_unavailable", "The database isn't reachable.")
         return {"status": "ready"}
+
+    app.include_router(account_router, prefix="/v1")
 
     return app
 

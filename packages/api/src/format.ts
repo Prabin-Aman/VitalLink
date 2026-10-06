@@ -119,3 +119,25 @@ export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s
 export const kg = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(1)} kg`;
 
 export const percent = (fraction: number) => `${Math.round(fraction * 100)}%`;
+
+/** "1994-04-17" (a calendar date, no time zone) → "17/04/1994". */
+export const calendarDate = (ymd: string) => {
+  const [y, m, d] = ymd.slice(0, 10).split("-");
+  return `${d}/${m}/${y}`;
+};
+
+/** "+12145550148" → "(214) 555-0148"; other countries stay in E.164. */
+export const phone = (e164: string) => {
+  const us = /^\+1(\d{3})(\d{3})(\d{4})$/.exec(e164);
+  return us ? `(${us[1]}) ${us[2]}-${us[3]}` : e164;
+};
+
+/** BCP-47 tag → the name shown in Settings. */
+export const languageName = (tag: string) => ({ "en-US": "English (US)", "es-US": "Español (EE. UU.)" })[tag] ?? tag;
+
+/** Height for the user's units: "178 cm" or "5 ft 10 in". */
+export const height = (cm: number, units: "metric" | "imperial") => {
+  if (units === "metric") return `${thousands(cm)} cm`;
+  const inches = Math.round(cm / 2.54);
+  return `${Math.floor(inches / 12)} ft ${inches % 12} in`;
+};

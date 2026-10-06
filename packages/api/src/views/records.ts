@@ -2,7 +2,7 @@
 // Document Viewer (143:1955) and mobile Records (145:343).
 import type { ColorToken } from "@vitallink/tokens";
 import { need, NotAvailableError, type VitalLinkClient } from "../client";
-import { dayMonthYear, daysFrom, longDayMonthYear } from "../format";
+import { calendarDate, dayMonthYear, daysFrom, longDayMonthYear } from "../format";
 import type { ChipVM } from "../screens";
 import type { LabPanel, LabResult, RecordType } from "../types";
 
@@ -157,11 +157,6 @@ export interface DocumentVM {
   note: string | null;
 }
 
-const dmy = (iso: string, tz: string) => {
-  const [m, d, y] = new Intl.DateTimeFormat("en-US", { timeZone: tz, year: "numeric", month: "2-digit", day: "2-digit" }).format(new Date(iso)).split("/");
-  return `${d}/${m}/${y}`;
-};
-
 export async function loadDocument(api: VitalLinkClient, recordId: string): Promise<DocumentVM> {
   const [me, overview, account] = await Promise.all([api.me(), api.recordsOverview(), api.account()]);
   const rec = need(overview, "Medical records").recent.find((r) => r.id === recordId);
@@ -178,7 +173,7 @@ export async function loadDocument(api: VitalLinkClient, recordId: string): Prom
     page: {
       overline: p.laboratory.toUpperCase(),
       title: p.name,
-      meta: [`Patient: ${name}`, account ? `DOB ${dmy(account.date_of_birth, tz)}` : null, `Collected ${date(p.collected_at, tz).replace(/^0/, "")}`, `Reported ${date(p.reported_at, tz).replace(/^0/, "")}`]
+      meta: [`Patient: ${name}`, account.date_of_birth ? `DOB ${calendarDate(account.date_of_birth)}` : null, `Collected ${date(p.collected_at, tz).replace(/^0/, "")}`, `Reported ${date(p.reported_at, tz).replace(/^0/, "")}`]
         .filter(Boolean)
         .join(" · "),
       rows: shown,

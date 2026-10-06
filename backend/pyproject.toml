@@ -10,6 +10,8 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.30",
     "asyncpg>=0.29",
     "alembic>=1.13",
+    "pyjwt[crypto]>=2.9",
+    "tzdata",
 ]
 
 [project.optional-dependencies]
@@ -39,3 +41,4 @@ ignore = ["S101"]  # assert is fine in tests
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/versions/*" = ["E501"]  # SQL reads better unwrapped
+"tests/*" = ["S105", "S106"]  # fake secrets in tests

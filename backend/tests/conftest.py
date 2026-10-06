@@ -20,6 +20,7 @@ if _base:
     TEST_URL = url.set(database=f"{url.database}_test").render_as_string(hide_password=False)
     os.environ["DATABASE_URL"] = TEST_URL
 os.environ["ENV"] = "test"
+os.environ.setdefault("DEV_JWT_SECRET", "test-only-secret-" + "x" * 32)
 
 
 def _plain(sqlalchemy_url: str, database: str | None = None) -> str:
@@ -71,3 +72,29 @@ async def pg(database: str):
         yield conn
     finally:
         await conn.close()
+
+
+@pytest.fixture
+def client(database):
+    from fastapi.testclient import TestClient
+
+    from app.main import app
+
+    return TestClient(app)
+
+
+@pytest.fixture
+def make_token():
+    """make_token(email=..., **claims) -> Authorization header for a fresh dev user."""
+    import uuid as _uuid
+
+    from app.core.security import mint_dev_token
+    from app.core.settings import get_settings
+
+    def _make(email: str | None = None, subject: _uuid.UUID | None = None, **kwargs) -> dict[str, str]:
+        subject = subject or _uuid.uuid4()
+        email = email or f"user-{subject.hex[:12]}@example.com"
+        token = mint_dev_token(get_settings(), subject=subject, email=email, **kwargs)
+        return {"Authorization": f"Bearer {token}"}
+
+    return _make

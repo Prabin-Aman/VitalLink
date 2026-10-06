@@ -2,7 +2,7 @@
 // Emergency ID, Devices, Health Library, Settings.
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
-import { ago, dayMonth, dayMonthYear, daysFrom, monthYear, relativeDay, thousands, timeOfDay, weekday } from "../format";
+import { ago, dayMonth, dayMonthYear, daysFrom, height, languageName, monthYear, phone, relativeDay, timeOfDay, weekday } from "../format";
 import type { ChipVM, StatVM } from "../screens";
 import type { AppNotification, Article, AvatarTone, Device, NotificationKind, Prescription } from "../types";
 
@@ -555,30 +555,30 @@ export interface SettingsVM {
 }
 
 export async function loadSettings(api: VitalLinkClient): Promise<SettingsVM> {
-  const [me, data] = await Promise.all([api.me(), api.account()]);
-  const a = need(data, "Settings");
-  const name = `${a.first_name} ${a.last_name}`;
+  const [me, a] = await Promise.all([api.me(), api.account()]);
+  const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email;
   const since = monthYear(a.member_since, me.timezone);
+  const blank = "—";
   return {
     person: person(name, "brand"),
-    memberLine: `Member since ${since} · ${a.city}`,
+    memberLine: `Member since ${since}${a.city ? ` · ${a.city}` : ""}`,
     memberSince: `Member since ${since}`,
     email: a.email,
     fields: [
-      { key: "first", label: "First name", value: a.first_name },
-      { key: "last", label: "Last name", value: a.last_name },
+      { key: "first", label: "First name", value: a.first_name ?? blank },
+      { key: "last", label: "Last name", value: a.last_name ?? blank },
       { key: "email", label: "Email address", value: a.email, help: "Used for sign-in and account alerts." },
-      { key: "phone", label: "Mobile number", value: a.phone, help: "Used for reminders and goal alerts." },
-      { key: "zip", label: "ZIP code", value: a.zip, help: "Used to find clinics and facilities near you." },
-      { key: "language", label: "Preferred language", value: a.language },
-      { key: "height", label: "Height", value: `${thousands(a.height_cm)} cm`, help: "Used to calculate BMI and energy needs.", wide: true },
+      { key: "phone", label: "Mobile number", value: a.phone ? phone(a.phone) : blank, help: "Used for reminders and goal alerts." },
+      { key: "zip", label: "ZIP code", value: a.zip ?? blank, help: "Used to find clinics and facilities near you." },
+      { key: "language", label: "Preferred language", value: languageName(a.language) },
+      { key: "height", label: "Height", value: a.height_cm === null ? blank : height(a.height_cm, a.units), help: "Used to calculate BMI and energy needs.", wide: true },
     ],
     theme: a.theme,
     summary: {
       profile: name,
       security: a.two_factor ? "2FA on" : "2FA off",
       appearance: a.theme[0].toUpperCase() + a.theme.slice(1),
-      language: a.language,
+      language: languageName(a.language),
       units: a.units === "metric" ? "Metric" : "Imperial",
     },
   };

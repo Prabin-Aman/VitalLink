@@ -364,20 +364,28 @@ export interface Library {
 
 // ---------------------------------------------------------------- account
 
+/** Calendar date without a time zone, "YYYY-MM-DD". */
+export type CalendarDate = string;
+
+/** GET /me/account. null = the user hasn't filled it in yet. */
 export interface AccountProfile {
-  first_name: string;
-  last_name: string;
+  first_name: string | null;
+  last_name: string | null;
   email: string;
-  phone: string;
-  zip: string;
-  city: string;
+  /** E.164, e.g. "+12145550148". */
+  phone: string | null;
+  zip: string | null;
+  city: string | null;
+  /** BCP-47, e.g. "en-US". */
   language: string;
-  height_cm: number;
+  height_cm: number | null;
   member_since: ISODate;
   units: "metric" | "imperial";
   two_factor: boolean;
   theme: "light" | "dark" | "system";
-  date_of_birth: ISODate;
+  date_of_birth: CalendarDate | null;
+  sex: "female" | "male" | "other" | "undisclosed" | null;
+  timezone: string;
 }
 
 // ---------------------------------------------------------------- records

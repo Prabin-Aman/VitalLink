@@ -10,13 +10,15 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
 from app.core.db import SCHEMA
+from app.core.models import Base
 from app.core.settings import get_settings
+from app.models import load_all
 
 if context.config.config_file_name:
     fileConfig(context.config.config_file_name)
 
-# Models register here once they exist (autogenerate + drift check).
-target_metadata = None
+load_all()
+target_metadata = Base.metadata
 
 
 def _run(connection) -> None:

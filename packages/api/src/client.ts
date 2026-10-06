@@ -98,6 +98,7 @@ export class VitalLinkClient {
   }
 
   me = () => this.get<Me>("/me", () => mock.me);
+  account = () => this.get<AccountProfile>("/me/account", () => mock.account);
   dashboard = () => this.get<Dashboard>("/me/health/dashboard", () => mock.dashboard);
   series = (metric: string, days = 7, interval: Series["interval"] = "day") =>
     this.get<Series>(
@@ -137,7 +138,6 @@ export class VitalLinkClient {
   emergencyProfile = () => this.pending<EmergencyProfile>(() => mock.emergency);
   devices = () => this.pending<Device[]>(() => mock.devices);
   library = () => this.pending<Library>(() => mock.library);
-  account = () => this.pending<AccountProfile>(() => mock.account);
   recordsOverview = () => this.pending<RecordsOverview>(() => mock.recordsOverview);
   labPanels = () => this.pending<LabPanel[]>(() => mock.labPanels);
   healthOverview = () => this.pending<HealthOverview>(() => mock.health.overview);

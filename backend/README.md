@@ -1,9 +1,11 @@
 # VitalLink backend
 
-**Status: phase 1 is built, apart from creating the Render and Supabase accounts.** Built so far: the app skeleton (`/health`, `/ready`, the error
-format, request ids), the database connection, Alembic, and the baseline migration (private schema
-lockdown and the append-only audit log). There are 11 tests, run against real Postgres, plus the Docker image and CI. Everything
-else in this folder is the plan: the design docs and a short description in each planned module folder.
+**Status: phases 1 and 2 are built.** That's the skeleton (`/health`, `/ready`, the error format,
+request ids), the database connection and Alembic, the baseline lockdown with the append-only audit log,
+the Docker image and CI, and accounts. Accounts means `users` and `profiles`, token checking,
+`GET /v1/me`, `GET/PATCH /v1/me/account` and `GET/PATCH /v1/me/targets`. 41 tests run against real
+Postgres, including a check that models and migrations match. The Render and Supabase accounts don't
+exist yet. Everything else in this folder is still the plan.
 
 The plan builds on the reviewed design doc
 ["VitalLink Backend System Design"](https://claude.ai/code/artifact/d83166e0-f781-45e9-80e8-d0f399be60cf)
@@ -36,6 +38,13 @@ Then, in another terminal:
 ```
 
 Tests that need the database are skipped, not failed, when Postgres isn't running.
+
+Call the API locally with a dev token (accepted only when `ENV=local` or `test`):
+
+```bash
+.venv/Scripts/python -m app.devtoken alex@example.com --first Alex --last Carter   # prints a token
+curl -H "Authorization: Bearer <token>" http://localhost:8000/v1/me
+```
 
 ## Container and CI
 

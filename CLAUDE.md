@@ -113,7 +113,11 @@ the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs 
   Create Account "Entries don't match yet." helper, mobile Emergency "Show QR" reveals the web QR card.
 - Workouts/Records use km (as in Figma) while Activity uses miles — units should follow Settings › Units.
 
-## Backend (designed, not built yet)
+## Backend (phases 1–2 built: skeleton, DB, CI, accounts)
+Built in `backend/` (FastAPI, Python 3.12): `/health`, `/ready`, Alembic (0001 lockdown + audit_log,
+0002 users/profiles), `GET /v1/me`, `GET/PATCH /v1/me/account`, `GET/PATCH /v1/me/targets`. Local/test
+auth uses HS256 dev tokens (`python -m app.devtoken <email>`); production verifies Supabase JWKS.
+Local Postgres runs with Docker inside WSL Ubuntu (see backend/README.md); tests need it running.
 Plan in `backend/` (README + docs/01–10: intro, architecture, class diagram, ER/database (35 tables),
 API catalogue mapped to every `client.pending()` call, consent/security, flows, ops, build plan, open
 decisions D1–D16) with a README per planned module under `backend/app/`. It extends the original doc: "VitalLink Backend System Design" https://claude.ai/code/artifact/d83166e0-f781-45e9-80e8-d0f399be60cf
@@ -129,5 +133,5 @@ decisions D1–D16) with a README per planned module under `backend/app/`. It ex
   `/me/medications/today`, shares, access log. Not in API yet (mock-only, `null` live → "isn't available
   yet"): latest BP, streaks, next appointment, latest lab, privacy settings, and everything behind the new
   screens — training, nutrition, goals overview, prescriptions, appointments, conversations, notifications,
-  family, emergency profile, devices, library, account, records + lab panels, and the My Health tabs.
+  family, emergency profile, devices, library, records + lab panels, and the My Health tabs.
   Their shapes are in `packages/api/src/types.ts` (one interface per endpoint) for the backend to match.
