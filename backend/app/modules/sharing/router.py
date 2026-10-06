@@ -16,6 +16,8 @@ from app.modules.health.schemas import BloodPressureSeries, Dashboard, Interval,
 from app.modules.sharing import service
 from app.modules.sharing.schemas import AccessLogEntry, Share, SharedWithMe, ShareIn
 from app.modules.sharing.service import shared_access
+from app.modules.training import service as training
+from app.modules.training.schemas import Training, WorkoutOut
 
 Session = Annotated[AsyncSession, Depends(get_session)]
 Caller = Annotated[CurrentUser, Depends(current_user)]
@@ -114,3 +116,17 @@ async def shared_latest(
         await gate.require(scope)
     owner = await _owner(session, gate)
     return await health.latest(session, gate.owner_id, owner.timezone, codes)
+
+
+@users_router.get("/workouts", response_model=list[WorkoutOut])
+async def shared_workouts(session: Session, gate: Gate, days: Days = 7) -> list[WorkoutOut]:
+    await gate.require(Scope.activity)
+    owner = await _owner(session, gate)
+    return await training.list_workouts(session, gate.owner_id, owner.timezone, days)
+
+
+@users_router.get("/training", response_model=Training)
+async def shared_training(session: Session, gate: Gate) -> Training:
+    await gate.require(Scope.activity)
+    owner = await _owner(session, gate)
+    return await training.training(session, gate.owner_id, owner.timezone)

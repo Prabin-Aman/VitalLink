@@ -168,3 +168,8 @@ async def targets_for(session: AsyncSession, user_id) -> Targets:
     profile = await session.get(Profile, user_id)
     assert profile is not None
     return Targets.model_validate(profile, from_attributes=True)
+
+
+async def birth_date(session: AsyncSession, user_id):
+    profile = await session.get(Profile, user_id)
+    return profile.date_of_birth if profile else None

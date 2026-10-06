@@ -23,6 +23,7 @@ from sqlalchemy.engine import make_url
 from app.core.ids import uuid7
 from app.core.settings import get_settings
 from app.modules.health.catalogue import BY_CODE
+from app.modules.training.catalogue import BY_NAME as EXERCISE_IDS
 
 TZ = ZoneInfo("America/Chicago")
 DAYS = 90
@@ -135,6 +136,78 @@ class Builder:
             add("mindful_minutes", at(day, 7, 15), 5)
 
 
+# ---------------------------------------------------------------- workouts and a plan
+
+# The Figma week's pattern, Monday first: (title, type, kind, minutes, hour, sets template or None).
+UPPER = [
+    ("Bench Press", 4, 8, 70.0),
+    ("Barbell Row", 4, 8, 65.0),
+    ("Overhead Press", 4, 8, 42.5),
+    ("Lat Pulldown", 4, 10, 55.0),
+    ("Bicep Curl", 4, 12, 14.0),
+    ("Tricep Extension", 4, 12, 20.0),
+]
+LOWER = [
+    ("Back Squat", 5, 5, None),
+    ("Romanian Deadlift", 4, 8, 80.0),
+    ("Lunge", 4, 10, 24.0),
+    ("Calf Raise", 4, 15, 40.0),
+    ("Plank", 3, None, None),
+]
+WEEK = {
+    0: [("Lower Body Strength", "strength", "strength", 48, 19, LOWER), ("Mobility & Stretch", "yoga", "mobility", 10, 21, None)],
+    1: [("Outdoor Run", "run", "cardio", 28, 6, None), ("Mobility & Stretch", "yoga", "mobility", 12, 21, None)],
+    2: [("Upper Body Strength", "strength", "strength", 52, 19, UPPER), ("Mobility & Stretch", "yoga", "mobility", 8, 21, None)],
+    4: [("Indoor Cycle", "cycle", "cardio", 35, 18, None)],
+    5: [("Outdoor Run", "run", "cardio", 42, 7, None), ("Mobility & Stretch", "yoga", "mobility", 15, 20, None)],
+    6: [("Mobility & Stretch", "yoga", "mobility", 20, 9, None)],
+}  # fmt: skip
+
+
+def workouts(today: date, now: datetime, rng: random.Random) -> list[dict]:
+    """Workouts over the seeded days; the squat climbs 0.5 kg a week to 92.5 kg (a record last Monday)."""
+    out = []
+    for offset in range(DAYS - 1, -1, -1):
+        day = today - timedelta(days=offset)
+        weeks_ago = offset // 7
+        for title, wtype, kind, minutes, hour, template in WEEK.get(day.weekday(), []):
+            start = at(day, hour, rng.choice([0, 5, 10]))
+            if start > now:
+                continue
+            sets = []
+            for exercise, n, reps, weight in template or []:
+                if exercise == "Back Squat":
+                    weight = 92.5 - 0.5 * weeks_ago
+                for _ in range(n):
+                    sets.append((exercise, reps, weight, 45 if reps is None else None))
+            run = wtype == "run"
+            distance = (
+                (minutes * 60 / rng.uniform(330, 350)) * 1000
+                if run
+                else (minutes * 430 if wtype == "cycle" else None)
+            )
+            out.append(
+                {
+                    "title": title,
+                    "type": wtype,
+                    "kind": kind,
+                    "start": start,
+                    "duration_s": minutes * 60,
+                    "distance_m": round(distance, 1) if distance else None,
+                    "kcal": round(minutes * (8.5 if kind == "cardio" else 5.5))
+                    if kind != "mobility"
+                    else None,
+                    "avg_hr": rng.randint(150, 160)
+                    if run
+                    else (rng.randint(132, 142) if wtype == "cycle" else None),
+                    "rpe": rng.choice([7, 8]) if kind == "strength" else None,
+                    "focus": "Hips, thoracic, hamstrings" if kind == "mobility" else None,
+                    "sets": sets,
+                }
+            )
+    return out
+
+
 DEVICES = [
     ("demo-watch", "Apple Watch S9", "wearable", ["heart_rate", "resting_heart_rate", "hrv", "steps", "distance",
      "active_energy", "exercise_minutes", "stand_hours", "flights_climbed", "sleep_asleep", "sleep_deep",
@@ -222,9 +295,48 @@ async def seed(email: str) -> None:
                     sorted({BY_CODE[c].id for c in codes}),
                     now - ago,
                 )
+            await conn.execute("DELETE FROM vitallink.workouts WHERE user_id = $1", user_id)
+            await conn.execute("DELETE FROM vitallink.training_plans WHERE user_id = $1", user_id)
+            sessions = workouts(today, now, rng)
+            for w in sessions:
+                workout_id = uuid7()
+                await conn.execute(
+                    """
+                    INSERT INTO vitallink.workouts (id, user_id, type, kind, title, started_at, duration_s, distance_m,
+                                                    kcal, avg_hr, rpe, focus, source, external_id)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 'healthkit', $13)
+                    """,
+                    workout_id, user_id, w["type"], w["kind"], w["title"], w["start"], w["duration_s"],
+                    w["distance_m"], w["kcal"], w["avg_hr"], w["rpe"], w["focus"], f"demo-{workout_id}",
+                )  # fmt: skip
+                numbering: dict[int, int] = {}
+                for exercise, reps, weight, seconds in w["sets"]:
+                    exercise_id = EXERCISE_IDS[exercise.lower()][0]
+                    numbering[exercise_id] = numbering.get(exercise_id, 0) + 1
+                    await conn.execute(
+                        "INSERT INTO vitallink.exercise_sets (workout_id, exercise_id, set_no, reps, weight_kg, duration_s) "
+                        "VALUES ($1, $2, $3, $4, $5, $6)",
+                        workout_id, exercise_id, numbering[exercise_id], reps, weight, seconds,
+                    )  # fmt: skip
+            plan_id = uuid7()
+            await conn.execute(
+                "INSERT INTO vitallink.training_plans (id, user_id, name, status, weekly_target_sessions) "
+                "VALUES ($1, $2, 'Push Pull Legs', 'active', 5)",
+                plan_id, user_id,
+            )  # fmt: skip
+            for i, (title, minutes, exercises) in enumerate(
+                [("Push Day", 50, 6), ("Pull Day", 50, 6), ("Leg Day", 55, 5)]
+            ):
+                await conn.execute(
+                    "INSERT INTO vitallink.plan_sessions (id, plan_id, title, kind, scheduled_for, exercises, minutes) "
+                    "VALUES ($1, $2, $3, 'strength', $4, $5, $6)",
+                    uuid7(), plan_id, title, at(today + timedelta(days=1 + 2 * i), 18, 30), exercises, minutes,
+                )  # fmt: skip
     finally:
         await conn.close()
-    print(f"Seeded {email}: {len(rows):,} readings over {DAYS} days, {len(DEVICES)} devices.")
+    print(
+        f"Seeded {email}: {len(rows):,} readings, {len(sessions)} workouts over {DAYS} days, {len(DEVICES)} devices."
+    )
 
 
 def main() -> None:

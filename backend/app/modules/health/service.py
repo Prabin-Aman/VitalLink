@@ -586,3 +586,23 @@ async def forget_device(session: AsyncSession, me: CurrentUser, device_id: uuid.
     result = await session.execute(delete(Device).where(Device.id == device_id, Device.user_id == me.id))
     if result.rowcount == 0:
         raise ApiError(404, "not_found", "No such device.")
+
+
+# ---------------------------------------------------------------- for other modules
+
+
+async def total_between(
+    session: AsyncSession, user_id: uuid.UUID, code: str, start: datetime, end: datetime
+) -> float:
+    """Sum of a metric between two instants (e.g. active energy this week), 0 without data."""
+    return await _day_total(session, user_id, BY_CODE[code], start, end) or 0.0
+
+
+async def wearable_name(session: AsyncSession, user_id: uuid.UUID) -> str | None:
+    """The most recently synced wearable, used as a workout data source label."""
+    return await session.scalar(
+        select(Device.name)
+        .where(Device.user_id == user_id, Device.kind == DeviceKind.wearable)
+        .order_by(Device.last_sync_at.desc())
+        .limit(1)
+    )

@@ -12,6 +12,7 @@ from app.modules.account.router import router as account_router
 from app.modules.health.router import router as health_router
 from app.modules.sharing.router import me_router as sharing_router
 from app.modules.sharing.router import users_router as shared_views_router
+from app.modules.training.router import router as training_router
 
 
 def create_app() -> FastAPI:
@@ -51,6 +52,7 @@ def create_app() -> FastAPI:
     app.include_router(health_router, prefix="/v1")
     app.include_router(sharing_router, prefix="/v1")
     app.include_router(shared_views_router, prefix="/v1")
+    app.include_router(training_router, prefix="/v1")
 
     return app
 

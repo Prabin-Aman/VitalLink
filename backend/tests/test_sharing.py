@@ -100,6 +100,22 @@ def test_shared_with_me(client, pair):
     assert client.get("/v1/me/shared-with-me", headers=viewer).json() == []
 
 
+def test_shared_training_needs_activity(client, pair):
+    owner, owner_id, viewer, _, viewer_email, _ = pair
+    now = datetime.now(UTC).isoformat()
+    workout = {"type": "walk", "title": "Walk", "started_at": now, "duration_s": 600}
+    client.post("/v1/me/workouts", headers=owner, json=workout)
+    assert client.get(f"/v1/users/{owner_id}/workouts", headers=viewer).status_code == 404
+    _share(client, owner, viewer_email, scopes=["sleep"])
+    assert client.get(f"/v1/users/{owner_id}/training", headers=viewer).status_code == 403
+    share = client.get("/v1/me/shares", headers=owner).json()[0]
+    client.delete(f"/v1/me/shares/{share['id']}", headers=owner)
+    _share(client, owner, viewer_email, scopes=["activity"])
+    workouts = client.get(f"/v1/users/{owner_id}/workouts", headers=viewer).json()
+    assert [w["title"] for w in workouts] == ["Walk"]
+    assert client.get(f"/v1/users/{owner_id}/training", headers=viewer).json()["total_sessions"] == 1
+
+
 def test_shared_dashboard_has_no_readiness_score(client, pair):
     owner, owner_id, viewer, _, viewer_email, _ = pair
     _share(client, owner, viewer_email, scopes=["vitals"])

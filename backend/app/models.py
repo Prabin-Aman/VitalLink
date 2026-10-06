@@ -6,3 +6,4 @@ def load_all() -> None:
     import app.modules.account.models  # noqa: F401
     import app.modules.health.models  # noqa: F401
     import app.modules.sharing.models  # noqa: F401
+    import app.modules.training.models  # noqa: F401

@@ -173,6 +173,7 @@ export interface PersonalRecord {
 }
 
 export interface PlannedSession {
+  id: string;
   title: string;
   kind: string;
   starts_at: ISODate;

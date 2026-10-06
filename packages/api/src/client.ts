@@ -126,6 +126,8 @@ export class VitalLinkClient {
     return bp && bp.value2 !== undefined ? { systolic: bp.value, diastolic: bp.value2 } : null;
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
+  workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
+  training = () => this.get<Training>("/me/training", () => mock.training);
   shares = () => this.get<Share[]>("/me/shares", () => mock.shares);
   sharedWithMe = () => this.get<SharedWithMe[]>("/me/shared-with-me", () => []);
   accessLog = () => this.get<AccessLogEntry[]>("/me/access-log?limit=20", () => mock.accessLog);
@@ -140,12 +142,10 @@ export class VitalLinkClient {
   nextAppointment = () => this.pending(() => mock.appointment);
   latestLab = () => this.pending(() => mock.labResult);
   privacySettings = () => this.pending(() => mock.privacy);
-  // Built in later backend phases: workouts + goals (5), medications (7).
-  workouts = (_days = 7) => this.pending<Workout[]>(() => mock.workouts);
+  // Built in later backend phases: goals (5), medications (7).
   goals = () => this.pending<Goal[]>(() => mock.goals);
   medications = () => this.pending<Medication[]>(() => mock.medications);
 
-  training = () => this.pending<Training>(() => mock.training);
   nutrition = () => this.pending<NutritionDay>(() => mock.nutrition);
   goalsOverview = () => this.pending<GoalsOverview>(() => mock.goalsOverview);
   medicationsOverview = () => this.pending<MedicationsOverview>(() => mock.medicationsOverview);

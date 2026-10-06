@@ -48,7 +48,7 @@ export const training: Training = {
     { exercise: "Deadlift", achieved_at: "2026-09-11T18:10:00-05:00", weight_kg: 120, reps: 3, time_s: null },
     { exercise: "5 km run", achieved_at: "2026-09-06T07:30:00-05:00", weight_kg: null, reps: null, time_s: 27 * 60 + 42 },
   ],
-  next: { title: "Push Day", kind: "Strength", starts_at: "2026-09-14T18:30:00-05:00", exercises: 6, minutes: 50 },
+  next: { id: "p1", title: "Push Day", kind: "Strength", starts_at: "2026-09-14T18:30:00-05:00", exercises: 6, minutes: 50 },
 };
 
 export const nutrition: NutritionDay = {
