@@ -151,6 +151,8 @@ erDiagram
     float8 min_value
     float8 max_value
     bool manual_allowed "mood, weight, waist..."
+    float8 normal_low "nullable"
+    float8 normal_high "nullable"
   }
   health_readings {
     uuid user_id PK, FK
@@ -189,16 +191,16 @@ erDiagram
 
 | Table | Invariants and constraints | Indexes | On delete |
 |---|---|---|---|
-| `metrics` | Seeded by migration; `min_value < max_value`. This is the closed catalogue, and every metric maps to exactly one scope. | `code` UK | RESTRICT (never deleted) |
+| `metrics` | Seeded by migration 0003; `min_value < max_value` (plausible range per 5-minute bucket); optional `normal_low`/`normal_high` drive the dashboard range chip. The same list lives in `app/modules/health/catalogue.py`, and a test keeps the two equal. Ids are permanent and only ever appended. | `code` UK | RESTRICT (never deleted) |
 | `health_readings` | **PK `(user_id, metric_id, recorded_at, source)`**, which is the de-dup key, so writes are `INSERT … ON CONFLICT DO UPDATE` (new value wins). `CHECK (extract(epoch FROM recorded_at)::bigint % 300 = 0)` so every row is a bucket start. `samples > 0`. The value's plausibility range is checked against `metrics` in the service (a CHECK can't read another table). No surrogate id and no per-row unit, to save space on the biggest table. | PK serves `(user, metric, time)` range scans | CASCADE |
 | `ingest_batches` | UK `(user_id, idempotency_key)`; `octet_length(payload_sha256) = 32`; `inserted + updated + unchanged = submitted`; `submitted` 1–5000. Same key with a different hash → 409. Kept 30 days, which is the replay window. | UK; `(received_at)` for cleanup | CASCADE |
-| `devices` | UK `(user_id, platform, external_id)`. Upserted from the `devices` list in each ingest batch, which also moves `last_sync_at` forward. "Overdue" is computed: no sync for 24 h, or 7 days for home monitors. | UK | CASCADE |
+| `devices` | UK `(user_id, platform, external_id)`. Upserted from the `devices` list in each ingest batch, which also moves `last_sync_at` forward. "Overdue" is computed: no sync for 24 h, or 3 days for home monitors. | UK | CASCADE |
 
 **Metric catalogue (seed).** Each metric belongs to exactly one scope:
 
 | Scope | Metrics |
 |---|---|
-| vitals | `heart_rate`, `resting_heart_rate`, `hrv`, `bp_systolic`, `bp_diastolic`, `spo2`, `respiratory_rate`, `glucose`, `body_temperature`, `vo2_max`, `hr_high_event`, `hr_low_event`, `irregular_rhythm_event` |
+| vitals | `heart_rate`, `resting_heart_rate`, `hrv`, `bp_systolic`, `bp_diastolic`, `oxygen_saturation`, `respiratory_rate`, `glucose`, `body_temperature`, `vo2_max`, `hr_high_event`, `hr_low_event`, `irregular_rhythm_event` |
 | activity | `steps`, `distance`, `active_energy`, `basal_energy`, `exercise_minutes`, `stand_hours`, `flights_climbed`, `mindful_minutes`, `mood`, `stress`, `energy`, `screen_time`, `screen_time_social`, `screen_time_entertainment`, `screen_time_productivity`, `phone_pickups`, `notifications_received` |
 | sleep | `sleep_asleep`, `sleep_deep`, `sleep_core`, `sleep_rem`, `sleep_awake` (minutes per bucket) |
 | vitals (body) | `weight`, `body_fat`, `lean_mass`, `waist`, `hip`, `chest`, `arm`, `thigh` |

@@ -55,20 +55,22 @@ export function HomeScreen() {
 
         <Button label="Start a Workout" icon="dumbbell-18" onPress={() => router.push("/train")} />
 
-        <Card style={st.meds}>
-          <Text style={t("h5", "textPrimary")}>Today's Medications</Text>
-          <View style={st.medList}>
-            {d.medications.map((m) => (
-              <View key={m.id} style={st.med}>
-                <View style={[st.medDot, { backgroundColor: c[m.taken ? "rangeNormal" : "bgMuted"] }]} />
-                <View>
-                  <Text style={t("bodySStrong", m.taken ? "textTertiary" : "textPrimary")}>{m.title}</Text>
-                  <Text style={t("caption", "textTertiary")}>{m.detail}</Text>
+        {d.medications && (
+          <Card style={st.meds}>
+            <Text style={t("h5", "textPrimary")}>Today's Medications</Text>
+            <View style={st.medList}>
+              {d.medications.map((m) => (
+                <View key={m.id} style={st.med}>
+                  <View style={[st.medDot, { backgroundColor: c[m.taken ? "rangeNormal" : "bgMuted"] }]} />
+                  <View>
+                    <Text style={t("bodySStrong", m.taken ? "textTertiary" : "textPrimary")}>{m.title}</Text>
+                    <Text style={t("caption", "textTertiary")}>{m.detail}</Text>
+                  </View>
                 </View>
-              </View>
-            ))}
-          </View>
-        </Card>
+              ))}
+            </View>
+          </Card>
+        )}
       </ScrollView>
     </View>
   );

@@ -70,22 +70,24 @@ export function ActivityScreen() {
             ))}
         </View>
 
-        <Card style={st.workouts}>
-          <Text style={[t("h5", "textPrimary"), st.cardTitle]}>Workouts this week</Text>
-          {a.workouts.map((w) => (
-            <View key={w.id} style={st.workout}>
-              <View style={st.kind}>
-                <Icon name={WORKOUT_ICON_18[w.icon]} color={w.iconColor} />
+        {a.workouts && (
+          <Card style={st.workouts}>
+            <Text style={[t("h5", "textPrimary"), st.cardTitle]}>Workouts this week</Text>
+            {a.workouts.map((w) => (
+              <View key={w.id} style={st.workout}>
+                <View style={st.kind}>
+                  <Icon name={WORKOUT_ICON_18[w.icon]} color={w.iconColor} />
+                </View>
+                <View style={st.flex}>
+                  <Text style={t("bodySStrong", "textPrimary")}>{w.title}</Text>
+                  <Text style={t("caption", "textTertiary")} numberOfLines={1}>
+                    {w.summary}
+                  </Text>
+                </View>
               </View>
-              <View style={st.flex}>
-                <Text style={t("bodySStrong", "textPrimary")}>{w.title}</Text>
-                <Text style={t("caption", "textTertiary")} numberOfLines={1}>
-                  {w.summary}
-                </Text>
-              </View>
-            </View>
-          ))}
-        </Card>
+            ))}
+          </Card>
+        )}
       </ScrollView>
     </View>
   );

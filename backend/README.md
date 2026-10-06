@@ -1,10 +1,11 @@
 # VitalLink backend
 
-**Status: phases 1 and 2 are built.** That's the skeleton (`/health`, `/ready`, the error format,
+**Status: phases 1–3 are built.** That's the skeleton (`/health`, `/ready`, the error format,
 request ids), the database connection and Alembic, the baseline lockdown with the append-only audit log,
 the Docker image and CI, and accounts. Accounts means `users` and `profiles`, token checking,
-`GET /v1/me`, `GET/PATCH /v1/me/account` and `GET/PATCH /v1/me/targets`. 41 tests run against real
-Postgres, including a check that models and migrations match. The Render and Supabase accounts don't
+`GET /v1/me`, `GET/PATCH /v1/me/account` and `GET/PATCH /v1/me/targets`, and the health core (metric
+catalogue, idempotent sync ingest, manual readings, series, latest readings, dashboard with readiness,
+devices). 69 tests run against real Postgres, including a check that models and migrations match. The Render and Supabase accounts don't
 exist yet. Everything else in this folder is still the plan.
 
 The plan builds on the reviewed design doc
@@ -38,6 +39,12 @@ Then, in another terminal:
 ```
 
 Tests that need the database are skipped, not failed, when Postgres isn't running.
+
+Load the demo account (90 days of data; the last week matches the Figma values):
+
+```bash
+.venv/Scripts/python -m seeds.demo
+```
 
 Call the API locally with a dev token (accepted only when `ENV=local` or `test`):
 

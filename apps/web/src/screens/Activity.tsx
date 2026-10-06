@@ -67,52 +67,56 @@ export function Activity() {
             ))}
           </div>
 
-          <Card className={s.workouts}>
-            <h2 className="vl-h3">Workouts this week</h2>
-            <table className={s.table}>
-              <caption className="sr-only">Workouts this week</caption>
-              <tbody>
-                {a.workouts.map((w) => (
-                  <tr key={w.id}>
-                    <th scope="row">
-                      <span className={s.kind}>
-                        <span className={s.kindIcon}>
-                          <Icon name={WORKOUT_ICON[w.icon]} color={w.iconColor} />
-                        </span>
-                        <span>
-                          <span className={s.wTitle}>{w.title}</span>
-                          <span className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
-                            {w.when}
+          {a.workouts && (
+            <Card className={s.workouts}>
+              <h2 className="vl-h3">Workouts this week</h2>
+              <table className={s.table}>
+                <caption className="sr-only">Workouts this week</caption>
+                <tbody>
+                  {a.workouts.map((w) => (
+                    <tr key={w.id}>
+                      <th scope="row">
+                        <span className={s.kind}>
+                          <span className={s.kindIcon}>
+                            <Icon name={WORKOUT_ICON[w.icon]} color={w.iconColor} />
+                          </span>
+                          <span>
+                            <span className={s.wTitle}>{w.title}</span>
+                            <span className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
+                              {w.when}
+                            </span>
                           </span>
                         </span>
-                      </span>
-                    </th>
-                    <td className={s.c1}>{w.duration}</td>
-                    <td className={s.c2}>{w.distance}</td>
-                    <td className={s.c3}>{w.kcal}</td>
-                    <td className={s.c4}>{w.hr}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </Card>
+                      </th>
+                      <td className={s.c1}>{w.duration}</td>
+                      <td className={s.c2}>{w.distance}</td>
+                      <td className={s.c3}>{w.kcal}</td>
+                      <td className={s.c4}>{w.hr}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Card>
+          )}
         </div>
 
         <aside className={s.rail}>
-          <Card className={s.railCard}>
-            <h2 className="vl-h5">Goal progress</h2>
-            {a.goals.map((g) => (
-              <div key={g.id} className={s.goal}>
-                <div className={s.goalHead}>
-                  <span className={s.goalLabel}>{g.label}</span>
-                  <span className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
-                    {g.progress}
-                  </span>
+          {a.goals && (
+            <Card className={s.railCard}>
+              <h2 className="vl-h5">Goal progress</h2>
+              {a.goals.map((g) => (
+                <div key={g.id} className={s.goal}>
+                  <div className={s.goalHead}>
+                    <span className={s.goalLabel}>{g.label}</span>
+                    <span className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
+                      {g.progress}
+                    </span>
+                  </div>
+                  <Progress fraction={g.fraction} color={g.color} label={g.label} />
                 </div>
-                <Progress fraction={g.fraction} color={g.color} label={g.label} />
-              </div>
-            ))}
-          </Card>
+              ))}
+            </Card>
+          )}
           <Card className={s.railCard}>
             <h2 className="vl-h5">Streaks</h2>
             <dl className={s.streaks}>

@@ -54,6 +54,15 @@ export interface Workout {
   avg_hr: number | null;
 }
 
+/** GET /me/targets. */
+export interface Targets {
+  daily_steps_goal: number;
+  move_kcal_goal: number;
+  exercise_min_goal: number;
+  stand_hours_goal: number;
+  sleep_goal_min: number;
+}
+
 export interface Goal {
   id: string;
   metric: string;

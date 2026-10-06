@@ -20,21 +20,23 @@ one endpoint below.
 | Rate limits | Per user: 60 ingest / 600 other per hour (in memory, single instance) |
 | Versioning | Additive changes stay in `/v1`; breaking changes go to `/v2` |
 
-## 5.2 Endpoints that already have a live client call
+## 5.2 Endpoints that are live (built and called by the client)
 
-These are the paths `VitalLinkClient` already requests through `get()`.
+These are the paths `VitalLinkClient` requests through `get()`; each exists in the backend.
 
 | Client call | Method and path | Returns (`types.ts`) |
 |---|---|---|
 | `me()` | `GET /me` | `Me` (first call creates the account) |
 | `dashboard()` | `GET /me/health/dashboard` | `Dashboard` |
-| `series(metric, days, interval)` | `GET /me/health/series/{metric}?days&interval&agg` | `Series` |
+| `series(metric, days, interval)` | `GET /me/health/series/{metric}?days&interval` | `Series` (aggregation from the catalogue; SI units) |
 | `bloodPressure()` | `GET /me/health/series/blood_pressure?days&interval` | `{systolic, diastolic}: Series` (pairs `bp_systolic`/`bp_diastolic`) |
-| `workouts(days)` | `GET /me/workouts?days` | `Workout[]` |
-| `goals()` | `GET /me/goals` | `Goal[]` |
-| `medications()` | `GET /me/medications/today` | `Medication[]` (today's doses) |
-| `shares()` | `GET /me/shares` | `Share[]` |
-| `accessLog()` | `GET /me/access-log?limit` | `AccessLogEntry[]` |
+| `account()` | `GET /me/account` | `AccountProfile` |
+| `targets()` | `GET /me/targets` | `Targets` (daily goals) |
+| `latest(metrics)`, `bloodPressureLatest()` | `GET /me/health/latest?metrics=` | `Reading[]` |
+| `devices()` | `GET /me/devices` | `Device[]` |
+
+These were marked live in the client before they existed and are pending again until their phase:
+`workouts()`, `goals()` (phase 5), `shares()`, `accessLog()` (phase 4), `medications()` (phase 7).
 
 ## 5.3 Endpoints for the pending screens
 
@@ -89,7 +91,7 @@ formats them like every other view-model. That's a frontend change in the same p
 | `POST /me/health/ingest` | `{idempotency_key, platform, devices[], buckets[]}`, ≤ 5,000 buckets; 202 `{inserted, updated, unchanged, replayed}` |
 | `POST /me/health/manual` | One manual reading (mood, weight, waist, BP from a cuff without sync…) for metrics with `manual_allowed` |
 | `GET /me/health/dashboard` | Today's summary + readiness score |
-| `GET /me/health/series/{metric}` | `days` ≤ 400, `interval` hour/day/week/month, `agg` per catalogue default |
+| `GET /me/health/series/{metric}` | `days` ≤ 400 (the local days ending today), `interval` hour/day/week/month (weeks start Monday). Aggregation comes from the catalogue. Totals fill empty buckets with 0; averages skip them |
 | `GET /me/health/summary/{metric}` | Latest, 7-day and 30-day averages, trend |
 | `GET /me/health/latest?metrics=` | Latest `Reading` for each metric, with assessment |
 | `GET /me/health/overview` | `HealthOverview` (rings, sections, readings, sources, insights) |

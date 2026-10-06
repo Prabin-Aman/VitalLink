@@ -93,24 +93,26 @@ export function Dashboard() {
         </div>
 
         <aside className={s.rail}>
-          <Card className={s.railCard}>
-            <h2 className="vl-h5">Today's Medications</h2>
-            <ul className={s.meds}>
-              {d.medications.map((m) => (
-                <li key={m.id}>
-                  <span className={s.medDot} style={{ background: tokenVar(m.taken ? "rangeNormal" : "bgMuted") }} aria-hidden />
-                  <div>
-                    <p className={s.medTitle} style={{ color: tokenVar(m.taken ? "textTertiary" : "textPrimary") }}>
-                      {m.title}
-                    </p>
-                    <p className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
-                      {m.detail}
-                    </p>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          </Card>
+          {d.medications && (
+            <Card className={s.railCard}>
+              <h2 className="vl-h5">Today's Medications</h2>
+              <ul className={s.meds}>
+                {d.medications.map((m) => (
+                  <li key={m.id}>
+                    <span className={s.medDot} style={{ background: tokenVar(m.taken ? "rangeNormal" : "bgMuted") }} aria-hidden />
+                    <div>
+                      <p className={s.medTitle} style={{ color: tokenVar(m.taken ? "textTertiary" : "textPrimary") }}>
+                        {m.title}
+                      </p>
+                      <p className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
+                        {m.detail}
+                      </p>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            </Card>
+          )}
 
           {d.appointment && (
             <Card className={s.railCard}>

@@ -1,7 +1,7 @@
 // Screen view-models: everything a screen renders, already formatted.
 // Web and mobile render the same view-model; only layout differs.
 import type { ColorToken } from "@vitallink/tokens";
-import { VitalLinkClient } from "./client";
+import { need, VitalLinkClient } from "./client";
 import {
   dayKey,
   greeting,
@@ -10,6 +10,7 @@ import {
   shortDateTime,
   thousands,
   timeOfDay,
+  weekday,
   weekdayTime,
 } from "./format";
 import type { AccessLogEntry, RangeStatus, Share, Workout, WorkoutType } from "./types";
@@ -69,7 +70,7 @@ export interface DashboardVM {
   metrics: MetricCardVM[];
   steps: { goal: number; bars: BarVM[] };
   bloodPressure: { systolic: number[]; diastolic: number[]; latestSys: number; latestDia: number } | null;
-  medications: { id: string; title: string; detail: string; taken: boolean }[];
+  medications: { id: string; title: string; detail: string; taken: boolean }[] | null;
   appointment: { with: string; when: string } | null;
   streak: { days: number; longest: number } | null;
   lab: { name: string; value: string; chip: ChipVM; note: string } | null;
@@ -83,11 +84,14 @@ const METRIC_META: Record<string, { label: string; short: string; accent: ColorT
   glucose: { label: "Blood Glucose", short: "Glucose", accent: "dataGlucose" },
 };
 
-const stepBars = (points: { bucket: string; value: number }[], goal: number): BarVM[] => {
-  const names = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
-  return points.map((p, i) => ({
-    label: names[i] ?? "",
-    shortLabel: (names[i] ?? "")[0],
+/** Unit labels where the design spells a unit differently from the API's code. */
+const UNIT_LABEL: Record<string, string> = { bpm: "BPM" };
+
+/** One bar per day, labelled by the bucket's weekday (the range ends today, whatever day that is). */
+const stepBars = (points: { bucket: string; value: number }[], goal: number, tz: string): BarVM[] => {
+  return points.map((p) => ({
+    label: weekday(p.bucket, tz),
+    shortLabel: weekday(p.bucket, tz)[0],
     value: p.value,
     valueLabel: String(Math.round(p.value)),
     metGoal: p.value >= goal,
@@ -95,11 +99,11 @@ const stepBars = (points: { bucket: string; value: number }[], goal: number): Ba
 };
 
 export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> {
-  const [me, dash, steps, goals, bp, bpLatest, meds, appt, streaks, lab] = await Promise.all([
+  const [me, dash, steps, targets, bp, bpLatest, meds, appt, streaks, lab] = await Promise.all([
     api.me(),
     api.dashboard(),
     api.series("steps", 7),
-    api.goals(),
+    api.targets(),
     api.bloodPressure(),
     api.bloodPressureLatest(),
     api.medications(),
@@ -110,7 +114,7 @@ export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> 
   const tz = me.timezone;
   const now = dash.generated_at;
   const name = me.display_name ?? me.email.split("@")[0];
-  const stepGoal = goals.find((g) => g.metric === "steps")?.target ?? 10000;
+  const stepGoal = targets.daily_steps_goal;
 
   const metrics: MetricCardVM[] = dash.metrics.map((m) => {
     const meta = METRIC_META[m.metric] ?? { label: m.metric, short: m.metric, accent: "dataComparison" as ColorToken };
@@ -124,7 +128,7 @@ export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> 
       label: meta.label,
       shortLabel: meta.short,
       value,
-      unit: m.unit,
+      unit: UNIT_LABEL[m.unit] ?? m.unit,
       accent: meta.accent,
       // Weight shows a trend word rather than a clinical range, as in the design.
       chip: rangeChip(m.range, m.metric === "weight" ? "Steady" : undefined),
@@ -142,7 +146,7 @@ export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> 
     scoreLabel: dash.health_score === null ? "" : scoreLabel(dash.health_score),
     scoreDelta: dash.health_score_delta_7d ?? 0,
     metrics,
-    steps: { goal: stepGoal, bars: stepBars(steps.points, stepGoal) },
+    steps: { goal: stepGoal, bars: stepBars(steps.points, stepGoal, tz) },
     bloodPressure: bpLatest
       ? {
           systolic: bp.systolic.points.map((p) => p.value),
@@ -151,7 +155,7 @@ export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> 
           latestDia: bpLatest.diastolic,
         }
       : null,
-    medications: meds.map((m) => ({
+    medications: meds && meds.map((m) => ({
       id: m.id,
       title: [m.name, m.dosage].filter(Boolean).join(" "),
       detail: m.status === "taken" ? `Taken · ${m.time}` : `Due ${m.time}`,
@@ -197,8 +201,9 @@ export interface ActivityVM {
   goalLabel: string;
   bars: BarVM[];
   stats: StatVM[];
-  workouts: WorkoutVM[];
-  goals: { id: string; label: string; progress: string; fraction: number; color: ColorToken }[];
+  /** null until the backend serves workouts and goals (phase 5). */
+  workouts: WorkoutVM[] | null;
+  goals: { id: string; label: string; progress: string; fraction: number; color: ColorToken }[] | null;
   streaks: { label: string; value: string }[];
 }
 
@@ -242,7 +247,7 @@ const workoutVM = (w: Workout, tz: string): WorkoutVM => {
 };
 
 export async function loadActivity(api: VitalLinkClient): Promise<ActivityVM> {
-  const [me, steps, distance, flights, energy, exercise, workouts, goals, streaks] = await Promise.all([
+  const [me, steps, distance, flights, energy, exercise, workouts, goals, streaks, targets] = await Promise.all([
     api.me(),
     api.series("steps", 7),
     api.series("distance", 7, "week"),
@@ -252,21 +257,23 @@ export async function loadActivity(api: VitalLinkClient): Promise<ActivityVM> {
     api.workouts(7),
     api.goals(),
     api.streaks(),
+    api.targets(),
   ]);
-  const goal = goals.find((g) => g.metric === "steps")?.target ?? 10000;
+  const goal = targets.daily_steps_goal;
   const total = steps.points.reduce((a, p) => a + p.value, 0);
   const days = steps.points.length || 1;
   const met = steps.points.filter((p) => p.value >= goal).length;
-  const one = (s: typeof distance) => s.points[0]?.value ?? 0;
+  // The last 7 days can span two calendar weeks, so add up every weekly bucket.
+  const one = (s: typeof distance) => s.points.reduce((a, p) => a + p.value, 0);
 
   return {
     total: thousands(total),
     dailyAverage: thousands(total / days),
     goal,
     goalLabel: thousands(goal),
-    bars: stepBars(steps.points, goal),
+    bars: stepBars(steps.points, goal, me.timezone),
     stats: [
-      { key: "distance", label: "Distance", value: one(distance).toFixed(1), unit: "mi", caption: "this week", accent: "dataActivity" },
+      { key: "distance", label: "Distance", value: metresToMiles(one(distance)), unit: "mi", caption: "this week", accent: "dataActivity" },
       { key: "flights", label: "Flights", value: thousands(one(flights)), unit: "floors", caption: "this week", accent: "dataActivity" },
       { key: "energy", label: "Active energy", value: thousands(one(energy)), unit: "kcal", caption: "this week", accent: "dataHeartRate" },
       { key: "exercise", label: "Exercise", value: thousands(one(exercise)), unit: "min", caption: "this week", accent: "dataHeartRate" },
@@ -279,8 +286,8 @@ export async function loadActivity(api: VitalLinkClient): Promise<ActivityVM> {
         accent: met >= Math.ceil(days * 0.7) ? "goalAchieved" : "goalAtRisk",
       },
     ],
-    workouts: workouts.map((w) => workoutVM(w, me.timezone)),
-    goals: goals.map((g) => ({
+    workouts: workouts && workouts.map((w) => workoutVM(w, me.timezone)),
+    goals: goals && goals.map((g) => ({
       id: g.id,
       label: g.label,
       progress: `${g.current.toLocaleString("en-US")} / ${g.target.toLocaleString("en-US")}${g.unit ? ` ${g.unit}` : ""}`,
@@ -333,12 +340,14 @@ const statusChip = (s: AccessLogEntry["status"]): [ChipVM, string] => {
 };
 
 export async function loadPrivacy(api: VitalLinkClient): Promise<PrivacyVM> {
-  const [me, shares, log, settings] = await Promise.all([
+  const [me, sharesOrNull, logOrNull, settings] = await Promise.all([
     api.me(),
     api.shares(),
     api.accessLog(),
     api.privacySettings(),
   ]);
+  const shares = need(sharesOrNull, "Privacy");
+  const log = need(logOrNull, "The access log");
   const active = shares.filter((s) => s.active);
   const of = (k: Share["grantee_kind"]) => active.filter((s) => s.grantee_kind === k);
   const doctors = of("doctor");

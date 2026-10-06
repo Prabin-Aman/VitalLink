@@ -7,6 +7,7 @@ import type {
   HealthOverview,
   HeartTab,
   MentalTab,
+  Reading,
   RespiratoryTab,
   SleepTab,
   VitalsTab,
@@ -27,6 +28,7 @@ import type {
   RecordsOverview,
   Series,
   Share,
+  Targets,
   Training,
   Workout,
 } from "./types";
@@ -100,9 +102,10 @@ export class VitalLinkClient {
   me = () => this.get<Me>("/me", () => mock.me);
   account = () => this.get<AccountProfile>("/me/account", () => mock.account);
   dashboard = () => this.get<Dashboard>("/me/health/dashboard", () => mock.dashboard);
+  /** Buckets in the user's time zone; SI units (distance in metres). */
   series = (metric: string, days = 7, interval: Series["interval"] = "day") =>
     this.get<Series>(
-      `/me/health/series/${metric}?days=${days}&interval=${interval}&agg=sum`,
+      `/me/health/series/${metric}?days=${days}&interval=${interval}`,
       () => mock.series[metric] ?? { metric, unit: "", interval, points: [] },
     );
   bloodPressure = () =>
@@ -110,11 +113,18 @@ export class VitalLinkClient {
       "/me/health/series/blood_pressure?days=7&interval=day",
       () => mock.bloodPressure,
     );
-  workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
-  goals = () => this.get<Goal[]>("/me/goals", () => mock.goals);
-  medications = () => this.get<Medication[]>("/me/medications/today", () => mock.medications);
-  shares = () => this.get<Share[]>("/me/shares", () => mock.shares);
-  accessLog = () => this.get<AccessLogEntry[]>("/me/access-log?limit=20", () => mock.accessLog);
+  /** Daily targets (steps, move, exercise, stand, sleep): the one source for goals on every screen. */
+  targets = () => this.get<Targets>("/me/targets", () => mock.targets);
+  latest = (metrics: string[]) =>
+    this.get<Reading[]>(`/me/health/latest?metrics=${metrics.join(",")}`, () =>
+      mock.latest.filter((r) => metrics.includes(r.metric)),
+    );
+  /** The latest blood-pressure pair, or null if there's no reading yet. */
+  bloodPressureLatest = async () => {
+    const bp = (await this.latest(["blood_pressure"]))[0];
+    return bp && bp.value2 !== undefined ? { systolic: bp.value, diastolic: bp.value2 } : null;
+  };
+  devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
 
   // ---- Shown in the designs but not yet in the API (system design §5). ----
   // Mock mode returns sample data; live mode returns null so the card is hidden.
@@ -122,11 +132,16 @@ export class VitalLinkClient {
   private async pending<T>(fallback: () => T): Promise<T | null> {
     return this.isMock ? structuredClone(fallback()) : null;
   }
-  bloodPressureLatest = () => this.pending(() => mock.bloodPressureLatest);
   streaks = () => this.pending(() => mock.streaks);
   nextAppointment = () => this.pending(() => mock.appointment);
   latestLab = () => this.pending(() => mock.labResult);
   privacySettings = () => this.pending(() => mock.privacy);
+  // Built in later backend phases: workouts + goals (5), shares + access log (4), medications (7).
+  workouts = (_days = 7) => this.pending<Workout[]>(() => mock.workouts);
+  goals = () => this.pending<Goal[]>(() => mock.goals);
+  medications = () => this.pending<Medication[]>(() => mock.medications);
+  shares = () => this.pending<Share[]>(() => mock.shares);
+  accessLog = () => this.pending<AccessLogEntry[]>(() => mock.accessLog);
   training = () => this.pending<Training>(() => mock.training);
   nutrition = () => this.pending<NutritionDay>(() => mock.nutrition);
   goalsOverview = () => this.pending<GoalsOverview>(() => mock.goalsOverview);
@@ -136,7 +151,6 @@ export class VitalLinkClient {
   notifications = () => this.pending<AppNotification[]>(() => mock.notifications);
   family = () => this.pending<FamilyMember[]>(() => mock.family);
   emergencyProfile = () => this.pending<EmergencyProfile>(() => mock.emergency);
-  devices = () => this.pending<Device[]>(() => mock.devices);
   library = () => this.pending<Library>(() => mock.library);
   recordsOverview = () => this.pending<RecordsOverview>(() => mock.recordsOverview);
   labPanels = () => this.pending<LabPanel[]>(() => mock.labPanels);

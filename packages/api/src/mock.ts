@@ -6,6 +6,7 @@ import type {
   Goal,
   Me,
   Medication,
+  Reading,
   Series,
   Share,
   Workout,
@@ -30,7 +31,7 @@ const dashboard: Dashboard = {
   health_score: 82,
   health_score_delta_7d: 3,
   metrics: [
-    { metric: "heart_rate", unit: "BPM", latest: 72, latest_at: "2026-09-13T08:42:00-05:00", avg_7d: 71, range: "normal" },
+    { metric: "heart_rate", unit: "bpm", latest: 72, latest_at: "2026-09-13T08:42:00-05:00", avg_7d: 71, range: "normal" },
     { metric: "blood_pressure", unit: "mmHg", latest: null, latest_at: "2026-09-13T08:42:00-05:00", avg_7d: null, range: "normal" },
     { metric: "oxygen_saturation", unit: "%", latest: 98, latest_at: "2026-09-13T08:40:00-05:00", avg_7d: 98, range: "normal" },
     { metric: "weight", unit: "kg", latest: 72.4, latest_at: "2026-09-12T07:30:00-05:00", avg_7d: 72.5, range: "normal" },
@@ -107,11 +108,14 @@ const accessLog: AccessLogEntry[] = [
 export const mock = {
   me,
   dashboard,
-  bloodPressureLatest: { systolic: 118, diastolic: 76 },
+  targets: { daily_steps_goal: 10000, move_kcal_goal: 500, exercise_min_goal: 30, stand_hours_goal: 12, sleep_goal_min: 480 },
+  latest: [
+    { metric: "blood_pressure", value: 118, value2: 76, unit: "mmHg", at: "2026-09-13T08:42:00-05:00", assessment: "Normal" },
+  ] as Reading[],
   series: {
     steps,
-    distance: weekSum("distance", "mi", 24.8),
-    flights_climbed: weekSum("flights_climbed", "floors", 71),
+    distance: weekSum("distance", "m", 39911.7), // 24.8 mi
+    flights_climbed: weekSum("flights_climbed", "count", 71),
     active_energy: weekSum("active_energy", "kcal", 3412),
     exercise_minutes: weekSum("exercise_minutes", "min", 196),
   } as Record<string, Series>,
