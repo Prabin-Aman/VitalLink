@@ -232,7 +232,7 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
     fraction: Math.min(1, v / g),
     color,
   });
-  const net = n.kcal - n.base_burn_kcal - n.active_burn_kcal;
+  const net = n.kcal - (n.base_burn_kcal ?? 0) - n.active_burn_kcal;
   const weeklyKg = (Math.abs(net) * 7) / 7700;
   const onTarget = Math.sign(net) === Math.sign(n.weekly_target_kg) && weeklyKg >= Math.abs(n.weekly_target_kg) * 0.9;
   const glasses = Math.round(n.water_goal_ml / n.glass_ml);
@@ -273,11 +273,13 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
     }),
     energy: [
       { label: "Consumed", value: `${kcal} kcal`, color: "dataNutrition" },
-      { label: "Base burn", value: `${thousands(n.base_burn_kcal)} kcal`, color: "textSecondary" },
+      { label: "Base burn", value: n.base_burn_kcal === null ? "—" : `${thousands(n.base_burn_kcal)} kcal`, color: "textSecondary" },
       { label: "Active burn", value: `${thousands(n.active_burn_kcal)} kcal`, color: "dataActivity" },
       { label: "Net", value: `${net < 0 ? "−" : "+"}${thousands(Math.abs(net))} kcal`, color: onTarget ? "goalAchieved" : "goalAtRisk" },
     ],
-    energyNote: `A ${thousands(Math.abs(net))} kcal ${net < 0 ? "deficit" : "surplus"} is ${onTarget ? "on track" : "off track"} for your ${Math.abs(n.weekly_target_kg)} kg per week target.`,
+    energyNote: n.base_burn_kcal === null
+      ? "Add your height, weight, birth date and sex in Settings to estimate your energy balance."
+      : `A ${thousands(Math.abs(net))} kcal ${net < 0 ? "deficit" : "surplus"} is ${onTarget ? "on track" : "off track"} for your ${Math.abs(n.weekly_target_kg)} kg per week target.`,
     hydration: {
       glasses: Array.from({ length: glasses }, (_, i) => i < drunk),
       caption: `${litres(n.water_ml)} L of ${litres(n.water_goal_ml)} L · ${drunk} of ${glasses} glasses`,

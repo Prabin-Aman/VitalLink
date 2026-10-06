@@ -606,3 +606,8 @@ async def wearable_name(session: AsyncSession, user_id: uuid.UUID) -> str | None
         .order_by(Device.last_sync_at.desc())
         .limit(1)
     )
+
+
+async def latest_value(session: AsyncSession, user_id: uuid.UUID, code: str) -> float | None:
+    row = (await session.execute(_LATEST, {"user_id": user_id, "metric_id": BY_CODE[code].id})).first()
+    return row.value if row else None

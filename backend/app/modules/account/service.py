@@ -173,3 +173,8 @@ async def targets_for(session: AsyncSession, user_id) -> Targets:
 async def birth_date(session: AsyncSession, user_id):
     profile = await session.get(Profile, user_id)
     return profile.date_of_birth if profile else None
+
+
+async def body_profile(session: AsyncSession, user_id) -> Profile | None:
+    """Height, birth date and sex, for energy estimates in other modules."""
+    return await session.get(Profile, user_id)

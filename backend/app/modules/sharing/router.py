@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Annotated
 from uuid import UUID
 
@@ -13,6 +14,8 @@ from app.modules.account.service import CurrentUser, current_user
 from app.modules.health import service as health
 from app.modules.health.catalogue import BLOOD_PRESSURE, BY_CODE
 from app.modules.health.schemas import BloodPressureSeries, Dashboard, Interval, ReadingOut, Series
+from app.modules.nutrition import service as nutrition
+from app.modules.nutrition.schemas import NutritionDay
 from app.modules.sharing import service
 from app.modules.sharing.schemas import AccessLogEntry, Share, SharedWithMe, ShareIn
 from app.modules.sharing.service import shared_access
@@ -130,3 +133,10 @@ async def shared_training(session: Session, gate: Gate) -> Training:
     await gate.require(Scope.activity)
     owner = await _owner(session, gate)
     return await training.training(session, gate.owner_id, owner.timezone)
+
+
+@users_router.get("/nutrition/day", response_model=NutritionDay)
+async def shared_nutrition_day(session: Session, gate: Gate, date: date | None = None) -> NutritionDay:
+    await gate.require(Scope.nutrition)
+    owner = await _owner(session, gate)
+    return await nutrition.day(session, gate.owner_id, owner.timezone, date)

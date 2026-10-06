@@ -128,6 +128,7 @@ export class VitalLinkClient {
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
   workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
   training = () => this.get<Training>("/me/training", () => mock.training);
+  nutrition = () => this.get<NutritionDay>("/me/nutrition/day", () => mock.nutrition);
   shares = () => this.get<Share[]>("/me/shares", () => mock.shares);
   sharedWithMe = () => this.get<SharedWithMe[]>("/me/shared-with-me", () => []);
   accessLog = () => this.get<AccessLogEntry[]>("/me/access-log?limit=20", () => mock.accessLog);
@@ -146,7 +147,6 @@ export class VitalLinkClient {
   goals = () => this.pending<Goal[]>(() => mock.goals);
   medications = () => this.pending<Medication[]>(() => mock.medications);
 
-  nutrition = () => this.pending<NutritionDay>(() => mock.nutrition);
   goalsOverview = () => this.pending<GoalsOverview>(() => mock.goalsOverview);
   medicationsOverview = () => this.pending<MedicationsOverview>(() => mock.medicationsOverview);
   appointments = () => this.pending<Appointment[]>(() => mock.appointments);

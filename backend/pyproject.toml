@@ -42,5 +42,5 @@ ignore = ["S101"]  # assert is fine in tests
 
 [tool.ruff.lint.per-file-ignores]
 "migrations/versions/*" = ["E501", "S608"]  # SQL reads better unwrapped; seed rows are constants
-"tests/*" = ["S105", "S106"]  # fake secrets in tests
+"tests/*" = ["S105", "S106", "E501"]  # fake secrets and long request bodies in tests
 "seeds/*" = ["E501"]  # data tables and SQL

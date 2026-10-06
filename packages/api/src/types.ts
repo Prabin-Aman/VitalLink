@@ -216,7 +216,8 @@ export interface NutritionDay {
   water_ml: number;
   water_goal_ml: number;
   glass_ml: number;
-  base_burn_kcal: number;
+  /** null until height, weight, birth date and sex are known. */
+  base_burn_kcal: number | null;
   active_burn_kcal: number;
   /** Planned weight change per week, kg (negative = loss). */
   weekly_target_kg: number;
