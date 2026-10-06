@@ -1,12 +1,24 @@
 # VitalLink backend
 
-**Status: design only, nothing built yet.** This folder holds the plan for the VitalLink API. It has the
+**Status: step 1 of phase 1 is built (app skeleton, `/health`, error format, tests). Everything else is a plan.** It has the
 design docs and the planned folder layout, with a short description in each module folder. Code gets
 written after the owner signs off on the decisions in [docs/10-open-decisions.md](docs/10-open-decisions.md).
 
 The plan builds on the reviewed design doc
 ["VitalLink Backend System Design"](https://claude.ai/code/artifact/d83166e0-f781-45e9-80e8-d0f399be60cf)
 (30 Sep 2026) and adds the domains that the finished frontend needs.
+
+## Run locally (step 1: no database yet)
+
+Needs Python 3.12 (`py -3.12`). From `backend/`:
+
+```bash
+py -3.12 -m venv .venv
+.venv/Scripts/python -m pip install -e ".[dev]"
+.venv/Scripts/python -m uvicorn app.main:app --reload   # http://localhost:8000/health, /docs
+.venv/Scripts/python -m pytest
+.venv/Scripts/python -m ruff check .
+```
 
 ## In one paragraph
 
