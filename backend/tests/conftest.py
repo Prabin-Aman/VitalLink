@@ -42,13 +42,14 @@ async def _ensure_database(test_url: str) -> None:
 
 @pytest.fixture(scope="session")
 def database() -> str:
-    """A migrated test database; skips the test if Postgres isn't running."""
+    """A migrated test database; skips the test if Postgres isn't running (fails instead in CI)."""
+    unavailable = pytest.fail if os.environ.get("REQUIRE_DB") else pytest.skip
     if not TEST_URL:
-        pytest.skip("DATABASE_URL isn't set (backend/.env)")
+        unavailable("DATABASE_URL isn't set (backend/.env)")
     try:
         asyncio.run(_ensure_database(TEST_URL))
     except (OSError, asyncpg.PostgresError) as exc:
-        pytest.skip(f"Postgres isn't reachable ({exc.__class__.__name__}); run `docker compose up -d`")
+        unavailable(f"Postgres isn't reachable ({exc.__class__.__name__}); run `docker compose up`")
 
     from alembic import command
     from alembic.config import Config

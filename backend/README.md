@@ -1,8 +1,8 @@
 # VitalLink backend
 
-**Status: phase 1 is under way.** Built so far: the app skeleton (`/health`, `/ready`, the error
+**Status: phase 1 is built, apart from creating the Render and Supabase accounts.** Built so far: the app skeleton (`/health`, `/ready`, the error
 format, request ids), the database connection, Alembic, and the baseline migration (private schema
-lockdown and the append-only audit log). There are 11 tests, run against real Postgres. Everything
+lockdown and the append-only audit log). There are 11 tests, run against real Postgres, plus the Docker image and CI. Everything
 else in this folder is the plan: the design docs and a short description in each planned module folder.
 
 The plan builds on the reviewed design doc
@@ -36,6 +36,22 @@ Then, in another terminal:
 ```
 
 Tests that need the database are skipped, not failed, when Postgres isn't running.
+
+## Container and CI
+
+- `Dockerfile` builds the image Render runs (Python 3.12 slim, non-root user). `start.sh` applies
+  migrations, then starts uvicorn on `$PORT`. Render's free tier has no pre-deploy step, so a failed
+  migration stops the new container and the old one keeps serving.
+- `.github/workflows/backend.yml` runs on every push or PR that touches `backend/`. It lints, applies,
+  rolls back and re-applies the migrations, runs the tests on a Postgres service (`REQUIRE_DB=1`, so a
+  missing database fails instead of skipping), and builds the image.
+
+Build and run the image locally (inside WSL, next to the running database):
+
+```bash
+docker build -t vitallink-api .
+docker run --rm --network host --env-file .env -e PORT=8100 vitallink-api   # http://localhost:8100/ready
+```
 
 ## In one paragraph
 
