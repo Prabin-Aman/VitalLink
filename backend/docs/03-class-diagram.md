@@ -533,3 +533,103 @@ How to read it:
   goal progress, insights, missed-dose notifications, overdue-device notifications. Global steps then
   close expired shares, delete stale uploads and notifications older than 90 days, and clear old
   ingest batches.
+
+## 3.5 As built (phases 1–5b, 15 Oct 2026)
+
+The sections above are the full design. This is the part that exists in `backend/app` today, with the
+real function names. Modules call each other only through `service.py`; the dotted arrows are every
+cross-module call in the code.
+
+```mermaid
+classDiagram
+  direction TB
+  class get_claims {
+    <<dependency, core/security.py>>
+    +verify bearer token() Claims
+  }
+  class current_user {
+    <<dependency, account/service.py>>
+    +get_or_create(Claims) CurrentUser
+  }
+  class shared_access {
+    <<dependency, sharing/service.py>>
+    +ConsentGate for the path user_id
+  }
+  class get_session {
+    <<dependency, core/db.py>>
+    +one transaction per request
+  }
+  class AccountService {
+    +get_me() Me
+    +get_account() Account
+    +update_account(AccountPatch) Account
+    +get_targets() Targets
+    +update_targets(TargetsPatch) Targets
+    +people(ids) dict
+    +birth_date(user) date
+    +body_profile(user) Profile
+  }
+  class HealthService {
+    +ingest(IngestIn) IngestOut
+    +add_manual(ManualIn) ReadingOut
+    +series(user, tz, metric, days, interval) Series
+    +blood_pressure_series() BloodPressureSeries
+    +latest(user, tz, codes) list~ReadingOut~
+    +dashboard(user, tz, sleep_goal, include_score) Dashboard
+    +readiness(user, tz, day, goal) int
+    +devices() list~DeviceOut~
+    +total_between(user, code, start, end) float
+    +latest_value(user, code) float
+    +wearable_name(user) str
+  }
+  class SharingService {
+    +create_share(ShareIn) Share
+    +list_shares() list~Share~
+    +revoke_share(id)
+    +shared_with_me() list~SharedWithMe~
+    +access_log(limit, offset) list~AccessLogEntry~
+  }
+  class TrainingService {
+    +save_workout(WorkoutIn) WorkoutDetail
+    +get_workout(id) WorkoutDetail
+    +list_workouts(user, tz, days) list~WorkoutOut~
+    +training(user, tz) Training
+    +create_plan(PlanIn) PlanOut
+    +list_plans() list~PlanOut~
+  }
+  class NutritionService {
+    +search_foods(q) list~FoodOut~
+    +create_food(FoodIn) FoodOut
+    +log_meal(MealIn) Meal
+    +log_water(WaterIn) WaterOut
+    +day(user, tz, date) NutritionDay
+    +base_burn(user, date) int
+  }
+  class ConsentGate {
+    +allows(Scope) bool
+    +require(Scope)
+  }
+  class decide {
+    <<pure function, core/consent.py>>
+    +decide(Viewer, owner, Scope, grants, now) Decision
+  }
+  class write_audit {
+    <<core/audit.py, own connection>>
+    +write_audit(AuditEvent)
+  }
+  current_user --> get_claims
+  current_user --> get_session
+  shared_access --> current_user
+  shared_access --> ConsentGate
+  ConsentGate --> decide
+  ConsentGate --> write_audit
+  SharingService ..> AccountService : names, emails
+  SharingService ..> write_audit : share events
+  SharingService ..> HealthService : shared health views
+  SharingService ..> TrainingService : shared workouts
+  SharingService ..> NutritionService : shared nutrition day
+  TrainingService ..> HealthService : active energy, wearable name
+  TrainingService ..> AccountService : birth date for max HR
+  NutritionService ..> HealthService : weight, active energy
+  NutritionService ..> AccountService : body profile
+```

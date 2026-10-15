@@ -3,6 +3,49 @@
 One Supabase Postgres database with **35 tables** in a private schema, `vitallink`. The design doc
 had 18. The new ones serve the screens built since then.
 
+**Build status (15 Oct 2026):** 18 tables exist, created by migrations 0001–0006. They are marked
+**built** below; the other 17 are planned. Sections 4.3–4.5 describe the built tables as they are in
+the migrations; section 4.10 lists where the build differs from the original plan.
+
+## 4.0 As built (migrations 0001–0006)
+
+```mermaid
+erDiagram
+  users ||--|| profiles : has
+  users ||--o{ consents : "grants (grantor)"
+  users |o--o{ consents : "bound viewer"
+  users ||--o{ health_readings : owns
+  metrics ||--o{ health_readings : measures
+  users ||--o{ ingest_batches : sends
+  users ||--o{ devices : "syncs from"
+  users ||--o{ workouts : logs
+  workouts ||--o{ exercise_sets : contains
+  exercises ||--o{ exercise_sets : of
+  users ||--o{ training_plans : follows
+  training_plans ||--o{ plan_sessions : schedules
+  plan_sessions |o--o{ workouts : "completed by"
+  users ||--o{ meal_entries : eats
+  meal_entries ||--o{ meal_items : contains
+  foods |o--o{ meal_items : "copied from"
+  users |o--o{ foods : "own foods"
+  users ||--o{ hydration_logs : drinks
+  users ||--o| nutrition_targets : sets
+  audit_log {
+    bigint id PK
+    uuid actor_user_id "no FK"
+    uuid subject_user_id "no FK"
+  }
+```
+
+| Migration | Tables |
+|---|---|
+| 0001 baseline | `audit_log` (append-only triggers), enums `share_scope`, `audit_action`, `access_outcome`, `refusal_reason`; schema grants revoked |
+| 0002 users_profiles | `users`, `profiles` |
+| 0003 health_core | `metrics` (44 seeded), `health_readings`, `ingest_batches`, `devices` |
+| 0004 consents | `consents` |
+| 0005 training | `exercises` (30 seeded), `training_plans`, `plan_sessions`, `workouts`, `exercise_sets` |
+| 0006 nutrition | `foods` (30 seeded), `meal_entries`, `meal_items`, `hydration_logs`, `nutrition_targets` |
+
 ## 4.1 Schema-wide rules
 
 | Rule | How it's enforced |
@@ -221,6 +264,7 @@ erDiagram
     uuid id PK
     uuid user_id FK
     workout_type type
+    session_kind kind "stored, default from type"
     text title
     timestamptz started_at
     int duration_s
@@ -231,7 +275,7 @@ erDiagram
     int_array zone_seconds "5 values, nullable"
     text focus "mobility areas, nullable"
     reading_source source
-    text external_id "nullable"
+    text external_id "set iff source is not manual"
     uuid plan_session_id FK "nullable"
     jsonb route "nullable"
   }
@@ -264,7 +308,7 @@ erDiagram
     uuid id PK
     text name
     text brand "nullable"
-    food_source source "usda | user"
+    food_source source "seeded | user"
     uuid owner_user_id FK "user foods only"
     numeric serving_g
     numeric kcal
@@ -356,15 +400,15 @@ erDiagram
 | Table | Invariants and constraints | Indexes | On delete |
 |---|---|---|---|
 | `exercises` | Seeded catalogue; name unique | UK | RESTRICT |
-| `workouts` | `duration_s > 0`; `distance_m >= 0`; `kcal >= 0`; `avg_hr` 25–250; `rpe` 1–10; `zone_seconds` is null or has exactly 5 non-negative values; UK `(user_id, source, external_id)` where `external_id` is not null (synced workouts don't duplicate). Session kind (cardio / strength / mobility) is derived from `type`, not stored. | `(user_id, started_at DESC)`; UK; `(plan_session_id)` | CASCADE; plan_session SET NULL |
+| `workouts` | `duration_s > 0`; `distance_m >= 0`; `kcal >= 0`; `avg_hr` 25–250; `rpe` 1–10; `zone_seconds` is null or has exactly 5 non-negative values; UK `(user_id, source, external_id)` where `external_id` is not null (synced workouts don't duplicate). `(source = 'manual') = (external_id IS NULL)`. Session kind (cardio / strength / mobility) is stored, defaulting from `type` (strength → strength, yoga → mobility, else cardio). | `(user_id, started_at DESC)`; UK; `(plan_session_id)` | CASCADE; plan_session SET NULL |
 | `exercise_sets` | UK `(workout_id, exercise_id, set_no)`; `reps > 0`, `weight_kg >= 0`, `duration_s > 0`; `CHECK (reps IS NOT NULL OR duration_s IS NOT NULL)`. Personal records are computed from these rows (best weight; Epley one-rep max). | `(workout_id)`, `(exercise_id)` | CASCADE from workout; RESTRICT on exercise |
 | `training_plans` | `weekly_target_sessions` 1–14; one active plan per user (partial UK `(user_id) WHERE status = 'active'`) | partial UK, `(user_id)` | CASCADE |
 | `plan_sessions` | `exercises >= 0`, `minutes > 0` | `(plan_id, scheduled_for)` | CASCADE |
-| `foods` | `source = 'user' ⇔ owner_user_id IS NOT NULL`; all macros `>= 0`; `serving_g > 0`. USDA FoodData Central subset seeded (public domain). Search uses `pg_trgm` (`gin (name gin_trgm_ops)`). | trigram GIN; `(owner_user_id)` | user foods CASCADE |
+| `foods` | `source = 'user' ⇔ owner_user_id IS NOT NULL`; all macros `>= 0`; `serving_g > 0`. 30 common foods seeded per 100 g, with uuid5 ids from their names; seeded names unique (`lower(name)` partial index). Search is a plain `ILIKE` with wildcards escaped: the catalogue is small, so no trigram index yet. | `(owner_user_id)`, unique `lower(name) WHERE source = 'seeded'` | user foods CASCADE |
 | `meal_entries` | — | `(user_id, eaten_at)` | CASCADE |
 | `meal_items` | `quantity > 0`; macros `>= 0`. Macros are **copied at write time**, so editing or deleting a food never rewrites history. | `(meal_id)`, `(food_id)` | CASCADE from meal; food SET NULL |
 | `hydration_logs` | `ml` 1–3000 | `(user_id, logged_at)` | CASCADE |
-| `nutrition_targets` | 1:1 with users; values > 0; `weekly_target_kg` −1.00 to 1.00. Base burn is computed (Mifflin-St Jeor from profile + latest weight), not stored. | PK | CASCADE |
+| `nutrition_targets` | 1:1 with users, created with defaults on first read (2,200 kcal, 2,500 ml water, 250 ml glass); kcal 800–6,000; water 500–8,000 ml; glass 100–1,000 ml; `weekly_target_kg` −1.00 to 1.00. Base burn is computed (Mifflin-St Jeor from profile + latest weight), not stored. | PK | CASCADE |
 | `goals` | `target > 0`; `ends_on > starts_on`; `lifecycle = 'achieved' ⇔ achieved_at IS NOT NULL`; `kind IN ('daily_total','weekly_count') ⇒ metric_id IS NOT NULL`. Lifecycle is what the user set (active / paused / achieved / abandoned). The API's `on_track` / `at_risk` is computed from progress. | `(user_id, lifecycle)` | CASCADE; metric RESTRICT |
 | `goal_progress` | PK `(goal_id, period_start)`, upserted nightly and on write. A streak is a scan of at most 90 rows. | PK | CASCADE |
 | `insights` | UK `(user_id, kind, dedupe_key)`, so the nightly job replaces instead of piling up; `evidence` is free-form JSON (p-values, n, metric pair) | UK; `(user_id, generated_on DESC) WHERE dismissed_at IS NULL` | CASCADE |
@@ -579,7 +623,7 @@ indexes. The capstone needs about 15 accounts × 6 months ≈ 100 MB.
 | `session_kind` | cardio, strength, mobility |
 | `muscle_group` | chest, back, shoulders, arms, core, legs, glutes, full_body |
 | `plan_status` | active, archived |
-| `food_source` / `meal_slot` | usda, user / breakfast, lunch, dinner, snack |
+| `food_source` / `meal_slot` | seeded, user / breakfast, lunch, dinner, snack |
 | `goal_area` | activity, fitness, nutrition, sleep, body, mind |
 | `goal_kind` / `comparator` / `goal_period` | daily_total, weekly_count, target_value / at_least, at_most / day, week, month, none |
 | `goal_lifecycle` | active, paused, achieved, abandoned |
@@ -595,3 +639,15 @@ indexes. The capstone needs about 15 accounts × 6 months ≈ 100 MB.
 
 Adding an enum value is a forward-only migration (`ALTER TYPE … ADD VALUE`). Removing one means
 creating a new type, so values are added only when a screen needs them.
+
+## 4.10 Where the build differs from the plan
+
+| Area | Plan | Built | Why |
+|---|---|---|---|
+| `workouts.kind` | Derived from `type` | Stored column | A mobility session can be any type (a walk, a stretch); deriving it lost that |
+| `foods` | USDA subset, `pg_trgm` search | 30 hand-picked foods, `ILIKE` search, source `seeded` | No network import needed; trigram extension placement differs on Supabase; a 30-row catalogue needs no index |
+| `metrics` | Range per metric | Plus `normal_low` / `normal_high` | Drives the dashboard range chip from data, not code |
+| `nutrition_targets` | Created on account creation | Created on first read with defaults | No coupling from account to nutrition |
+| Exercise PRs | Epley one-rep max | Best weight lifted (and reps) | Matches the Figma "92.5 kg × 5" record format |
+| `consents.created_at` | Not listed | Present | The decision explains a refusal using the newest grant |
+| Ids | UUIDv7 everywhere | UUIDv7, except seeded foods (uuid5 of the name) | Stable ids across fresh databases |
