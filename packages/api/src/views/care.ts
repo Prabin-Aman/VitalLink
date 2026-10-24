@@ -44,6 +44,9 @@ export interface TintStatVM {
 
 export interface MedRowVM {
   id: string;
+  /** The dose the row is about (for "Mark taken"), and whether that action applies. */
+  doseAt: string;
+  canMarkTaken: boolean;
   name: string;
   detail: string;
   dose: string;
@@ -115,6 +118,8 @@ export async function loadMedications(api: VitalLinkClient): Promise<Medications
       const next = p.dose.status === "taken" ? `Taken ${time}` : p.dose.status === "missed" ? `Missed ${time}` : `${day} ${time}`;
       const due = day === "Today" ? `Due ${time}` : `Due ${day.toLowerCase()} ${time}`;
       return {
+        doseAt: p.dose.at,
+        canMarkTaken: state === "missed" || state === "upcoming",
         id: p.id,
         name: p.name,
         detail: `${p.form} · ${p.strength}`,
@@ -389,9 +394,9 @@ export async function loadFamily(api: VitalLinkClient): Promise<FamilyVM> {
       detail: `${v.m.relation} · ${v.m.age} · you have ${v.a.level} access granted ${date(v.a.granted_at)}`,
       shortDetail: `${v.m.relation} · ${v.a.level} access granted ${date(v.a.granted_at)}`,
       tints: [
-        { key: "hr", label: "Resting heart rate", value: `${v.s.resting_hr} BPM`, bg: "bgEnergySubtle", fg: "textEnergy" },
-        { key: "conditions", label: "Active conditions", value: String(v.s.conditions.filter((c) => c.severity === "chronic").length), bg: "bgSurface", fg: "textPrimary" },
-        { key: "meds", label: "Medications", value: String(v.s.medications), bg: "bgSurface", fg: "textPrimary" },
+        { key: "hr", label: "Resting heart rate", value: v.s.resting_hr === null ? "Not shared" : `${v.s.resting_hr} BPM`, bg: "bgEnergySubtle", fg: "textEnergy" },
+        { key: "conditions", label: "Active conditions", value: v.s.medications === null ? "Not shared" : String(v.s.conditions.filter((c) => c.severity === "chronic").length), bg: "bgSurface", fg: "textPrimary" },
+        { key: "meds", label: "Medications", value: v.s.medications === null ? "Not shared" : String(v.s.medications), bg: "bgSurface", fg: "textPrimary" },
         { key: "appt", label: "Next appointment", value: v.s.next_appointment ? dayMonth(v.s.next_appointment, tz).replace(/^0/, "") : "None", bg: "bgBrandSubtle", fg: "textBrand" },
       ],
       conditions: v.s.conditions.map((c) => ({ label: c.label, color: c.severity === "allergy" ? "rangeHigh" : "rangeBorderline" })),
@@ -416,8 +421,8 @@ export async function loadEmergency(api: VitalLinkClient): Promise<EmergencyVM> 
   const field = (key: string, label: string, value: string, color: ColorToken, mobile = true, shortValue = value) => ({ key, label, value, color, mobile, shortValue });
   return {
     name: e.name,
-    meta: `${e.age} · ${e.sex} · ${e.city}`,
-    shortMeta: `${e.age} · ${e.sex}`,
+    meta: [e.age, e.sex, e.city].filter((x) => x !== null && x !== "").join(" · "),
+    shortMeta: [e.age, e.sex].filter((x) => x !== null && x !== "").join(" · "),
     fields: [
       field("allergies", "Allergies", e.allergies.join(" · "), "rangeHigh"),
       field("conditions", "Conditions", e.conditions.join(" · "), "textInverse"),
@@ -426,13 +431,18 @@ export async function loadEmergency(api: VitalLinkClient): Promise<EmergencyVM> 
       ...(e.preferred_hospital ? [field("hospital", "Preferred hospital", e.preferred_hospital, "textInverse", false)] : []),
       field("notes", "Notes", e.notes, "textSecondary"),
     ],
-    contacts: e.contacts.map((c) => ({
-      ...person(c.name, c.tone),
-      title: c.primary ? `${c.name}  ·  Primary` : c.name,
-      caption: `${c.relation} · ${c.phone}`,
-      mobileCaption: [c.relation, c.primary ? "Primary" : null, c.phone].filter(Boolean).join(" · "),
-      phone: c.phone,
-    })),
+    contacts: e.contacts.map((c) => {
+      // The API sends E.164; clinicians are teal, everyone else purple (as in the design).
+      const shown = c.phone.startsWith("+") ? phone(c.phone) : c.phone;
+      const tone = c.tone ?? (/^dr\.|doctor|physician|ologist|nurse/i.test(`${c.name} ${c.relation}`) ? "teal" : "purple");
+      return {
+        ...person(c.name, tone),
+        title: c.primary ? `${c.name}  ·  Primary` : c.name,
+        caption: `${c.relation} · ${shown}`,
+        mobileCaption: [c.relation, c.primary ? "Primary" : null, shown].filter(Boolean).join(" · "),
+        phone: shown,
+      };
+    }),
   };
 }
 

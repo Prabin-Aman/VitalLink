@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { tokenVar } from "../components/Icon";
 import { PageHeader, PillTabs, RowButton, Txt } from "../components/kit";
-import { useScreen } from "../data";
+import { useApi, useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Notifications.module.css";
 
@@ -25,6 +25,12 @@ export function Notifications() {
   const state = useScreen(loadNotifications);
   const [tab, setTab] = useState(TABS[0]);
   const navigate = useNavigate();
+  const api = useApi();
+  // Acting on a notification reads it; the next visit shows it read.
+  const open = (id: string, unread: boolean, to: string) => {
+    if (unread) api.markNotificationsRead([id]).catch(() => undefined);
+    navigate(to);
+  };
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
   const kinds = NOTIFICATION_FILTERS[tab];
@@ -49,7 +55,7 @@ export function Notifications() {
                 <Txt s="bodyMStrong" as="h2">{n.title}</Txt>
                 <Txt s="bodyS" c="textSecondary" as="p">{n.body}</Txt>
               </div>
-              <RowButton onClick={() => navigate(ACTION_ROUTE[n.kind])}>{n.action}</RowButton>
+              <RowButton onClick={() => open(n.id, n.unread, ACTION_ROUTE[n.kind])}>{n.action}</RowButton>
             </article>
           ))
         )}

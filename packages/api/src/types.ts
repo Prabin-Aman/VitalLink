@@ -63,6 +63,7 @@ export interface Targets {
   sleep_goal_min: number;
 }
 
+/** GET /me/goals/today: today's progress on the daily targets and on active goals. */
 export interface Goal {
   id: string;
   metric: string;
@@ -72,12 +73,15 @@ export interface Goal {
   unit: string;
 }
 
+/** GET /me/medications/today: one scheduled dose today. `id` is per dose ("<medication>@08:00"). */
 export interface Medication {
   id: string;
+  medication_id: string;
   name: string;
   dosage: string;
-  status: "taken" | "due";
-  time: string; // local, e.g. "8:00 AM"
+  /** "due" until two hours after its time, then "missed" unless logged. */
+  status: "taken" | "skipped" | "due" | "missed";
+  at: ISODate;
 }
 
 export type Scope = "vitals" | "activity" | "sleep" | "nutrition" | "records";
@@ -265,6 +269,7 @@ export interface Prescription {
   refill_due: boolean;
 }
 
+/** GET /me/medications. */
 export interface MedicationsOverview {
   prescriptions: Prescription[];
   doses_today: { taken: number; total: number };
@@ -272,14 +277,17 @@ export interface MedicationsOverview {
 
 // ---------------------------------------------------------------- appointments
 
+/** GET /me/appointments. A personal tracker: "pending" = not confirmed by the user yet (decision D5). */
 export interface Appointment {
   id: string;
   clinician: string;
   specialty: string;
   starts_at: ISODate;
+  duration_min?: number;
   mode: "in_person" | "telehealth";
   location: string;
   status: "confirmed" | "pending" | "cancelled" | "completed";
+  notes?: string | null;
 }
 
 // ---------------------------------------------------------------- messages
@@ -303,6 +311,7 @@ export interface Conversation {
 
 export type NotificationKind = "fitness" | "health" | "medication" | "appointments" | "records" | "security" | "goals";
 
+/** GET /me/notifications. */
 export interface AppNotification {
   id: string;
   kind: NotificationKind;
@@ -310,8 +319,10 @@ export interface AppNotification {
   title: string;
   body: string;
   /** Mobile copy where the design shortens it. */
-  short_body?: string;
+  short_body?: string | null;
   action: string;
+  /** App route the action opens. */
+  target?: string;
   read: boolean;
 }
 
@@ -329,20 +340,23 @@ export interface FamilyMember {
     granted_at: ISODate;
     scopes: { label: string; short_label: string; granted: boolean }[];
   };
+  /** Only what the share covers: resting HR needs vitals; the rest needs records (null otherwise). */
   summary: null | {
-    resting_hr: number;
+    resting_hr: number | null;
     conditions: { label: string; severity: "chronic" | "allergy" }[];
-    medications: number;
+    medications: number | null;
     next_appointment: ISODate | null;
   };
 }
 
 // ---------------------------------------------------------------- emergency
 
+/** GET /me/emergency-profile. Rendered (and its QR code made) on the phone, no public link (decision D2). */
 export interface EmergencyProfile {
   name: string;
-  age: number;
-  sex: string;
+  /** null until the birth date / sex are set in Settings. */
+  age: number | null;
+  sex: string | null;
   city: string;
   allergies: string[];
   conditions: string[];
@@ -350,7 +364,15 @@ export interface EmergencyProfile {
   organ_donor: string | null;
   preferred_hospital: string | null;
   notes: string;
-  contacts: { name: string; relation: string; phone: string; primary: boolean; tone: AvatarTone }[];
+  show_on_lock_screen?: boolean;
+  /** `phone` is E.164; `tone` is mock-only (screens pick it from the relation). */
+  contacts: { id?: string; name: string; relation: string; phone: string; primary: boolean; tone?: AvatarTone }[];
+}
+
+/** GET /me/privacy: the privacy centre's switches and counts. */
+export interface PrivacySettings {
+  emergency_on_lock_screen: boolean;
+  devices: { total: number; syncing: number; overdue: number };
 }
 
 // ---------------------------------------------------------------- devices
@@ -371,6 +393,7 @@ export interface Device {
 
 export interface Article {
   id: string;
+  slug?: string;
   title: string;
   category: string;
   minutes: number;
@@ -427,6 +450,8 @@ export interface HealthRecord {
   shared_with: string | null;
   /** Lab panel id when the record is a lab result. */
   panel_id: string | null;
+  /** The stored document, if any: pending until the upload is confirmed. */
+  file?: { name: string; size_kb: number | null; content_type: string | null; status: "pending" | "attached" } | null;
 }
 
 export interface RecordShare {
@@ -455,8 +480,17 @@ export interface LabResult {
   interpretation: "normal" | "borderline" | "abnormal";
 }
 
+/** GET /me/labs/latest-result: the dashboard's lab card. */
+export interface LatestLab {
+  panel_id: string;
+  panel: string;
+  collected_at: ISODate;
+  result: LabResult;
+}
+
 export interface LabPanel {
   id: string;
+  record_id?: string | null;
   name: string;
   short_name: string;
   facility: string;
@@ -479,14 +513,14 @@ export interface Reading {
   metric: string;
   value: number;
   /** Diastolic, for blood pressure. */
-  value2?: number;
+  value2?: number | null;
   unit: string;
   at: ISODate | null;
   /** Aggregates without a single timestamp. */
-  period?: "overnight" | "last_night" | "today" | "now";
+  period?: "overnight" | "last_night" | "today" | "now" | null;
   assessment: string;
   /** Mobile wording where the design shortens it ("up 9", "38 social"). */
-  short_assessment?: string;
+  short_assessment?: string | null;
 }
 
 export interface Insight {
@@ -517,15 +551,16 @@ export interface SleepNight {
   awake: number;
 }
 
+/** Live tabs leave out readings nothing measures, and send null for blocks without data. */
 export interface SleepTab {
-  last: { asleep_min: number; start: ISODate; end: ISODate; goal_min: number; deep: number; rem: number; awake: number; wakeups: number; score: number };
+  last: null | { asleep_min: number; start: ISODate; end: ISODate; goal_min: number; deep: number; rem: number; awake: number; wakeups: number; score: number };
   week: SleepNight[];
-  consistency: { bedtime: string; wake: string; variance_min: number; steadiest: string };
+  consistency: { bedtime: string; wake: string; variance_min: number; steadiest: string } | null;
   insights: Insight[];
 }
 
 export interface HeartTab {
-  resting: { value: number; delta_90d: number; trend: number[] };
+  resting: { value: number; delta_90d: number; trend: number[] } | null;
   readings: Reading[];
   zones: { zone: number; name: string; range: string; minutes: number }[];
   alerts: { label: string; value: string }[];
@@ -534,7 +569,7 @@ export interface HeartTab {
 export interface RespiratoryTab {
   readings: Reading[];
   overnight_spo2: number[];
-  aerobic: { current: number; six_months_ago: number; category: string };
+  aerobic: { current: number; six_months_ago: number; category: string } | null;
   alerts: { label: string; value: string }[];
 }
 
@@ -543,7 +578,7 @@ export interface BodyTab {
   weekly: { weight: number[]; body_fat: number[] };
   muscle_change_kg: number;
   measurements: { name: string; current: number; previous: number; unit: string; taken_at: ISODate }[];
-  body_fat_goal: { current: number; start: number; target: number; weeks_to_go: number };
+  body_fat_goal: { current: number; start: number; target: number; weeks_to_go: number | null } | null;
 }
 
 export interface MentalTab {
@@ -559,6 +594,6 @@ export interface DigitalTab {
   week: { day_h: number; late_h: number }[];
   readings: Reading[];
   categories: { name: string; apps: string; minutes: number }[];
-  deep_sleep: { heavy_min: number; light_min: number; heavy_nights: number; light_nights: number };
+  deep_sleep: { heavy_min: number; light_min: number; heavy_nights: number; light_nights: number } | null;
   limits: { name: string; detail: string; on: boolean }[];
 }

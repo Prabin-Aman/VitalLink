@@ -7,13 +7,14 @@ import {
   greeting,
   longDate,
   metresToMiles,
+  relativeDay,
   shortDateTime,
   thousands,
   timeOfDay,
   weekday,
   weekdayTime,
 } from "./format";
-import type { AccessLogEntry, RangeStatus, Share, Workout, WorkoutType } from "./types";
+import type { AccessLogEntry, LabResult, RangeStatus, Share, Workout, WorkoutType } from "./types";
 
 // ---------------------------------------------------------------- shared
 
@@ -155,17 +156,41 @@ export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> 
           latestDia: bpLatest.diastolic,
         }
       : null,
-    medications: meds && meds.map((m) => ({
-      id: m.id,
-      title: [m.name, m.dosage].filter(Boolean).join(" "),
-      detail: m.status === "taken" ? `Taken · ${m.time}` : `Due ${m.time}`,
-      taken: m.status === "taken",
-    })),
-    appointment: appt,
+    medications: meds && meds.map((m) => {
+      const time = timeOfDay(m.at, tz);
+      return {
+        id: m.id,
+        title: [m.name, m.dosage].filter(Boolean).join(" "),
+        detail: m.status === "taken" ? `Taken · ${time}` : m.status === "missed" ? `Missed · ${time}` : m.status === "skipped" ? `Skipped · ${time}` : `Due ${time}`,
+        taken: m.status === "taken",
+      };
+    }),
+    appointment: appt && {
+      with: [appt.clinician, appt.specialty].filter(Boolean).join(" · "),
+      when: [`${relativeDay(appt.starts_at, now, tz)}, ${timeOfDay(appt.starts_at, tz)}`, appt.location.replace(/, Dallas$/, "")]
+        .filter(Boolean)
+        .join(" · "),
+    },
     streak: streaks
       ? { days: streaks[0]?.days ?? 0, longest: streaks.find((s) => s.label.startsWith("Longest"))?.days ?? 0 }
       : null,
-    lab: lab ? { name: lab.name, value: lab.value, chip: rangeChip(lab.range), note: lab.note } : null,
+    lab: lab && labCard(lab.result),
+  };
+}
+
+/** "14.2 g/dL", a chip from the lab's interpretation, "Ref 13–17 g/dL · Previous 14.0 ↑". */
+function labCard(r: LabResult): NonNullable<DashboardVM["lab"]> {
+  const f = (v: number) => v.toFixed(r.decimals);
+  const unit = r.unit ? ` ${r.unit}` : "";
+  const range: RangeStatus =
+    r.interpretation === "normal" ? "normal" : r.interpretation === "borderline" ? "borderline" : r.value < r.low ? "low" : "high";
+  const trend = r.previous === null ? "" : r.value > r.previous ? " ↑" : r.value < r.previous ? " ↓" : " →";
+  const previous = r.previous === null ? "" : ` · Previous ${f(r.previous)}${trend}`;
+  return {
+    name: r.name,
+    value: `${f(r.value)}${unit}`,
+    chip: rangeChip(range),
+    note: `Ref ${f(r.low)}–${f(r.high)}${unit}${previous}`,
   };
 }
 
@@ -355,7 +380,7 @@ export async function loadPrivacy(api: VitalLinkClient): Promise<PrivacyVM> {
   const appCaption = apps.length
     ? `${apps[0].grantee_label} — ${apps[0].scopes.join(", ")} only`
     : "None connected";
-  const emergencyOn = settings?.emergencyAccess ?? false;
+  const emergencyOn = settings?.emergency_on_lock_screen ?? false;
   const devices = settings?.devices;
 
   const cards: AccessCardVM[] = [

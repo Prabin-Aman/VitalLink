@@ -3,7 +3,7 @@ import { loadMedications } from "@vitallink/api";
 import { tokenVar } from "../components/Icon";
 import { Action, PageHeader, RowButton, TintCard, Txt } from "../components/kit";
 import { Chip } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useReloadableScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import t from "../components/Table.module.css";
 import k from "./Lists.module.css";
@@ -12,9 +12,13 @@ import k from "./Lists.module.css";
 const COLS = [216, 100, 140, 165, 145, 90, 130, 130];
 
 export function Medications() {
-  const state = useScreen(loadMedications);
+  const api = useApi();
+  const [state, reload] = useReloadableScreen(loadMedications);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
+  const markTaken = (id: string, at: string) => {
+    api.logDose(id, at, "taken").then(reload, (e: Error) => window.alert(`Couldn't save: ${e.message}`));
+  };
 
   return (
     <>
@@ -61,7 +65,7 @@ export function Medications() {
                 <td><Txt s="numeric" c={r.refillsColor}>{r.refills}</Txt></td>
                 <td><Chip chip={r.status} dot /></td>
                 <td className={t.right}>
-                  <RowButton>{r.action}</RowButton>
+                  <RowButton onClick={r.canMarkTaken ? () => markTaken(r.id, r.doseAt) : undefined}>{r.action}</RowButton>
                 </td>
               </tr>
             ))}

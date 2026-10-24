@@ -17,6 +17,7 @@ import type {
   EmergencyProfile,
   FamilyMember,
   LabPanel,
+  LatestLab,
   Library,
   MedicationsOverview,
   Dashboard,
@@ -25,6 +26,7 @@ import type {
   Me,
   Medication,
   NutritionDay,
+  PrivacySettings,
   RecordsOverview,
   Series,
   Share,
@@ -100,6 +102,35 @@ export class VitalLinkClient {
     return (await res.json()) as T;
   }
 
+  /** A write. Mock mode has nothing to write to, so it changes nothing and resolves with null. */
+  private async send<T>(method: "POST" | "PATCH" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T | null> {
+    if (this.isMock) return null;
+    const token = await this.opts.getToken?.();
+    const res = await fetch(`${this.opts.baseUrl}/v1${path}`, {
+      method,
+      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
+      body: body === undefined ? undefined : JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const e = err?.error ?? {};
+      throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
+    }
+    return res.status === 204 ? null : ((await res.json()) as T);
+  }
+
+  // ---- Writes.
+  /** PATCH /me/account: only the fields given change; null clears an optional one. */
+  updateAccount = (patch: Partial<Omit<AccountProfile, "email" | "member_since" | "two_factor">>) =>
+    this.send<AccountProfile>("PATCH", "/me/account", patch);
+  /** Mark one scheduled dose taken or skipped (idempotent). `at` is the dose's scheduled time. */
+  logDose = (medicationId: string, at: string, status: "taken" | "skipped") =>
+    this.send("PUT", `/me/medications/${medicationId}/doses/${encodeURIComponent(at)}`, { status });
+  markNotificationsRead = (ids: string[] | "all") =>
+    this.send<{ updated: number }>("POST", "/me/notifications/read", ids === "all" ? { all: true } : { ids });
+  setEmergencyOnLockScreen = (on: boolean) =>
+    this.send<PrivacySettings>("PATCH", "/me/privacy", { emergency_on_lock_screen: on });
+
   me = () => this.get<Me>("/me", () => mock.me);
   account = () => this.get<AccountProfile>("/me/account", () => mock.account);
   dashboard = () => this.get<Dashboard>("/me/health/dashboard", () => mock.dashboard);
@@ -123,7 +154,7 @@ export class VitalLinkClient {
   /** The latest blood-pressure pair, or null if there's no reading yet. */
   bloodPressureLatest = async () => {
     const bp = (await this.latest(["blood_pressure"]))[0];
-    return bp && bp.value2 !== undefined ? { systolic: bp.value, diastolic: bp.value2 } : null;
+    return bp && bp.value2 != null ? { systolic: bp.value, diastolic: bp.value2 } : null;
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
   workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
@@ -133,36 +164,47 @@ export class VitalLinkClient {
   sharedWithMe = () => this.get<SharedWithMe[]>("/me/shared-with-me", () => []);
   accessLog = () => this.get<AccessLogEntry[]>("/me/access-log?limit=20", () => mock.accessLog);
 
-  // ---- Shown in the designs but not yet in the API (system design §5). ----
-  // Mock mode returns sample data; live mode returns null so the card is hidden.
-  // A real user must never see sample health numbers.
+  // ---- Care, goals, records, notifications, family, library and My Health (backend phases 5–8).
+  goals = () => this.get<Goal[]>("/me/goals/today", () => mock.goals);
+  goalsOverview = () => this.get<GoalsOverview>("/me/goals/overview", () => mock.goalsOverview);
+  streaks = () => this.get<{ label: string; days: number }[]>("/me/streaks", () => mock.streaks);
+  /** Today's scheduled doses (dashboard card). */
+  medications = () => this.get<Medication[]>("/me/medications/today", () => mock.medications);
+  medicationsOverview = () => this.get<MedicationsOverview>("/me/medications", () => mock.medicationsOverview);
+  appointments = () => this.get<Appointment[]>("/me/appointments", () => mock.appointments);
+  /** The next appointment that isn't over or cancelled, or null. */
+  nextAppointment = async (): Promise<Appointment | null> =>
+    (await this.get<Appointment[]>("/me/appointments?upcoming=true&limit=1", () => [mock.appointments[0]]))[0] ?? null;
+  emergencyProfile = () => this.get<EmergencyProfile>("/me/emergency-profile", () => mock.emergency);
+  privacySettings = () => this.get<PrivacySettings>("/me/privacy", () => mock.privacy);
+  recordsOverview = () => this.get<RecordsOverview>("/me/records/overview", () => mock.recordsOverview);
+  labPanels = () => this.get<LabPanel[]>("/me/labs", () => mock.labPanels);
+  /** The latest panel's first result, or null when there are no labs yet. */
+  latestLab = async (): Promise<LatestLab | null> => {
+    try {
+      return await this.get<LatestLab>("/me/labs/latest-result", () => mock.latestLab);
+    } catch (e) {
+      if (e instanceof ApiError && e.code === "no_labs") return null;
+      throw e;
+    }
+  };
+  notifications = () => this.get<AppNotification[]>("/me/notifications", () => mock.notifications);
+  family = () => this.get<FamilyMember[]>("/me/family", () => mock.family);
+  library = () => this.get<Library>("/library", () => mock.library);
+  healthOverview = () => this.get<HealthOverview>("/me/health/overview", () => mock.health.overview);
+  vitals = () => this.get<VitalsTab>("/me/health/tabs/vitals", () => mock.health.vitals);
+  sleep = () => this.get<SleepTab>("/me/health/tabs/sleep", () => mock.health.sleep);
+  heart = () => this.get<HeartTab>("/me/health/tabs/heart", () => mock.health.heart);
+  respiratory = () => this.get<RespiratoryTab>("/me/health/tabs/respiratory", () => mock.health.respiratory);
+  body = () => this.get<BodyTab>("/me/health/tabs/body", () => mock.health.body);
+  mental = () => this.get<MentalTab>("/me/health/tabs/mental", () => mock.health.mental);
+  digital = () => this.get<DigitalTab>("/me/health/tabs/digital", () => mock.health.digital);
+
+  // ---- Shown in the designs but not in the API: mock mode returns sample data, live mode null, so the
+  // screen says "isn't available yet". A real user must never see sample health numbers.
   private async pending<T>(fallback: () => T): Promise<T | null> {
     return this.isMock ? structuredClone(fallback()) : null;
   }
-  streaks = () => this.pending(() => mock.streaks);
-  nextAppointment = () => this.pending(() => mock.appointment);
-  latestLab = () => this.pending(() => mock.labResult);
-  privacySettings = () => this.pending(() => mock.privacy);
-  // Built in later backend phases: goals (5), medications (7).
-  goals = () => this.pending<Goal[]>(() => mock.goals);
-  medications = () => this.pending<Medication[]>(() => mock.medications);
-
-  goalsOverview = () => this.pending<GoalsOverview>(() => mock.goalsOverview);
-  medicationsOverview = () => this.pending<MedicationsOverview>(() => mock.medicationsOverview);
-  appointments = () => this.pending<Appointment[]>(() => mock.appointments);
+  /** Messages with clinicians: left out until decision D1. */
   conversations = () => this.pending<Conversation[]>(() => mock.conversations);
-  notifications = () => this.pending<AppNotification[]>(() => mock.notifications);
-  family = () => this.pending<FamilyMember[]>(() => mock.family);
-  emergencyProfile = () => this.pending<EmergencyProfile>(() => mock.emergency);
-  library = () => this.pending<Library>(() => mock.library);
-  recordsOverview = () => this.pending<RecordsOverview>(() => mock.recordsOverview);
-  labPanels = () => this.pending<LabPanel[]>(() => mock.labPanels);
-  healthOverview = () => this.pending<HealthOverview>(() => mock.health.overview);
-  vitals = () => this.pending<VitalsTab>(() => mock.health.vitals);
-  sleep = () => this.pending<SleepTab>(() => mock.health.sleep);
-  heart = () => this.pending<HeartTab>(() => mock.health.heart);
-  respiratory = () => this.pending<RespiratoryTab>(() => mock.health.respiratory);
-  body = () => this.pending<BodyTab>(() => mock.health.body);
-  mental = () => this.pending<MentalTab>(() => mock.health.mental);
-  digital = () => this.pending<DigitalTab>(() => mock.health.digital);
 }

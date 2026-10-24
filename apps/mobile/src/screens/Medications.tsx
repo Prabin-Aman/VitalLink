@@ -3,13 +3,17 @@ import { loadMedications } from "@vitallink/api";
 import { StyleSheet, Text, View } from "react-native";
 import { Pill, Row, Screen, Section, SmallButton, StatGrid } from "../components/kit";
 import { ScreenState } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useReloadableScreen } from "../data";
 import { t } from "../theme";
 
 export function MedicationsScreen() {
-  const state = useScreen(loadMedications);
+  const api = useApi();
+  const [state, reload] = useReloadableScreen(loadMedications);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
+  const markTaken = (id: string, at: string) => {
+    api.logDose(id, at, "taken").then(reload, () => undefined);
+  };
 
   return (
     <Screen title="Medications" subtitle={v.shortSubtitle} back="/profile">
@@ -24,7 +28,7 @@ export function MedicationsScreen() {
               </View>
               <Pill chip={r.status} />
             </View>
-            <SmallButton label={r.mobileAction} />
+            <SmallButton label={r.mobileAction} onPress={r.canMarkTaken ? () => markTaken(r.id, r.doseAt) : undefined} />
           </Row>
         ))}
       </Section>

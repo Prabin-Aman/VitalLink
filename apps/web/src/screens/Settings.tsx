@@ -4,7 +4,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { cx, NotDesigned, PageHeader, Panel, RowButton, Txt } from "../components/kit";
 import { Avatar, Button } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useReloadableScreen } from "../data";
 import { applyTheme, storedTheme, type Theme } from "../theme";
 import { ScreenState } from "./ScreenState";
 import s from "./Settings.module.css";
@@ -33,7 +33,8 @@ const THEMES: { key: Theme; label: string; swatch: string }[] = [
 ];
 
 export function Settings() {
-  const state = useScreen(loadSettings);
+  const api = useApi();
+  const [state, reload] = useReloadableScreen(loadSettings);
   const [section, setSection] = useState("Profile");
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [theme, setTheme] = useState<Theme | null>(storedTheme);
@@ -45,6 +46,19 @@ export function Settings() {
   const pickTheme = (t: Theme) => {
     setTheme(t);
     applyTheme(t);
+    api.updateAccount({ theme: t }).catch(() => undefined); // the device keeps it even if saving fails
+  };
+
+  const save = () => {
+    const patch = toPatch(edits);
+    if (!patch) return;
+    api.updateAccount(patch).then(
+      () => {
+        setEdits({});
+        reload();
+      },
+      (e: Error) => window.alert(`Couldn't save: ${e.message}`),
+    );
   };
 
   let body: ReactNode;
@@ -60,7 +74,7 @@ export function Settings() {
             </div>
             <RowButton>Change photo</RowButton>
           </div>
-          <form className={s.form} onSubmit={(e) => { e.preventDefault(); setEdits({}); }}>
+          <form className={s.form} onSubmit={(e) => { e.preventDefault(); save(); }}>
             {v.fields.map((f) => (
               <label key={f.key} className={cx(s.field, f.wide && s.wide)}>
                 <Txt s="labelL">{f.label}</Txt>
@@ -117,4 +131,23 @@ export function Settings() {
       </div>
     </>
   );
+}
+
+/**
+ * Profile edits → PATCH /me/account. Name, phone and ZIP are saved; a blank or "—" clears them. A US
+ * number typed any way ("(214) 555-0148") is sent as E.164. Email changes go through sign-in, not here;
+ * height and language aren't editable as text.
+ */
+function toPatch(edits: Record<string, string>): Record<string, string | null> | null {
+  const clean = (v: string) => (v.trim() === "" || v.trim() === "—" ? null : v.trim());
+  const patch: Record<string, string | null> = {};
+  if ("first" in edits) patch.first_name = clean(edits.first);
+  if ("last" in edits) patch.last_name = clean(edits.last);
+  if ("zip" in edits) patch.zip = clean(edits.zip);
+  if ("phone" in edits) {
+    const v = clean(edits.phone);
+    const digits = v?.replace(/\D/g, "") ?? "";
+    patch.phone = v === null ? null : v.startsWith("+") ? `+${digits}` : digits.length === 10 ? `+1${digits}` : `+${digits}`;
+  }
+  return Object.keys(patch).length ? patch : null;
 }

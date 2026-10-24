@@ -91,8 +91,10 @@ const card = (r: Reading, now: string, tz: string): MetricCardVM => {
 type StatSpec = { metric: string; label?: string; accent?: ColorToken; caption?: "assessment" | "assessment+when" };
 
 const stat = (readings: Reading[], s: StatSpec, now: string, tz: string): StatVM => {
-  const r = readings.find((x) => x.metric === s.metric)!;
-  const m = META[r.metric];
+  const r = readings.find((x) => x.metric === s.metric);
+  const m = META[s.metric] ?? { label: s.metric, accent: "dataComparison" as ColorToken };
+  // Live accounts don't have every reading: show a dash rather than a made-up number.
+  if (!r) return { key: s.metric, label: s.label ?? m.label, value: "—", unit: "", caption: "No data yet", accent: s.accent ?? m.accent };
   const v = show(r, tz);
   const w = when(r, now, tz);
   return {
@@ -202,9 +204,10 @@ export async function loadVitals(api: VitalLinkClient): Promise<VitalsVM> {
   const tz = me.timezone;
   const now = api.now();
   const R = v.readings;
-  const get = (k: string) => R.find((r) => r.metric === k)!;
+  const get = (k: string) => R.find((r) => r.metric === k);
   const line = (k: string, label: string) => {
     const r = get(k);
+    if (!r) return { label, value: "—" };
     const s = show(r, tz);
     const unit = s.unit === "%" ? "%" : s.unit ? ` ${s.unit}` : "";
     return { label, value: `${s.value}${unit} · ${when(r, now, tz).replace("Yesterday", "yesterday")}` };
@@ -230,8 +233,8 @@ export async function loadVitals(api: VitalLinkClient): Promise<VitalsVM> {
       ],
       band: [120, 80],
       legend: [
-        { label: `Systolic ${sys[sys.length - 1]}`, color: "dataBloodPressure" },
-        { label: `Diastolic ${dia[dia.length - 1]}`, color: "dataHeartRate" },
+        { label: `Systolic ${sys[sys.length - 1] ?? "—"}`, color: "dataBloodPressure" },
+        { label: `Diastolic ${dia[dia.length - 1] ?? "—"}`, color: "dataHeartRate" },
         { label: "Healthy range", color: "rangeNormal" },
       ],
     },
@@ -264,14 +267,17 @@ export async function loadSleep(api: VitalLinkClient): Promise<SleepVM> {
   const [me, data] = await Promise.all([api.me(), api.sleep()]);
   const s = need(data, "Sleep");
   const tz = me.timezone;
-  const l = s.last;
+  const l = s.last ?? { asleep_min: 0, start: "", end: "", goal_min: 480, deep: 0, rem: 0, awake: 0, wakeups: 0, score: 0 };
+  const recorded = s.last !== null;
   const short = l.goal_min - l.asleep_min;
-  const pct = (m: number) => `${Math.round((m / l.asleep_min) * 100)}% of night`;
+  const pct = (m: number) => (l.asleep_min ? `${Math.round((m / l.asleep_min) * 100)}% of night` : "—");
   const st = (key: string, label: string, value: string, unit: string, caption: string, accent: ColorToken): StatVM => ({ key, label, value, unit, caption, accent });
   return {
-    headline: hoursMinutes(l.asleep_min),
-    detail: `asleep · ${timeOfDay(l.start, tz)} to ${timeOfDay(l.end, tz)}${short > 0 ? ` · ${short} min short of your ${l.goal_min / 60} hour goal` : " · goal met"}`,
-    detailColor: short > 0 ? "rangeBorderline" : "rangeNormal",
+    headline: recorded ? hoursMinutes(l.asleep_min) : "—",
+    detail: recorded
+      ? `asleep · ${timeOfDay(l.start, tz)} to ${timeOfDay(l.end, tz)}${short > 0 ? ` · ${short} min short of your ${l.goal_min / 60} hour goal` : " · goal met"}`
+      : "No sleep recorded last night",
+    detailColor: recorded && short <= 0 ? "rangeNormal" : "rangeBorderline",
     days: s.week.map((n, i) => ({
       label: DAYS[i],
       total: hoursMinutes(n.deep + n.core + n.rem + n.awake),
@@ -285,12 +291,14 @@ export async function loadSleep(api: VitalLinkClient): Promise<SleepVM> {
       st("awake", "Awake", String(l.awake), "min", `${l.wakeups} wake-ups`, "goalAtRisk"),
       st("score", "Sleep score", String(l.score), "/ 100", l.score >= 80 ? "good" : l.score >= 60 ? "fair" : "low", "goalAtRisk"),
     ],
-    consistency: [
-      { label: "Average bedtime", value: s.consistency.bedtime },
-      { label: "Average wake", value: s.consistency.wake },
-      { label: "Bedtime variance", value: `± ${s.consistency.variance_min} min`, color: s.consistency.variance_min > 30 ? "goalAtRisk" : "goalAchieved" },
-      { label: "Most consistent", value: s.consistency.steadiest, color: "goalAchieved" },
-    ],
+    consistency: s.consistency
+      ? [
+          { label: "Average bedtime", value: s.consistency.bedtime },
+          { label: "Average wake", value: s.consistency.wake },
+          { label: "Bedtime variance", value: `± ${s.consistency.variance_min} min`, color: s.consistency.variance_min > 30 ? "goalAtRisk" : "goalAchieved" },
+          { label: "Most consistent", value: s.consistency.steadiest, color: "goalAchieved" },
+        ]
+      : [{ label: "Bedtime consistency", value: "Needs 3 nights of sleep data" }],
     insights: s.insights.map(insight),
   };
 }
@@ -314,13 +322,17 @@ export async function loadHeart(api: VitalLinkClient): Promise<HeartVM> {
   const tz = me.timezone;
   const now = api.now();
   const R = h.readings;
-  const maxZone = Math.max(...h.zones.map((z) => z.minutes));
-  const d = h.resting.delta_90d;
+  const maxZone = Math.max(1, ...h.zones.map((z) => z.minutes));
+  const d = h.resting?.delta_90d ?? 0;
   return {
-    value: String(h.resting.value),
-    detail: `${d < 0 ? "down" : "up"} ${Math.abs(d)} BPM from your 90 day average${d < 0 ? " — typical of improving aerobic fitness" : ""}`,
+    value: h.resting ? String(h.resting.value) : "—",
+    detail: !h.resting
+      ? "No resting heart rate yet"
+      : d === 0
+        ? "level with your 90 day average"
+        : `${d < 0 ? "down" : "up"} ${Math.abs(d)} BPM from your 90 day average${d < 0 ? " — typical of improving aerobic fitness" : ""}`,
     chart: {
-      series: [{ values: h.resting.trend, color: "dataHeartRate", domain: [75, 45] }],
+      series: [{ values: h.resting?.trend ?? [], color: "dataHeartRate", domain: [75, 45] }],
       band: [68, 52],
       legend: [
         { label: "Resting heart rate", color: "dataHeartRate" },
@@ -362,7 +374,7 @@ export async function loadRespiratory(api: VitalLinkClient): Promise<Respiratory
   const tz = me.timezone;
   const now = api.now();
   const R = x.readings;
-  const change = x.aerobic.current - x.aerobic.six_months_ago;
+  const change = x.aerobic ? x.aerobic.current - x.aerobic.six_months_ago : 0;
   return {
     stats: [
       stat(R, { metric: "spo2", label: "Blood oxygen", caption: "assessment+when" }, now, tz),
@@ -379,12 +391,14 @@ export async function loadRespiratory(api: VitalLinkClient): Promise<Respiratory
         { label: "Typical range", color: "rangeNormal" },
       ],
     },
-    aerobic: [
-      { label: "Current VO₂max", value: String(x.aerobic.current), color: "goalAchieved" },
-      { label: "6 months ago", value: String(x.aerobic.six_months_ago) },
-      { label: "Change", value: `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(1)}`, color: change >= 0 ? "goalAchieved" : "goalAtRisk" },
-      { label: "Category", value: x.aerobic.category, color: "goalAchieved" },
-    ],
+    aerobic: x.aerobic
+      ? [
+          { label: "Current VO₂max", value: String(x.aerobic.current), color: "goalAchieved" },
+          { label: "6 months ago", value: String(x.aerobic.six_months_ago) },
+          { label: "Change", value: `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(1)}`, color: change >= 0 ? "goalAchieved" : "goalAtRisk" },
+          { label: "Category", value: x.aerobic.category, color: "goalAchieved" },
+        ]
+      : [{ label: "Current VO₂max", value: "—" }],
     alerts: x.alerts.map((a) => ({ ...a, color: "goalAchieved" })),
   };
 }
@@ -413,9 +427,9 @@ export async function loadBody(api: VitalLinkClient): Promise<BodyVM> {
     const pad = (hi - lo) * 0.6;
     return [hi + pad * 0.4, lo - pad];
   };
-  const lost = w[0] - w[w.length - 1];
+  const lost = w.length ? w[0] - w[w.length - 1] : 0;
   const g = b.body_fat_goal;
-  const toGo = g.current - g.target;
+  const toGo = g ? g.current - g.target : 0;
   return {
     stats: [
       stat(R, { metric: "weight" }, now, tz),
@@ -435,7 +449,11 @@ export async function loadBody(api: VitalLinkClient): Promise<BodyVM> {
         { label: "Body fat (%)", color: "macroFat" },
       ],
     },
-    chartCaption: `Weight ${lost >= 0 ? "down" : "up"} ${Math.abs(lost).toFixed(1)} kg while muscle mass rose ${b.muscle_change_kg} kg — the change is mostly fat.`,
+    chartCaption: !w.length
+      ? "Weigh in to see your trend."
+      : b.muscle_change_kg > 0 && lost > 0
+        ? `Weight down ${Math.abs(lost).toFixed(1)} kg while muscle mass rose ${b.muscle_change_kg} kg — the change is mostly fat.`
+        : `Weight ${lost >= 0 ? "down" : "up"} ${Math.abs(lost).toFixed(1)} kg over ${w.length} weeks.`,
     measurements: b.measurements.map((m) => {
       const d = m.current - m.previous;
       return {
@@ -447,12 +465,17 @@ export async function loadBody(api: VitalLinkClient): Promise<BodyVM> {
         taken: dayMonth(m.taken_at, tz).replace(/^0/, ""),
       };
     }),
-    goal: {
-      now: `${g.current}% now`,
-      target: `target ${g.target}%`,
-      fraction: Math.max(0, Math.min(1, (g.start - g.current) / (g.start - g.target))),
-      caption: `${toGo.toFixed(1)} points to go · at the current rate, about ${g.weeks_to_go} weeks.`,
-    },
+    goal: g
+      ? {
+          now: `${g.current}% now`,
+          target: `target ${g.target}%`,
+          fraction: g.start === g.target ? 1 : Math.max(0, Math.min(1, (g.start - g.current) / (g.start - g.target))),
+          caption:
+            toGo <= 0
+              ? "Target reached."
+              : `${toGo.toFixed(1)} points to go${g.weeks_to_go ? ` · at the current rate, about ${g.weeks_to_go} weeks.` : "."}`,
+        }
+      : { now: "—", target: "No body fat goal", fraction: 0, caption: "Set a body fat goal in Goals to track it here." },
   };
 }
 
@@ -527,7 +550,8 @@ export async function loadDigital(api: VitalLinkClient): Promise<DigitalVM> {
   const tz = me.timezone;
   const now = api.now();
   const R = d.readings;
-  const total = d.categories.reduce((a, c) => a + c.minutes, 0);
+  const total = d.categories.reduce((a, c) => a + c.minutes, 0) || 1;
+  const ds = d.deep_sleep ?? { heavy_min: 0, light_min: 0, heavy_nights: 0, light_nights: 0 };
   const longest = stat(R, { metric: "longest_use" }, now, tz);
   const short = (metric: string, label?: string, accent?: ColorToken): StatVM => {
     const x = stat(R, { metric, label, accent }, now, tz);
@@ -536,7 +560,9 @@ export async function loadDigital(api: VitalLinkClient): Promise<DigitalVM> {
   const longestAt = R.find((r) => r.metric === "longest_use")?.at;
   return {
     mobileStats: [short("pickups", "Pickups", "rangeBorderline"), short("notifications"), short("late_use"), short("first_pickup")],
-    shortDeepSleep: `On your ${WORDS[d.deep_sleep.heavy_nights]} heaviest late-use nights, deep sleep averaged ${hoursMinutes(d.deep_sleep.heavy_min).replace(" min", " minutes")}. On the ${WORDS[d.deep_sleep.light_nights]} lightest, ${hoursMinutes(d.deep_sleep.light_min)}.`,
+    shortDeepSleep: d.deep_sleep
+      ? `On your ${WORDS[ds.heavy_nights] ?? ds.heavy_nights} heaviest late-use nights, deep sleep averaged ${hoursMinutes(ds.heavy_min).replace(" min", " minutes")}. On the ${WORDS[ds.light_nights] ?? ds.light_nights} lightest, ${hoursMinutes(ds.light_min)}.`
+      : "Needs two weeks of sleep and screen-time data.",
     average: hoursMinutes(d.average_min),
     change: `daily average · ${d.change_min < 0 ? "down" : "up"} ${Math.abs(d.change_min)} min from last week`,
     shortChange: `${d.change_min < 0 ? "down" : "up"} ${Math.abs(d.change_min)} min`,
@@ -568,11 +594,13 @@ export async function loadDigital(api: VitalLinkClient): Promise<DigitalVM> {
       fraction: c.minutes / total,
       color: CATEGORY_COLOR[i] ?? "dataComparison",
     })),
-    deepSleep: {
-      text: `On the ${WORDS[d.deep_sleep.heavy_nights]} nights with the most after-10 PM use, deep sleep averaged ${hoursMinutes(d.deep_sleep.heavy_min).replace(" min", " minutes")}. On the ${WORDS[d.deep_sleep.light_nights]} lightest nights it averaged ${hoursMinutes(d.deep_sleep.light_min)}.`,
-      heavy: hoursMinutes(d.deep_sleep.heavy_min, true),
-      light: hoursMinutes(d.deep_sleep.light_min, true),
-    },
+    deepSleep: d.deep_sleep
+      ? {
+          text: `On the ${WORDS[ds.heavy_nights] ?? ds.heavy_nights} nights with the most after-10 PM use, deep sleep averaged ${hoursMinutes(ds.heavy_min).replace(" min", " minutes")}. On the ${WORDS[ds.light_nights] ?? ds.light_nights} lightest nights it averaged ${hoursMinutes(ds.light_min)}.`,
+          heavy: hoursMinutes(ds.heavy_min, true),
+          light: hoursMinutes(ds.light_min, true),
+        }
+      : { text: "Needs two weeks of sleep and screen-time data.", heavy: "—", light: "—" },
     limits: d.limits,
   };
 }

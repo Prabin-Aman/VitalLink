@@ -79,9 +79,9 @@ const goals: Goal[] = [
 ];
 
 const medications: Medication[] = [
-  { id: "m1", name: "Metformin", dosage: "500mg", status: "taken", time: "8:00 AM" },
-  { id: "m2", name: "Atorvastatin", dosage: "10mg", status: "due", time: "2:00 PM" },
-  { id: "m3", name: "Vitamin D3", dosage: "", status: "due", time: "8:00 PM" },
+  { id: "m1@08:00", medication_id: "m1", name: "Metformin", dosage: "500mg", status: "taken", at: "2026-09-13T08:00:00-05:00" },
+  { id: "m2@14:00", medication_id: "m2", name: "Atorvastatin", dosage: "10mg", status: "due", at: "2026-09-13T14:00:00-05:00" },
+  { id: "m3@20:00", medication_id: "m3", name: "Vitamin D3", dosage: "", status: "due", at: "2026-09-13T20:00:00-05:00" },
 ];
 
 const shares: Share[] = [
@@ -131,14 +131,15 @@ export const mock = {
     { label: "Stood every hour", days: 2 },
   ],
   medications,
-  appointment: {
-    with: "Dr. Laura Bennett · Cardiology",
-    when: "Tomorrow, 10:30 AM · Trinity Valley Medical Center",
+  latestLab: {
+    panel_id: "cbc",
+    panel: "Complete Blood Count",
+    collected_at: "2026-09-11T08:30:00-05:00",
+    result: { name: "Hemoglobin", value: 14.2, unit: "g/dL", low: 13, high: 17, previous: 14.0, decimals: 1, interpretation: "normal" as const },
   },
-  labResult: { name: "Hemoglobin", value: "14.2 g/dL", range: "normal" as const, note: "Ref 13–17 g/dL · Previous 14.0 ↑" },
   shares,
   accessLog,
-  privacy: { emergencyAccess: true, devices: { total: 5, syncing: 4, overdue: 1 } },
+  privacy: { emergency_on_lock_screen: true, devices: { total: 5, syncing: 4, overdue: 1 } },
   training,
   nutrition,
   goalsOverview,
