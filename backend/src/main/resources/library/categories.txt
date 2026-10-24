@@ -1,0 +1,8 @@
+# code | label, in the order the library shows them. No blood category (hard constraint).
+fitness | Fitness
+nutrition | Nutrition
+sleep | Sleep
+heart | Heart
+diabetes | Diabetes
+medication | Medication
+first_aid | First Aid

@@ -70,7 +70,7 @@ Supabase service key lives only in Render secrets.
 | Inheriting a deleted viewer's shares by re-registering their email | Account deletion revokes received grants (`grantee_deleted`); FK `RESTRICT` forces it |
 | IDOR on `/me/...` | Every repository query takes `user_id` from the token, never from the path or body; tests try other users' ids |
 | IDOR on `/users/{id}/...` | Consent gate on every route (guardrail test); unknown/unshared → 404 |
-| Mass assignment | Separate Pydantic input models per route; `user_id`, `file_status`, `bound_at`… never accepted from clients |
+| Mass assignment | Separate input records per route and unknown JSON fields refused; PATCH bodies go through an allow-list; `user_id`, `file_status`, `bound_at`… never accepted from clients |
 | Forged token | Signature, `iss`, `aud`, `exp` checked; dev tokens accepted only when `ENV=local` |
 | Leaked document link | Private bucket; 5-minute signed URLs; download only for `attached` files |
 | Oversized or disguised upload | Type and size checked before signing, enforced by the bucket, verified at confirm |

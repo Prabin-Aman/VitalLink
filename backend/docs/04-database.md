@@ -3,11 +3,13 @@
 One Supabase Postgres database with **35 tables** in a private schema, `vitallink`. The design doc
 had 18. The new ones serve the screens built since then.
 
-**Build status (15 Oct 2026):** 18 tables exist, created by migrations 0001–0006. They are marked
-**built** below; the other 17 are planned. Sections 4.3–4.5 describe the built tables as they are in
-the migrations; section 4.10 lists where the build differs from the original plan.
+**Build status (23 Oct 2026):** 33 tables exist, created by Flyway migrations V1–V10
+(`backend/src/main/resources/db/migration`). V1–V6 are the same SQL as the Python build's Alembic
+migrations 0001–0006. Two planned tables are not built: `goal_progress` (progress is computed on read)
+and `insights` (insights are computed when a screen asks). Section 4.10 lists where the build differs
+from the original plan.
 
-## 4.0 As built (migrations 0001–0006)
+## 4.0 As built (migrations V1–V10)
 
 ```mermaid
 erDiagram
@@ -39,12 +41,20 @@ erDiagram
 
 | Migration | Tables |
 |---|---|
-| 0001 baseline | `audit_log` (append-only triggers), enums `share_scope`, `audit_action`, `access_outcome`, `refusal_reason`; schema grants revoked |
-| 0002 users_profiles | `users`, `profiles` |
-| 0003 health_core | `metrics` (44 seeded), `health_readings`, `ingest_batches`, `devices` |
-| 0004 consents | `consents` |
-| 0005 training | `exercises` (30 seeded), `training_plans`, `plan_sessions`, `workouts`, `exercise_sets` |
-| 0006 nutrition | `foods` (30 seeded), `meal_entries`, `meal_items`, `hydration_logs`, `nutrition_targets` |
+| V1 baseline | `audit_log` (append-only triggers), enums `share_scope`, `audit_action`, `access_outcome`, `refusal_reason`; schema grants revoked |
+| V2 users_profiles | `users`, `profiles` |
+| V3 health_core | `metrics` (44 seeded), `health_readings`, `ingest_batches`, `devices` |
+| V4 consents | `consents` |
+| V5 training | `exercises` (30 seeded), `training_plans`, `plan_sessions`, `workouts`, `exercise_sets` |
+| V6 nutrition | `foods` (30 seeded), `meal_entries`, `meal_items`, `hydration_logs`, `nutrition_targets` |
+| V7 care | `medications`, `medication_schedules`, `dose_logs`, `appointments`, `conditions`, `emergency_profiles`, `emergency_contacts` |
+| V8 goals | `goals` |
+| V9 records | `health_records`, `lab_panels`, `lab_results` |
+| V10 notifications_library | `notifications`, `article_categories`, `articles`, `library_features` |
+
+Flyway's own history table, `flyway_schema_history`, lives in the same private schema. Migrations are
+forward-only: a mistake is fixed by a new migration. Every table has row-level security on with no
+policies (a test checks it).
 
 ## 4.1 Schema-wide rules
 
@@ -60,7 +70,7 @@ erDiagram
 | No soft delete | Hard deletes. Rows that stay visible but inactive use a lifecycle enum (`status`). |
 | Timestamps | `created_at timestamptz NOT NULL DEFAULT now()` on every table; `updated_at` where rows change. |
 | Every FK has an index | On the child side, in the same migration. |
-| Migrations | Alembic only. CI runs `alembic upgrade head` on an empty DB and fails if models and migrations drift. |
+| Migrations | Flyway only (`V<n>__name.sql`, forward-only). CI migrates an empty DB on every run; tests check the seeded catalogues against the code. |
 
 ## 4.2 Overview
 
@@ -234,7 +244,7 @@ erDiagram
 
 | Table | Invariants and constraints | Indexes | On delete |
 |---|---|---|---|
-| `metrics` | Seeded by migration 0003; `min_value < max_value` (plausible range per 5-minute bucket); optional `normal_low`/`normal_high` drive the dashboard range chip. The same list lives in `app/modules/health/catalogue.py`, and a test keeps the two equal. Ids are permanent and only ever appended. | `code` UK | RESTRICT (never deleted) |
+| `metrics` | Seeded by migration V3; `min_value < max_value` (plausible range per 5-minute bucket); optional `normal_low`/`normal_high` drive the dashboard range chip. The same list lives in `health/Catalogue.java`, and a test keeps the two equal. Ids are permanent and only ever appended. | `code` UK | RESTRICT (never deleted) |
 | `health_readings` | **PK `(user_id, metric_id, recorded_at, source)`**, which is the de-dup key, so writes are `INSERT … ON CONFLICT DO UPDATE` (new value wins). `CHECK (extract(epoch FROM recorded_at)::bigint % 300 = 0)` so every row is a bucket start. `samples > 0`. The value's plausibility range is checked against `metrics` in the service (a CHECK can't read another table). No surrogate id and no per-row unit, to save space on the biggest table. | PK serves `(user, metric, time)` range scans | CASCADE |
 | `ingest_batches` | UK `(user_id, idempotency_key)`; `octet_length(payload_sha256) = 32`; `inserted + updated + unchanged = submitted`; `submitted` 1–5000. Same key with a different hash → 409. Kept 30 days, which is the replay window. | UK; `(received_at)` for cleanup | CASCADE |
 | `devices` | UK `(user_id, platform, external_id)`. Upserted from the `devices` list in each ingest batch, which also moves `last_sync_at` forward. "Overdue" is computed: no sync for 24 h, or 3 days for home monitors. | UK | CASCADE |
@@ -587,7 +597,7 @@ erDiagram
 |---|---|---|---|
 | `notifications` | UK `(user_id, dedupe_key)`, so a repeated event or a re-run nightly job never duplicates; deleted after 90 days | `(user_id, created_at DESC)`, `(user_id) WHERE read_at IS NULL` | CASCADE |
 | `article_categories` | Seeded; no blood category (the Figma "Cat / Blood" layer is a leftover) | PK | RESTRICT |
-| `articles` | `minutes > 0`; `trending_rank` unique when set. Content lives as Markdown in `seeds/library/` and is loaded by the seed script; there is no admin UI. `reviewer` is set only for a real, consenting reviewer ([D14](10-open-decisions.md)). | UK slug; `(category_code)` | RESTRICT on category |
+| `articles` | `minutes > 0`; `trending_rank` unique when set. Content lives as Markdown in `src/main/resources/library/` and is loaded at startup; there is no admin UI. `reviewer` is set only for a real, consenting reviewer ([D14](10-open-decisions.md)). | UK slug; `(category_code)` | RESTRICT on category |
 | `library_features` | One featured article per placement | PK | CASCADE from article |
 
 The library is the same for everyone and records **no per-user reads**. "Trending" is editorial
@@ -651,3 +661,12 @@ creating a new type, so values are added only when a screen needs them.
 | Exercise PRs | Epley one-rep max | Best weight lifted (and reps) | Matches the Figma "92.5 kg × 5" record format |
 | `consents.created_at` | Not listed | Present | The decision explains a refusal using the newest grant |
 | Ids | UUIDv7 everywhere | UUIDv7, except seeded foods (uuid5 of the name) | Stable ids across fresh databases |
+| `goal_progress` | Upserted nightly and on write | Not built: progress is computed on every read | Always current; the data is small enough |
+| `insights` | Nightly correlations stored with evidence | Not built: My Health computes a few insights on read (deep sleep vs late phone use, resting HR vs 90 days, move streak, short sleep) | No stale insights; no statistics library needed |
+| `goals.metric_id` | FK to `metrics` | `metric` text, checked against the API's goal metric list | Goals also track nutrition totals and workouts, which aren't health metrics |
+| `goals.lifecycle` | active, paused, achieved, abandoned | Same, plus `baseline` for target goals | Progress needs a starting point |
+| `lab_results.ref_low/ref_high` | Nullable | Required, `ref_low < ref_high` | The screens always show a range |
+| `conditions` | label + kind | Plus `note` ("severe") | The emergency ID shows "Penicillin (severe)" |
+| `emergency_profiles` | `organ_donor` | Plus `organ_donor_note` ("registered in Texas") | The design shows it |
+| `notifications` | as planned | `target` must be an app route (`^/…`) | No links to outside sites from the feed |
+| `medication_schedules` | as planned | Times must be whole minutes | Dose instants are exact keys in `dose_logs` |

@@ -1,7 +1,7 @@
 # 3. Class diagram
 
 There are two views. The **domain model** shows the entities, their key attributes, behaviour and
-relationships. It maps 1:1 to SQLAlchemy models, and the attributes match [the database](04-database.md).
+relationships. The attributes match [the database](04-database.md); in Java each table is read and written by its module's service with plain SQL.
 The **service model** shows how routers, services, repositories and the core classes fit together.
 
 Notation: `+` public, `-` private, `$` static, `*` abstract. Multiplicities are on the associations.
@@ -417,7 +417,7 @@ a user, and so does each `EmergencyContact`.
 classDiagram
   direction TB
   class Router {
-    <<FastAPI APIRouter>>
+    <<Spring @RestController>>
     +prefix str
   }
   class CurrentUser {
@@ -534,102 +534,160 @@ How to read it:
   close expired shares, delete stale uploads and notifications older than 90 days, and clear old
   ingest batches.
 
-## 3.5 As built (phases 1–5b, 15 Oct 2026)
+## 3.5 As built (Java, 23 Oct 2026)
 
-The sections above are the full design. This is the part that exists in `backend/app` today, with the
-real function names. Modules call each other only through `service.py`; the dotted arrows are every
-cross-module call in the code.
+The sections above are the design. This is what exists in `backend/src/main/java/com/vitallink/api`,
+with the real class and method names. Modules call each other only through their `…Service`; the
+dotted arrows are every cross-module call.
 
 ```mermaid
 classDiagram
   direction TB
-  class get_claims {
-    <<dependency, core/security.py>>
-    +verify bearer token() Claims
+  class WebConfig {
+    <<core.web: argument resolvers>>
+    +CurrentUser caller(request)
+    +ConsentGate for path user_id
   }
-  class current_user {
-    <<dependency, account/service.py>>
-    +get_or_create(Claims) CurrentUser
+  class TokenVerifier {
+    <<core.security>>
+    +verify(authorization) Claims
   }
-  class shared_access {
-    <<dependency, sharing/service.py>>
-    +ConsentGate for the path user_id
+  class RequestTransactionFilter {
+    <<core.db>>
+    +one transaction per /v1 request
   }
-  class get_session {
-    <<dependency, core/db.py>>
-    +one transaction per request
+  class ConsentGate {
+    <<core.consent>>
+    +allows(Scope) boolean
+    +require(Scope)
+  }
+  class Consent {
+    <<pure, core.consent>>
+    +decide(Viewer, owner, Scope, grants, now) Decision
+  }
+  class AuditLog {
+    <<core.audit, REQUIRES_NEW>>
+    +write(Event)
+  }
+  class AccessListener {
+    <<interface, core.consent>>
+    +allowed(owner, viewer, scope, consent)
+  }
+  class UserData {
+    <<interface, core.userdata>>
+    +exportQueries() Map
+    +beforeDelete(user)
+  }
+  class FileStorage {
+    <<interface, core.storage>>
+    +signUpload(key, type) SignedUpload
+    +stat(key) StoredObject
+    +signDownload(key, name) String
+    +delete(key)
   }
   class AccountService {
-    +get_me() Me
-    +get_account() Account
-    +update_account(AccountPatch) Account
-    +get_targets() Targets
-    +update_targets(TargetsPatch) Targets
-    +people(ids) dict
-    +birth_date(user) date
-    +body_profile(user) Profile
+    +getOrCreate(Claims) User
+    +me() / account() / updateAccount(patch)
+    +targets(user) / updateTargets(patch)
+    +profile(user) Profile
+    +people(ids) Map
+  }
+  class DataRightsService {
+    +export(me) Map
+    +delete(me)
   }
   class HealthService {
     +ingest(IngestIn) IngestOut
-    +add_manual(ManualIn) ReadingOut
-    +series(user, tz, metric, days, interval) Series
-    +blood_pressure_series() BloodPressureSeries
-    +latest(user, tz, codes) list~ReadingOut~
-    +dashboard(user, tz, sleep_goal, include_score) Dashboard
-    +readiness(user, tz, day, goal) int
-    +devices() list~DeviceOut~
-    +total_between(user, code, start, end) float
-    +latest_value(user, code) float
-    +wearable_name(user) str
+    +addManual(ManualIn) ReadingOut
+    +series() / bloodPressureSeries() / latest()
+    +dashboard(user, tz, goal, withScore) Dashboard
+    +devices() / forgetDevice(id)
+    +daily() / nightlySleep() / totalBetween() / latestValue()
   }
-  class SharingService {
-    +create_share(ShareIn) Share
-    +list_shares() list~Share~
-    +revoke_share(id)
-    +shared_with_me() list~SharedWithMe~
-    +access_log(limit, offset) list~AccessLogEntry~
+  class HealthTabsService {
+    +overview() HealthOverview
+    +vitals() / sleep() / heart() / respiratory()
+    +body() / mental() / digital()
   }
   class TrainingService {
-    +save_workout(WorkoutIn) WorkoutDetail
-    +get_workout(id) WorkoutDetail
-    +list_workouts(user, tz, days) list~WorkoutOut~
-    +training(user, tz) Training
-    +create_plan(PlanIn) PlanOut
-    +list_plans() list~PlanOut~
+    +saveWorkout(WorkoutIn) WorkoutDetail
+    +listWorkouts() / training() / plans()
+    +workoutTimes(user, from, to)
   }
   class NutritionService {
-    +search_foods(q) list~FoodOut~
-    +create_food(FoodIn) FoodOut
-    +log_meal(MealIn) Meal
-    +log_water(WaterIn) WaterOut
+    +searchFoods() / createFood() / logMeal() / logWater()
     +day(user, tz, date) NutritionDay
-    +base_burn(user, date) int
+    +dailyMacro() / dailyWater()
   }
-  class ConsentGate {
-    +allows(Scope) bool
-    +require(Scope)
+  class SharingService {
+    +createShare() / listShares() / revokeShare()
+    +sharedWithMe() / receivedLive() / accessLog()
   }
-  class decide {
-    <<pure function, core/consent.py>>
-    +decide(Viewer, owner, Scope, grants, now) Decision
+  class FamilyService {
+    +family(me) List~FamilyMember~
+    +summaryFor(me, gate) Summary
   }
-  class write_audit {
-    <<core/audit.py, own connection>>
-    +write_audit(AuditEvent)
+  class CareService {
+    +overview() / today() / logDose() / undoDose()
+    +appointments() / conditions() / emergency()
+    +missedOn(day) / refillsDue() / nextAppointment()
   }
-  current_user --> get_claims
-  current_user --> get_session
-  shared_access --> current_user
-  shared_access --> ConsentGate
-  ConsentGate --> decide
-  ConsentGate --> write_audit
-  SharingService ..> AccountService : names, emails
-  SharingService ..> write_audit : share events
-  SharingService ..> HealthService : shared health views
-  SharingService ..> TrainingService : shared workouts
-  SharingService ..> NutritionService : shared nutrition day
-  TrainingService ..> HealthService : active energy, wearable name
-  TrainingService ..> AccountService : birth date for max HR
+  class GoalService {
+    +create() / update() / overview() / today() / streaks()
+    +markAchieved(user) / atRisk(user)
+  }
+  class RecordService {
+    +create() / list() / overview()
+    +startUpload() / confirmUpload() / download()
+    +createLab() / labs() / latestResult()
+  }
+  class NotificationService {
+    +notify(user, dedupeKey, Message) boolean
+    +list() / markRead()
+  }
+  class LibraryService {
+    +load() at startup
+    +library() / article(slug) / category(code)
+  }
+  class NightlyJob {
+    +run() summary
+    +perUser(user) int
+  }
+  WebConfig --> TokenVerifier
+  WebConfig --> AccountService : getOrCreate
+  WebConfig --> ConsentGate
+  ConsentGate --> Consent
+  ConsentGate --> AuditLog
+  ConsentGate --> AccessListener
+  NotificationService ..|> UserData
+  RecordService ..|> UserData
+  DataRightsService --> UserData : every module
+  RecordService --> FileStorage
+  HealthTabsService ..> HealthService
+  HealthTabsService ..> AccountService : units, height, targets
+  TrainingService ..> HealthService : active energy, wearable
+  TrainingService ..> AccountService : birth date
   NutritionService ..> HealthService : weight, active energy
   NutritionService ..> AccountService : body profile
+  GoalService ..> HealthService
+  GoalService ..> NutritionService
+  GoalService ..> TrainingService
+  CareService ..> AccountService : profile for the medical ID
+  SharingService ..> AccountService : names, emails
+  SharingService ..> AuditLog : share events
+  FamilyService ..> SharingService
+  FamilyService ..> CareService
+  FamilyService ..> HealthService
+  RecordService ..> SharingService : who can see records
+  RecordService ..> NotificationService : new lab result
+  NightlyJob ..> GoalService
+  NightlyJob ..> CareService
+  NightlyJob ..> HealthService
+  NightlyJob ..> RecordService : abandoned uploads
+  NightlyJob ..> NotificationService
 ```
+
+Shared views (`SharedViewsController`, `/v1/users/{user_id}/…`) call the same services with the owner's
+id after `gate.require(scope)`. The access notifier (`notifications.AccessNotifier`) implements
+`AccessListener`, so owners hear when someone opens their shared records without the consent core
+depending on notifications.

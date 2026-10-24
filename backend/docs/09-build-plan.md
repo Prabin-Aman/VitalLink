@@ -1,5 +1,21 @@
 # 9. Build plan
 
+**Status (23 Oct 2026).** Phases 1–8 are built, in Java (see [11-java-stack.md](11-java-stack.md)).
+
+| Phase | Status |
+|---|---|
+| 0 Decisions and accounts | Open: owner decisions D1–D16; Render/Supabase group accounts not created |
+| 1 Skeleton and lockdown | Built (Python), ported to Java |
+| 2 Account and auth | Built; export and delete built in Java. Frontend Supabase sign-in still a stub |
+| 3 Health core | Built (Python), ported to Java |
+| 4 Sharing and consent | Built (Python), ported; privacy centre added in Java |
+| 5 Training, nutrition, goals | Training and nutrition built (Python), ported; goals built in Java |
+| 6 Records and labs | Built in Java (Supabase Storage + local signed storage) |
+| 7 Care | Built in Java. Phone-side local reminders are frontend work |
+| 8 Health tabs, family, notifications, library, nightly job | Built in Java (`nightly.yml`, `backup.yml`, `deploy-check.yml`) |
+| 9 Mobile sync on devices | Not started (needs a development build on devices) |
+| 10 Hardening and demo | Partly: rate limiting, load test (`LoadCheck`, targets met locally), Supabase client tests, coverage report. Still to do: types from OpenAPI, restore drill, load test on Render |
+
 Ten phases. Each one ends with something deployed and demoable, and each turns some of the
 frontend's `pending()` calls into live endpoints. Phases 0–3 must go in order. After phase 3 the
 domain phases (4–8) can run in parallel across the team.
@@ -36,12 +52,12 @@ flowchart LR
 
 ## Phase 1: Skeleton and lockdown (M)
 
-- `pyproject.toml` (uv), FastAPI app, `core/settings`, `core/db`, `core/errors`, request id
+- Built first in Python, now Java: `pom.xml` (Maven wrapper), Spring Boot app, `core` settings, db, errors, request id
   middleware, JSON logging, `/health`, `/ready`.
 - Docker image, `docker-compose.yml` (API + Postgres + MinIO), `.env.example`.
-- Alembic baseline: the `vitallink` schema, all enums, `REVOKE` grants, the RLS-on helper, the
+- Migration baseline (Flyway V1): the `vitallink` schema, all enums, `REVOKE` grants, the RLS-on helper, the
   `audit_log` table and its append-only trigger.
-- CI: ruff, mypy, import-linter, pytest with a Postgres service, drift check.
+- CI: formatting (Spotless), tests with a Postgres service (JUnit + MockMvc), coverage.
 - Render service + `deploy-check.yml` (lockdown checks against the live project).
 
 **Exit:** `/ready` is green on Render, the deploy check passes, and an empty PR runs the full pipeline.
@@ -62,7 +78,7 @@ flowchart LR
 - `POST /me/health/ingest` with idempotency, validation and upsert. `POST /me/health/manual`.
 - Series and summary queries (timezone-aware `date_trunc`), dashboard + readiness score,
   `GET /me/health/latest`, `GET /me/devices`.
-- `seeds/demo.py`: 90 days of data that reproduces the Figma numbers.
+- `tools.DemoSeed`: 90 days of data that reproduces the Figma numbers.
 - **Freeze the ingest contract** (request/response JSON Schema in `docs/`). Phase 9 builds against it.
 
 **Goes live:** `dashboard()`, `series()`, `bloodPressure()`, `bloodPressureLatest()`, `devices()`.
@@ -134,7 +150,7 @@ After this phase every `pending()` call except `conversations()` is live.
 
 ## Definition of done (every endpoint)
 
-1. Pydantic in/out models match `types.ts`. The contract test passes.
+1. Request/response records match `types.ts`. The tests assert the JSON fields the screens read.
 2. Owner-only queries filter by the token's user id. Shared routes declare a scope.
 3. Constraints and indexes are in the same migration as the table.
 4. Unit tests for rules, integration tests for queries, one API test for the happy path and one for refusal.

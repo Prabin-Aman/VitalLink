@@ -1,12 +1,8 @@
 # Keep secrets and local files out of the image.
 .env
 .env.*
-.venv/
-**/__pycache__/
-*.egg-info/
-.pytest_cache/
-.ruff_cache/
-tests/
+target/
+.storage/
 docs/
 docker-compose.yml
 Dockerfile

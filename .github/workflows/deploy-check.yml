@@ -1,0 +1,66 @@
+# Lockdown checks against the live project (docs/06 §6.2), after every merge to main and daily.
+# Fails red if any guarantee the design depends on has drifted.
+#
+# Repository secrets: API_URL, SUPABASE_URL, SUPABASE_ANON_KEY (the public key the apps ship),
+# DATABASE_URL (session pooler, postgresql://…, the API's role).
+name: deploy-check
+
+on:
+  push:
+    branches: [main]
+  schedule:
+    - cron: "15 10 * * *"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_URL: ${{ secrets.API_URL }}
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      ANON: ${{ secrets.SUPABASE_ANON_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+    steps:
+      - name: API is up and refuses anonymous calls
+        run: |
+          set -euo pipefail
+          curl -sf --retry 6 --retry-delay 20 --retry-all-errors --max-time 60 "$API_URL/ready"
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$API_URL/v1/me")
+          test "$code" = 401 || { echo "/v1/me without a token answered $code"; exit 1; }
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST "$API_URL/internal/jobs/nightly")
+          test "$code" = 401 || { echo "nightly job without the secret answered $code"; exit 1; }
+
+      - name: The private schema isn't reachable through Supabase's Data API
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' -H "apikey: $ANON" -H "Authorization: Bearer $ANON" \
+            -H "Accept-Profile: vitallink" "$SUPABASE_URL/rest/v1/users?select=id&limit=1")
+          case "$code" in 2??) echo "Data API served vitallink.users ($code)"; exit 1;; esac
+
+      - name: The records bucket is private
+        run: |
+          set -euo pipefail
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$SUPABASE_URL/storage/v1/object/public/records/probe")
+          case "$code" in 2??) echo "public URL answered $code"; exit 1;; esac
+
+      - name: Database lockdown (RLS everywhere, no anon/authenticated grants, nothing in public)
+        run: |
+          set -euo pipefail
+          docker run --rm -e DATABASE_URL postgres:17 psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -At -c "
+            DO \$\$
+            DECLARE bad text;
+            BEGIN
+              SELECT string_agg(relname, ', ') INTO bad FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+               WHERE n.nspname = 'vitallink' AND c.relkind = 'r' AND NOT c.relrowsecurity
+                 AND relname <> 'flyway_schema_history';
+              IF bad IS NOT NULL THEN RAISE EXCEPTION 'tables without RLS: %', bad; END IF;
+              SELECT string_agg(DISTINCT grantee || ' on ' || table_name, ', ') INTO bad
+                FROM information_schema.role_table_grants
+               WHERE table_schema = 'vitallink' AND grantee IN ('anon', 'authenticated', 'PUBLIC');
+              IF bad IS NOT NULL THEN RAISE EXCEPTION 'grants to client roles: %', bad; END IF;
+              IF has_schema_privilege('anon', 'vitallink', 'USAGE') THEN RAISE EXCEPTION 'anon can use the schema'; END IF;
+            END \$\$;"

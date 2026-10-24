@@ -4,32 +4,31 @@
 
 | Environment | Runs on | Database | Auth | Purpose |
 |---|---|---|---|---|
-| Local | `docker compose up` (API + Postgres 16 + MinIO for storage) | Container, seeded demo user | Dev tokens (`ENV=local` only) | Day-to-day work |
+| Local | `docker compose up` (Postgres 16) + `./mvnw spring-boot:run`; files in `.storage/` behind signed URLs | Container, seeded demo user (`DemoSeed`) | Dev tokens (`ENV=local` only) | Day-to-day work |
 | CI | GitHub Actions runner | Postgres service container | Dev tokens | Every pull request |
 | Production | Render free web service, Virginia | Supabase free, us-east-1, session pooler :5432 | Supabase Auth, email confirmation on | Demo and real use |
 
 One Docker image serves every environment. Only environment variables differ.
 
-## 8.2 Configuration (`.env.example` will document every key)
+## 8.2 Configuration (`backend/.env.example` documents every key)
 
 | Setting | Where |
 |---|---|
-| `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_JWKS_URL`, `SUPABASE_SERVICE_KEY`, `STORAGE_BUCKET` | Render secrets |
-| `JOB_SECRET` | Render + GitHub Actions secrets (same value) |
-| `BACKUP_PASSPHRASE` | GitHub Actions secret only |
-| `CORS_ORIGIN`, `ENV`, batch limits, link lifetimes, rate limits | Plain env vars with safe defaults |
+| `DATABASE_URL`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `STORAGE_BUCKET` | Render secrets |
+| `JOB_SECRET` | Render + GitHub Actions secrets (same value); the workflow also needs `API_URL` |
+| `BACKUP_PASSPHRASE` | GitHub Actions secret only (backup workflow) |
+| `CORS_ORIGIN`, `ENV`, `DATABASE_POOL_SIZE` | Plain env vars with safe defaults |
 
 ## 8.3 Delivery pipeline
 
 ```mermaid
 flowchart LR
-  PR[Pull request] --> L[ruff + mypy + import-linter]
-  L --> T[pytest on real Postgres]
-  T --> G[Guardrail tests]
-  G --> D[Alembic drift check]
-  D --> M[Review + merge to main]
+  PR[Pull request] --> L[spotless:check + javac -Xlint]
+  L --> T[mvnw verify: JUnit on real Postgres, migrations from scratch]
+  T --> G[Guardrail tests + coverage report]
+  G --> M[Review + merge to main]
   M --> B[Render builds image]
-  B --> MG[alembic upgrade head]
+  B --> MG[Flyway migrates at startup]
   MG --> H["/ready passes"]
   H --> LIVE[Live]
 ```
@@ -45,9 +44,9 @@ contract drift shows up on the frontend side too. A later step generates `types.
 
 | Workflow | Schedule | Does |
 |---|---|---|
-| `nightly.yml` | 07:00 UTC (≈ 02:00 Central) | Wake `/ready`, then `POST /internal/jobs/nightly`; fails red on any per-user failure |
-| `backup.yml` | weekly | `pg_dump` → `age`-encrypted → workflow artifact kept 90 days. **Repo must be private** |
-| `deploy-check.yml` | on merge + daily | The lockdown checks in 6.2 against the live project |
+| `nightly.yml` (built) | 09:00 UTC (≈ 03:00–04:00 Central) | Wake `/ready` (retries for the cold start), then `POST /internal/jobs/nightly`; the summary reports per-user failures |
+| `backup.yml` (built) | weekly | `pg_dump` → `gpg` AES-256 (`BACKUP_PASSPHRASE`) → workflow artifact kept 90 days. **Repo must be private** |
+| `deploy-check.yml` (built) | on merge + daily | The lockdown checks in 6.2 against the live project |
 
 Keepalive is **not** a GitHub workflow. Each run bills at least one minute, and pinging every 10 minutes
 would use about 3,000 of a private repo's 2,000 free minutes a month. A free external monitor
@@ -67,7 +66,7 @@ keeps Render awake in Dallas daytime and keeps the Supabase project active.
 
 | Limit | Our load | Verdict |
 |---|---|---|
-| Render 512 MB RAM, sleeps after 15 min | App ~150 MB + SciPy ~80 MB | Fits; keepalive ping |
+| Render 512 MB RAM, sleeps after 15 min | JVM capped at 70% of RAM, serial GC; ~200–250 MB in use | Fits; keepalive ping. Cold start ~15 s |
 | Render 750 instance-hours/month | Awake ~17 h/day ≈ 520 h | Fits; the keepalive window leaves the night to sleep |
 | Supabase 500 MB DB | ~13.5 MB per user-year | ~30 user-years |
 | Supabase 1 GB storage, 5 GB egress | Lab PDFs 0.2–2 MB; dashboard ~5 KB | Fine |
@@ -83,16 +82,16 @@ the append-only trigger, check constraints) live in the database.
 |---|---|---|
 | Unit (pure) | `decide()`, readiness score, streaks, goal status, insight statistics, interpretation, dose state, BMR | Expiry is exclusive; vitals grant never opens records; unconfirmed email matches nothing; random noise yields no insight; DST day has 23 h of buckets |
 | Integration | Each service + repository against Postgres | Re-sent bucket overwrites; same key + new payload → 409; parallel first requests both succeed; edited food leaves old meals unchanged; one active plan per user |
-| API | Full HTTP through the app (httpx) | Grant → read → revoke → refused; refusal appears in the owner's access log; pending upload never downloadable; another user's id on `/me/...` → 404 |
+| API | Full HTTP through the app (MockMvc: filters, transactions, error handler) | Grant → read → revoke → refused; refusal appears in the owner's access log; pending upload never downloadable; another user's id on `/me/...` → 404 |
 | Contract | Responses vs `packages/api` | Each endpoint's JSON validated against the TypeScript shape (via the generated JSON Schema) |
 | Guardrails | The codebase itself | 6.6 list |
 | Deployment | The live Supabase project | No exposed tables; RLS on; no anon grants; bucket private |
-| Migrations | Schema history | Upgrade from empty; no drift; downgrade of the last migration |
+| Migrations | Schema history | CI migrates an empty database every run; catalogue tables match the code; every table has RLS; nothing in `public` |
 | Manual | What automation can't judge | iPhone + Watch steps don't double; late watch data corrects a bucket; Android Health Connect; cold start; the demo script |
 
-**Seed data.** `seeds/demo.py` creates a demo account with 90 days of realistic data. The Figma
+**Seed data.** `tools.DemoSeed` creates a demo account with 90 days of realistic data in every module. The Figma
 sample values are the anchor, so a live demo looks like the designs. The data has a planted
 screen-time → lower deep-sleep pattern, so the insight engine finds something real.
 
-**Gate.** Nothing merges unless lint, types, tests, guardrails and the drift check pass. Every
-consent rule has at least one test.
+**Gate.** Nothing merges unless formatting, compilation, tests and guardrails pass. Every consent
+rule has at least one test. Results and coverage: [12-test-report.md](12-test-report.md).

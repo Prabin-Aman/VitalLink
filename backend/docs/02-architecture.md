@@ -12,7 +12,7 @@ flowchart LR
   HK -->|read on device| M
 
   subgraph Render["Render (free, Virginia)"]
-    API[VitalLink API<br/>FastAPI modular monolith]
+    API[VitalLink API<br/>Spring Boot modular monolith, Java 25]
   end
   subgraph Supabase["Supabase (free, us-east-1)"]
     AUTH[Auth]
@@ -52,24 +52,26 @@ add network hops, multiple deploys and distributed transactions, and give nothin
 
 ```mermaid
 flowchart TB
-  R[Router<br/>HTTP in/out, Pydantic schemas] --> D[Dependencies<br/>current user, consent check, pagination]
-  D --> S[Service<br/>business rules of one module]
-  S --> Q[Repository<br/>SQLAlchemy queries on the module's own tables]
+  F[Filters<br/>request id · one transaction per /v1 request] --> R
+  R[Controller<br/>HTTP in/out, request/response records, Bean Validation] --> D[Argument resolvers<br/>CurrentUser from the JWT · ConsentGate for /users/&#123;id&#125;]
+  D --> S[Service<br/>rules of one module + SQL on its own tables, JdbcClient]
   S -. other module's service only .-> S2[Service of another module]
-  Q --> C[(Postgres)]
-  R & D & S & Q --> CORE[Core<br/>settings · db · security · consent · audit · errors · ids · jobs]
+  S --> C[(Postgres)]
+  R & D & S --> CORE[Core<br/>settings · db · security · consent · audit · storage · errors · ids]
 ```
 
 | Layer | Does | Never does |
 |---|---|---|
-| Router | Parse and validate the request, call one service, shape the response model | SQL, business rules |
-| Dependencies | Resolve the caller from the JWT; run `require_scope(scope)` on shared routes | Load module data |
-| Service | Rules of one module; transactions; calls other modules **through their service** | Touch another module's tables |
-| Repository | Queries on the module's own tables, bound parameters only | Decide anything |
-| Core | Shared infrastructure; knows no module | Import from a module |
+| Filters | Request id on every response and log line; wrap each `/v1` request in one transaction that rolls back on any error status | Business rules |
+| Controller | Bind and validate the request, call one service, return its record | SQL, business rules |
+| Argument resolvers | Verify the token and load the caller (`CurrentUser`); give shared routes a `ConsentGate` for the path's user | Load module data |
+| Service | Rules of one module and the SQL on its own tables (bound parameters only); calls other modules **through their service** | Touch another module's tables |
+| Core | Shared infrastructure; knows no module | Depend on a module |
 
-An import-linter contract in CI enforces two things. A module may import only `core` and other
-modules' `service` files. `core` may import no module.
+As built, each module's service holds its own SQL: a separate repository class added no value for
+plain `JdbcClient` queries. The boundaries are a convention checked in review; guardrail tests check
+that every shared route takes a `ConsentGate`, that shared routes only read, and that every `/v1`
+route identifies its caller.
 
 ## Modules
 
@@ -82,12 +84,12 @@ records and care, and sharing, notifications and library are new.
 | **health** | Metric catalogue, ingest + idempotency, series, summaries, dashboard, readiness, My Health tabs, devices, manual readings (mood, weight, BP) | `metrics`, `health_readings`, `ingest_batches`, `devices` | account (timezone, goals) |
 | **training** | Exercise catalogue, workouts + sets, plans + planned sessions, weekly load, PRs, muscle-group sets | `exercises`, `workouts`, `exercise_sets`, `training_plans`, `plan_sessions` | health (HR zones, source label) |
 | **nutrition** | Food search, meals with copied macros, hydration, targets, daily totals, burn estimate | `foods`, `meal_entries`, `meal_items`, `hydration_logs`, `nutrition_targets` | account (profile for BMR), health (active energy) |
-| **goals** | Goals, per-period progress, status, streaks, consistency grid, nightly insights | `goals`, `goal_progress`, `insights` | health, training, nutrition (read totals) |
+| **goals** | Goals, progress and status computed on read, streaks, consistency grid; the nightly job marks reached goals achieved | `goals` | health, training, nutrition (read totals) |
 | **records** | Documents, signed upload/confirm/download, lab panels and results with previous value | `health_records`, `lab_panels`, `lab_results` | core storage |
 | **care** | Medications, schedules, dose log, appointments, conditions/allergies, emergency profile + contacts | `medications`, `medication_schedules`, `dose_logs`, `appointments`, `conditions`, `emergency_profiles`, `emergency_contacts` | account (profile) |
-| **sharing** | Create/list/revoke shares, shared-with-me, shared views, family view, access log | `consents`, `audit_log` (through core audit writer) | every module's read service, called with a scope |
+| **sharing** | Create/list/revoke shares, shared-with-me, shared views, family view, access log, privacy centre | `consents`, `audit_log` (through core audit writer) | every module's read service, called with a scope |
 | **notifications** | Feed, mark read, generation from events and the nightly job, retention | `notifications` | none (others call it) |
-| **library** | Categories, featured, trending, article body; content seeded from Markdown in `seeds/library/` | `article_categories`, `articles`, `library_features` | none |
+| **library** | Categories, featured, trending, article body; Markdown in `src/main/resources/library/`, loaded at startup | `article_categories`, `articles`, `library_features` | none |
 
 `messages` (clinician messaging) and `dependents` (child profiles) are **not modules** until
 decisions D1 and D3 are made.
@@ -96,16 +98,18 @@ decisions D1 and D3 are made.
 
 | Part | Job |
 |---|---|
-| `settings` | Every config value comes from env vars (pydantic-settings); nothing environment-specific in code |
-| `db` | One async engine (pool 5 + 5 overflow); one transaction per request, committed on success, rolled back on error |
-| `security` | Verify JWT signature, issuer, audience and expiry against Supabase JWKS (cached 10 min); read `email_verified` and `aal` (MFA) claims |
-| `consent` | `decide()`, a pure function, plus `ConsentGate`, the wrapper that loads grants, decides, binds and audits |
-| `audit` | `AuditWriter`, the only code that inserts into `audit_log`. It uses its own connection and transaction |
-| `errors` | One error envelope `{"error": {code, message, detail, request_id}}`; exception → status mapping |
-| `ids` | UUIDv7 generation (time-ordered keys index well) |
-| `storage` | Supabase Storage client: sign upload/download, stat object, delete |
-| `jobs` | Nightly runner: per-user steps, each in its own transaction, returns a summary |
-| `ratelimit` | In-process per-user limits (60 ingest / 600 other per hour); valid only while one instance runs |
+| `Settings` | Every config value comes from env vars (`application.yml`); nothing environment-specific in code |
+| `db` | HikariCP pool (10); `RequestTransactionFilter`: one transaction per request, committed on success, rolled back on any error status, body held until the commit |
+| `security` | `TokenVerifier`: JWT signature, issuer, audience and expiry against Supabase JWKS (cached 10 min); reads `email_verified` and `aal` (MFA) claims. `IdentityAdmin` deletes the sign-in identity on account delete |
+| `consent` | `Consent.decide()`, a pure function, plus `ConsentGate`, the wrapper that loads grants, decides, binds, audits and tells `AccessListener`s |
+| `audit` | `AuditLog`, the only code that inserts into `audit_log`. It runs in its own transaction (`REQUIRES_NEW`) |
+| `ErrorHandler` | One error envelope `{"error": {code, message, detail, request_id}}`; exception → status mapping |
+| `Ids`, `Clock`, `Num` | UUIDv7/v5, "now" at the database's microsecond precision, half-even rounding |
+| `storage` | `FileStorage`: Supabase Storage (sign upload/download, stat, delete) or signed local files in dev/test |
+| `userdata` | `UserData`, the export/delete hook each module implements |
+| `jobs` (module) | `NightlyJob`: per-user steps, each in its own transaction, then global cleanup; returns a summary |
+
+Rate limiting (planned: 60 ingest / 600 other per hour) is not built yet; it's in phase 10.
 
 ## Cross-cutting decisions
 
@@ -117,4 +121,4 @@ decisions D1 and D3 are made.
 | Display strings | The API returns data, and `packages/api` view-models format it. Exceptions are fields the types already define as server text (`detail`, `assessment`, insight `text`) | Same contract as the mock |
 | Enums | Postgres enums for closed sets; a lookup table for the metric catalogue (grows, carries ranges) | Bad values are rejected by the DB |
 | Soft delete | None. Deletes are hard and cascade from `users`. Lifecycle states where a row stays visible (`status`) | No `deleted_at` leak risk |
-| JSON | Only `insights.evidence` and `workouts.route` (free-form) | Anything queried is a column |
+| JSON | None stored as built (`insights` and workout routes aren't built) | Anything queried is a column |

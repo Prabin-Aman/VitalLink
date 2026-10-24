@@ -23,6 +23,7 @@ apps/web         React 19 + Vite 5 + React Router 6 + CSS modules + vite-plugin-
 apps/mobile      Expo SDK 57 + Expo Router + react-native-svg + react-native-svg-transformer + @expo-google-fonts
                  src/components/kit.tsx = shared parts (Screen, ChipRow, StatGrid, Section, Row, MenuRow, Pill…)
 scripts/         write-icons.py (icons + both Icon registries), icon-masters.json, shoot.py, spa_serve.py
+backend/         Java 25 + Spring Boot 4.1 API (Maven wrapper), docs/ 01–12; see "Backend" below
 ```
 
 ## Commands
@@ -32,11 +33,14 @@ npm run web                 # :5173  every sidebar route, /health/*, /records/*,
 npm run mobile              # Expo; `w` for browser
 npm run web:build && npm run typecheck
 npm run tokens              # after editing figma-variables.json
+cd backend && ./mvnw verify                       # backend: all tests (needs Postgres) + coverage
+cd backend && ./mvnw spring-boot:run              # API on :8000 (/docs = Swagger UI)
 cd apps/mobile && npx expo export --platform web --output-dir dist   # mobile web build for screenshots
 python3 scripts/shoot.py <base-url> <outdir> <w> <h> /path:name ...   # 1440x1024 web, 390x844 mobile
 ```
 `npx expo install` needs network to api.expo.dev; if blocked use `EXPO_OFFLINE=1`.
-Env: `VITE_API_URL` (web), `EXPO_PUBLIC_API_URL` (mobile). Unset = mock data.
+Env: `VITE_API_URL` (web), `EXPO_PUBLIC_API_URL` (mobile). Unset = mock data. Launch configs in
+`.claude/launch.json`: `api` (the packaged jar on :8000), `web-live` (web portal against it).
 
 ## Conventions
 - No raw colours/sizes/fonts in components: web uses `var(--vl-*)` / `tokenVar(token)` / `.vl-<text-style>`;
@@ -48,8 +52,9 @@ Env: `VITE_API_URL` (web), `EXPO_PUBLIC_API_URL` (mobile). Unset = mock data.
   `apps/*/src/components/icons.gen.ts`. New Figma icon → re-export the masters first. Python on Windows: set
   `PYTHONUTF8=1` (the default codec is cp1252) and write files with `newline="\n"`.
 - Screens do no formatting; add fields to view-models in `packages/api/src/views/*.ts` (or screens.ts).
-  Data with no API endpoint yet goes through `client.pending()` + `need()`: mock mode serves sample data,
-  live mode throws `NotAvailableError` so the screen says "isn't available yet" instead of fake numbers.
+  Every client call is live except `conversations()` (D1), which stays on `client.pending()` + `need()`:
+  mock mode serves sample data, live mode says "isn't available yet" instead of fake numbers. Live
+  My Health tabs leave out readings nothing measures and send null blocks; view-models show "—".
 - Tabs/chips with no Figma frame show a "… is in a later batch" placeholder rather than invented UI.
 - Theme: `apps/web/src/theme.ts` sets `<html data-theme>` (Settings › Appearance); `.vl-light/.vl-dark`
   pin a subtree to one mode (theme previews).
@@ -76,7 +81,9 @@ Done (Oct 2026, every frame in the Figma file, compared against Figma screenshot
 items, 9 My Health tabs, Lab Results, Document Viewer, Create Account, public homepage at /welcome) and mobile
 (Welcome, Create Account, Health Overview/Activity/Digital, Workouts, Nutrition, Goals, Records, Profile and
 the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs (real auth = Supabase Auth).
-**Next:** owner reviews → decide the open issues below → wire to the real backend.
+Backend (Java) is complete through phase 8 and every screen except Messages reads live data (23 Oct 2026).
+**Next:** owner decides D1–D16 → create the group Supabase/Render accounts → Supabase sign-in in the
+apps → phase 9 (phone sync on devices) → phase 10 (rate limits, load tests, types from OpenAPI).
 
 ## Open issues flagged to the owner (awaiting decisions)
 - Desktop Privacy shows "Hospitals with access" + hospital rows — conflicts with consumers-only. Built as
@@ -113,33 +120,36 @@ the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs 
   Create Account "Entries don't match yet." helper, mobile Emergency "Show QR" reveals the web QR card.
 - Workouts/Records use km (as in Figma) while Activity uses miles — units should follow Settings › Units.
 
-## Backend (phases 1–4 built: skeleton, DB, CI, accounts, health core, sharing)
-Built in `backend/` (FastAPI, Python 3.12): `/health`, `/ready`, Alembic (0001 lockdown + audit_log,
-0002 users/profiles, 0003 metrics/readings/ingest/devices, 0004 consents), `/v1/me`, `/me/account`, `/me/targets`,
-`/me/health/{ingest,manual,dashboard,series/{metric},latest}`, `/me/devices`, `/me/shares`, `/me/shared-with-me`,
-`/me/access-log`, and consent-checked shared views `/users/{id}/health/{dashboard,series/{metric},latest}`.
-Consent: pure `decide()` in `app/core/consent.py` + `ConsentGate` (audit in its own transaction); every
-`/users/{id}` route must depend on `sharing.service.shared_access` (guardrail test). Share kinds are
-doctor/family/other only (D4 recommendation applied; owner hasn't decided). Seed: `python -m seeds.demo`
-(demo@example.com, 90 days, last week = Figma values). Live web: `VITE_API_URL=http://localhost:8000` and a dev
-token in `sessionStorage["vl.token"]`. Use 127.0.0.1 (not localhost) in DATABASE_URL on Windows: localhost costs 2 s
-per connection. Local/test
-auth uses HS256 dev tokens (`python -m app.devtoken <email>`); production verifies Supabase JWKS.
-Local Postgres runs with Docker inside WSL Ubuntu (see backend/README.md); tests need it running.
-Plan in `backend/` (README + docs/01–10: intro, architecture, class diagram, ER/database (35 tables),
-API catalogue mapped to every `client.pending()` call, consent/security, flows, ops, build plan, open
-decisions D1–D16) with a README per planned module under `backend/app/`. It extends the original doc: "VitalLink Backend System Design" https://claude.ai/code/artifact/d83166e0-f781-45e9-80e8-d0f399be60cf
-- Python 3.12 + FastAPI modular monolith on Render free (Virginia).
-- Supabase (us-east-1): Postgres in private `vitallink` schema, Data API off, deny-all RLS, connect via session
-  pooler :5432; Supabase Auth with email confirmation; private Storage bucket.
-- Nightly job via GitHub Actions cron (synchronous, per-user transactions).
-- Consent engine: pure `decide()` + append-only durable audit log (own transaction, trigger blocks updates).
-- Readings upserted as 5-minute aggregates. Health data from Health Connect (Android) / HealthKit (iOS);
-  Google Fit APIs end late 2026 — don't use them.
-- Compliance: FTC Health Breach Notification Rule (not HIPAA).
-- Live client calls (built): me, account, targets, dashboard, series, blood pressure, latest, devices,
-  shares, shared-with-me, access log. Pending (mock-only, `null` live → "isn't available yet"): workouts,
-  goals, today's medications, streaks, next appointment, latest lab, privacy settings, and everything behind the newer
-  screens — training, nutrition, goals overview, prescriptions, appointments, conversations, notifications,
-  family, emergency profile, library, records + lab panels, and the My Health tabs.
-  Their shapes are in `packages/api/src/types.ts` (one interface per endpoint) for the backend to match.
+## Backend (Java; phases 1–8 built)
+`backend/` is one **Spring Boot 4.1 / Java 25** service (modular monolith), built with the Maven wrapper.
+It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2026 at the owner's request
+(same schema, paths and JSON); the Python code is gone. Docs: `backend/README.md`, `backend/docs/01–12`
+(11 = every library and version, 12 = test report). One README per package in `src/main/java/com/vitallink/api`.
+- Packages: `core` (settings, db, security, audit, consent, storage, userdata, web), `account`, `health`
+  (incl. My Health overview + 7 tabs), `training`, `nutrition`, `sharing` (shares, access log, privacy,
+  family, all `/users/{id}` views), `care`, `goals`, `records`, `notifications`, `library`, `jobs`, `ops`, `tools`.
+- Plain SQL with Spring `JdbcClient` + HikariCP; Flyway `V1–V10` in `src/main/resources/db/migration`
+  (V1–V6 = the old Alembic 0001–0006); 33 tables in the private `vitallink` schema; RLS on everywhere.
+- One transaction per `/v1` request (`RequestTransactionFilter`, rolls back on any error status).
+  `AuditLog` writes in its own transaction. Consent: pure `Consent.decide()` + `ConsentGate`; every
+  `/users/{id}` handler takes a `ConsentGate` (guardrail test); shared routes are GET-only.
+- Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
+  = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
+- Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
+- Tests: 217 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
+  (44-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
+- Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
+  `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
+- Local: Postgres via `docker compose up` in WSL; `.env` `DATABASE_URL` may be `postgresql://…` or JDBC
+  (use 127.0.0.1, not localhost). Live web: `VITE_API_URL=http://localhost:8000` + dev token in
+  `sessionStorage["vl.token"]`. Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
+  (`.github/workflows/nightly.yml`).
+- Decisions applied by default (owner hasn't decided): D2 (QR on the phone), D4 (doctor/family/other),
+  D5 (user confirms appointments), D6 (labs typed in), D9 (no push), D14 (no reviewer names). Messages (D1)
+  and dependents (D3) are not built. Compliance: FTC Health Breach Notification Rule (not HIPAA).
+- Rate limits: `core/web/RateLimiter` (60 ingest / 600 other per user per hour → 429). `LoadCheck <url>`
+  checks the load targets. Workflows: `backend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
+- Frontend writes: Medications "Mark Taken" (web + mobile), Settings Save/theme, notifications read.
+  Mobile live mode takes a dev token from `EXPO_PUBLIC_DEV_TOKEN`.
+- Not built yet: stored insights (computed on read),
+  goal_progress table (computed on read), phone sync (phase 9). Render/Supabase accounts don't exist yet.

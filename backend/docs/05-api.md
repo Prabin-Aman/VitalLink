@@ -1,6 +1,6 @@
 # 5. API
 
-A JSON REST API under `/v1`. FastAPI generates the OpenAPI document (`/openapi.json`, `/docs`).
+A JSON REST API under `/v1`. springdoc generates the OpenAPI document (`/openapi.json`, Swagger UI at `/docs`).
 `packages/api/src/types.ts` is kept in step with it, and each interface there is the contract for
 one endpoint below.
 
@@ -17,12 +17,13 @@ one endpoint below.
 | Time | ISO 8601 with offset in and out; day-based queries use the user's timezone |
 | Units | SI in and out (m, kg, ml, °C, s); the client converts per `profiles.units` |
 | Idempotency | Ingest takes `idempotency_key`. A same-key, same-payload replay returns the first result with `replayed: true`; a same key with a different payload → 409. Dose logging is idempotent through its natural key. |
-| Rate limits | Per user: 60 ingest / 600 other per hour (in memory, single instance) |
+| Rate limits | Per user: 60 ingest / 600 other per hour, fixed hourly windows (in memory, single instance; `vitallink.rate-limit.*`). Over the limit → 429 `rate_limited` with `Retry-After` and `detail.retry_after_s` |
 | Versioning | Additive changes stay in `/v1`; breaking changes go to `/v2` |
 
 ## 5.2 Endpoints that are live (built and called by the client)
 
-These are the paths `VitalLinkClient` requests through `get()`; each exists in the backend.
+As of 23 Oct 2026 every client call is live except `conversations()` (decision D1). The table lists
+the calls built first; 5.3 lists the rest with their paths.
 
 | Client call | Method and path | Returns (`types.ts`) |
 |---|---|---|
@@ -38,21 +39,21 @@ These are the paths `VitalLinkClient` requests through `get()`; each exists in t
 | `sharedWithMe()` | `GET /me/shared-with-me` | `SharedWithMe[]` |
 | `accessLog()` | `GET /me/access-log?limit` | `AccessLogEntry[]` |
 
-These were marked live in the client before they existed and are pending again until their phase:
-`workouts()`, `goals()` (phase 5) and `medications()` (phase 7).
 
-## 5.3 Endpoints for the pending screens
 
-Each row replaces one `client.pending()` call. When the endpoint ships, that method switches to
-`get()` and the screen stops showing "isn't available yet" in live mode.
+## 5.3 Endpoints for the screens built later (all live)
+
+Each row replaced one `client.pending()` call; only `conversations()` is still pending.
 
 | Client call (pending today) | Method and path | Returns | Module |
 |---|---|---|---|
 | `bloodPressureLatest()` | `GET /me/health/latest?metrics=bp_systolic,bp_diastolic` | `Reading[]` | health |
+| `goals()` | `GET /me/goals/today` | `Goal[]` (daily targets + active goals, today) | goals |
 | `streaks()` | `GET /me/streaks` | `{label, days}[]` | goals |
-| `nextAppointment()` | `GET /me/appointments?upcoming=true&limit=1` | `Appointment[]` | care |
-| `latestLab()` | `GET /me/labs/latest-result` | `LabResult` + panel name | records |
-| `privacySettings()` | `GET /me/privacy` | `{emergency_on_lock_screen, devices: {total, syncing, overdue}}` | sharing |
+| `medications()` | `GET /me/medications/today` | `Medication[]` (one per scheduled dose today) | care |
+| `nextAppointment()` | `GET /me/appointments?upcoming=true&limit=1` | `Appointment \| null` | care |
+| `latestLab()` | `GET /me/labs/latest-result` | `LatestLab \| null` (404 `no_labs` → null) | records |
+| `privacySettings()` | `GET /me/privacy` | `PrivacySettings` | sharing |
 | `training()` | `GET /me/training?week=` | `Training` | training |
 | `nutrition()` | `GET /me/nutrition/day?date=` | `NutritionDay` | nutrition |
 | `goalsOverview()` | `GET /me/goals/overview` | `GoalsOverview` | goals |
@@ -73,10 +74,12 @@ Each row replaces one `client.pending()` call. When the endpoint ships, that met
 | `healthOverview()` | `GET /me/health/overview` | `HealthOverview` | health |
 | `vitals()` … `digital()` | `GET /me/health/tabs/{vitals,sleep,heart,respiratory,body,mental,digital}` | `VitalsTab` … `DigitalTab` | health |
 
-Two shapes should change when they go live. The mock serves pre-formatted strings for
-`nextAppointment` (`{with, when}`) and `latestLab` (`{value: "14.2 g/dL", note}`). The live endpoints
-return the structured `Appointment` and `LabResult` instead, and `packages/api/src/screens.ts`
-formats them like every other view-model. That's a frontend change in the same phase.
+Four shapes changed when they went live, and the mock was changed to match. `nextAppointment` and
+`latestLab` return the structured `Appointment` and `LatestLab` instead of pre-formatted strings, and
+`screens.ts` formats them. `medications()` returns each dose's time (`at`) and a `missed`/`skipped`
+status instead of a formatted `time`. `privacySettings()` uses `emergency_on_lock_screen`. Live
+My Health tabs leave out readings nothing measures (walking speed, wrist temperature, app names) and
+send `null` for blocks without data; the view-models show "—" for those.
 
 ## 5.4 Full catalogue
 
@@ -87,8 +90,8 @@ formats them like every other view-model. That's a frontend change in the same p
 | `GET /me` | Account; creates it on first call (insert-if-absent) |
 | `GET, PATCH /me/account` | Profile and settings: names, DOB, sex, height, phone, ZIP, city, language, units, theme. `two_factor` is read from the token's MFA factors, never stored |
 | `GET, PATCH /me/targets` | Daily goals (steps, move, exercise, stand, sleep): one source for the dashboard, rings and goals |
-| `GET /me/export` | Every row the user owns, plus record file names, as one JSON download |
-| `DELETE /me` | Revoke received shares → delete stored files → delete rows (cascade) → delete the Supabase identity. Needs a recent token |
+| `GET /me/export` | Every row the user owns, plus record file names, as one JSON download (each module's `UserData` hook) |
+| `DELETE /me` | Needs a sign-in within 10 min (else 403 `reauth_required`). Revoke and unbind received shares → module hooks (stored files) → delete rows (cascade) → delete the Supabase identity after commit |
 
 ### Health
 
@@ -98,7 +101,6 @@ formats them like every other view-model. That's a frontend change in the same p
 | `POST /me/health/manual` | One manual reading (mood, weight, waist, BP from a cuff without sync…) for metrics with `manual_allowed` |
 | `GET /me/health/dashboard` | Today's summary + readiness score |
 | `GET /me/health/series/{metric}` | `days` ≤ 400 (the local days ending today), `interval` hour/day/week/month (weeks start Monday). Aggregation comes from the catalogue. Totals fill empty buckets with 0; averages skip them |
-| `GET /me/health/summary/{metric}` | Latest, 7-day and 30-day averages, trend |
 | `GET /me/health/latest?metrics=` | Latest `Reading` for each metric, with assessment |
 | `GET /me/health/overview` | `HealthOverview` (rings, sections, readings, sources, insights) |
 | `GET /me/health/tabs/{tab}` | The seven tab payloads; activity uses series + workouts |
@@ -108,31 +110,31 @@ formats them like every other view-model. That's a frontend change in the same p
 
 | Method and path | Purpose |
 |---|---|
-| `POST, GET /me/workouts`; `GET, PATCH, DELETE /me/workouts/{id}` | Workouts with sets |
+| `POST, GET /me/workouts`; `GET, DELETE /me/workouts/{id}` | Workouts with sets (a synced workout re-sent with its platform id is updated) |
 | `GET /me/training?week=` | `Training`: week aggregate, sessions, muscle sets, records, next planned session, lifetime total |
-| `GET /me/training/records` | Personal records with estimated one-rep max |
-| `POST, GET /me/training/plans`; `PATCH /me/training/plans/{id}` | Plans and planned sessions; activating one archives the previous |
+| `POST, GET /me/training/plans` | Plans and planned sessions; a new plan archives the previous |
 | `GET /exercises` | Exercise catalogue |
 
 ### Nutrition
 
 | Method and path | Purpose |
 |---|---|
-| `GET /foods/search?q=` | Trigram search over USDA subset + the caller's own foods |
+| `GET /foods/search?q=` | Name search over 30 seeded foods + the caller's own foods |
 | `POST /me/foods` | Custom food |
-| `POST /me/meals`; `PATCH, DELETE /me/meals/{id}` | Meals with items (macros copied) |
+| `POST /me/meals`; `DELETE /me/meals/{id}` | Meals with items (macros copied) |
 | `POST /me/hydration`; `DELETE /me/hydration/{id}` | Water |
 | `GET /me/nutrition/day?date=` | `NutritionDay` |
-| `GET, PUT /me/nutrition/targets` | Targets |
+| `GET, PATCH /me/nutrition/targets` | Targets |
 
 ### Goals and insights
 
 | Method and path | Purpose |
 |---|---|
-| `POST, GET /me/goals`; `GET, PATCH, DELETE /me/goals/{id}` | Goals; PATCH changes lifecycle (pause, resume, complete) |
+| `POST, GET /me/goals`; `GET, PATCH, DELETE /me/goals/{id}` | Goals; PATCH edits or changes lifecycle (active, paused, achieved, abandoned) |
+| `GET /me/goals/metrics` | What a goal can track (kind, unit, default area) |
 | `GET /me/goals/overview` | `GoalsOverview` |
-| `GET /me/streaks` | Current and longest streaks |
-| `GET /me/insights?area=`; `POST /me/insights/{id}/dismiss` | Insights |
+| `GET /me/goals/today` | `Goal[]`: today's progress |
+| `GET /me/streaks` | Move-ring streak, longest this year, stand streak |
 
 ### Records
 
@@ -143,7 +145,7 @@ formats them like every other view-model. That's a frontend change in the same p
 | `POST /me/records/{id}/upload` | Signed upload URL (5 min); status → pending |
 | `POST /me/records/{id}/confirm` | Server stats the object (size, type); status → attached |
 | `GET /me/records/{id}/download` | Signed download URL (5 min), attached only |
-| `POST, GET /me/labs`; `GET, PATCH, DELETE /me/labs/{id}` | Lab panels with results (manual entry, [D6](10-open-decisions.md)) |
+| `POST, GET /me/labs`; `GET, PUT, DELETE /me/labs/{id}` | Lab panels with results (manual entry, [D6](10-open-decisions.md)); blood-group results refused |
 | `GET /me/labs/latest-result` | Latest result for the dashboard card |
 
 ### Care
@@ -152,11 +154,11 @@ formats them like every other view-model. That's a frontend change in the same p
 |---|---|
 | `GET /me/medications` | `MedicationsOverview` |
 | `GET /me/medications/today` | Today's doses (dashboard) |
-| `POST /me/medications`; `PATCH, DELETE /me/medications/{id}` | Medication with schedule times |
-| `PUT /me/medications/{id}/doses/{scheduled_for}` | `{status: taken \| skipped}`; idempotent |
-| `POST, GET /me/appointments`; `PATCH, DELETE /me/appointments/{id}` | User-tracked appointments |
+| `POST /me/medications`; `GET, PATCH, DELETE /me/medications/{id}` | Medication with schedule times; PATCH `status: stopped` stops it |
+| `PUT, DELETE /me/medications/{id}/doses/{scheduled_for}` | `{status: taken \| skipped}`; idempotent; only scheduled doses, 7 days back to 12 h ahead |
+| `GET /me/appointments?from&to&upcoming&limit`; `POST`; `PATCH, DELETE /me/appointments/{id}` | User-tracked appointments |
 | `POST, GET /me/conditions`; `DELETE /me/conditions/{id}` | Conditions and allergies |
-| `GET, PUT /me/emergency-profile` | Emergency medical ID (assembled from profile, conditions, active meds) |
+| `GET, PATCH /me/emergency-profile` | Emergency medical ID (assembled from profile, conditions, active meds) |
 | `POST, GET /me/emergency-contacts`; `PATCH, DELETE /me/emergency-contacts/{id}` | Contacts, one primary |
 
 ### Sharing
@@ -167,20 +169,21 @@ formats them like every other view-model. That's a frontend change in the same p
 | `GET /me/shared-with-me` | Grants others gave me: owner, scopes, expiry |
 | `GET /me/family` | Me + everyone who shares with me. Each summary is read through the consent gate, so fields outside the granted scopes are null |
 | `GET /me/access-log` | Every decision about my data |
-| `GET /me/privacy` | Privacy centre switches and counts |
+| `GET, PATCH /me/privacy` | Privacy centre: the lock-screen medical ID switch and device counts |
 
 ### Shared views (consent-checked)
 
 | Method and path | Scope |
 |---|---|
-| `GET /users/{id}/health/dashboard` | vitals + activity + sleep. Returns only the granted parts; audited as `limited` if partial |
+| `GET /users/{id}/health/dashboard` | vitals (the readiness score is left out: it also uses sleep) |
+| `GET /users/{id}/health/latest`, `/health/series/blood_pressure` | the metrics' scopes / vitals |
 | `GET /users/{id}/health/series/{metric}` | the metric's scope |
 | `GET /users/{id}/health/tabs/{tab}` | the tab's scope (sleep → sleep, mental/digital → activity, others → vitals) |
 | `GET /users/{id}/workouts`, `/training` | activity |
 | `GET /users/{id}/nutrition/day` | nutrition |
 | `GET /users/{id}/records`, `/labs`, `/medications`, `/appointments`, `/conditions` | records |
+| `GET /users/{id}/summary` | the family card (vitals and/or records; fields outside the share are null) |
 | `GET /users/{id}/records/{rid}/download` | records |
-| `GET /users/{id}/summary` | the family card: resting HR (vitals), conditions + medication count + next appointment (records) |
 
 Viewers never write. There are no `POST`, `PATCH` or `DELETE` routes under `/users/{id}`.
 
@@ -189,10 +192,10 @@ Viewers never write. There are no `POST`, `PATCH` or `DELETE` routes under `/use
 | Method and path | Purpose |
 |---|---|
 | `GET /me/notifications?unread=` | Feed, newest first |
-| `POST /me/notifications/read` | `{ids}` or `{all: true}` |
+| `POST /me/notifications/read` | `{ids}` or `{all: true}` → `{updated}` |
 | `GET /library` | `Library` (categories, featured web + mobile, trending) |
 | `GET /library/articles/{slug}` | One article (Markdown body) |
-| `GET /library/categories/{code}` | Articles in a category |
+| `GET /library/categories`, `/library/categories/{code}` | Categories; articles in a category |
 
 ### Operations
 
@@ -202,7 +205,7 @@ Viewers never write. There are no `POST`, `PATCH` or `DELETE` routes under `/use
 | `GET /ready` | DB reachable (the uptime ping hits this) |
 | `POST /internal/jobs/nightly` | Scheduler only; `X-Job-Secret` compared in constant time; runs synchronously; returns a summary |
 
-That's about 95 operations. Most are small CRUD routes. The hard parts are ingest, the consent
+That's about 95 operations, and all are built. Most are small CRUD routes. The hard parts are ingest, the consent
 gate, the health tab aggregations and the nightly job.
 
 ## 5.5 Example payloads
