@@ -3,13 +3,13 @@
 One Supabase Postgres database with **35 tables** in a private schema, `vitallink`. The design doc
 had 18. The new ones serve the screens built since then.
 
-**Build status (23 Oct 2026):** 33 tables exist, created by Flyway migrations V1–V10
+**Build status (27 Oct 2026):** 34 tables exist, created by Flyway migrations V1–V11
 (`backend/src/main/resources/db/migration`). V1–V6 are the same SQL as the Python build's Alembic
 migrations 0001–0006. Two planned tables are not built: `goal_progress` (progress is computed on read)
 and `insights` (insights are computed when a screen asks). Section 4.10 lists where the build differs
 from the original plan.
 
-## 4.0 As built (migrations V1–V10)
+## 4.0 As built (migrations V1–V11)
 
 ```mermaid
 erDiagram
@@ -51,6 +51,7 @@ erDiagram
 | V8 goals | `goals` |
 | V9 records | `health_records`, `lab_panels`, `lab_results` |
 | V10 notifications_library | `notifications`, `article_categories`, `articles`, `library_features` |
+| V11 review_hardening | `file_deletions`; `health_records.replacement_key`/`replacement_name`; same-owner key from `lab_panels` to `health_records`; length/shape checks the API already applied (see docs/13) |
 
 Flyway's own history table, `flyway_schema_history`, lives in the same private schema. Migrations are
 forward-only: a mistake is fixed by a new migration. Every table has row-level security on with no
@@ -537,8 +538,8 @@ erDiagram
 
 | Table | Invariants and constraints | Indexes | On delete |
 |---|---|---|---|
-| `health_records` | File columns all null when `file_status = 'none'`; `file_key` and `upload_requested_at` set when `pending`; all set when `attached`. `file_size` ≤ 25 MB; `file_type` in an allow-list (PDF, JPEG, PNG, HEIC). Stores a storage key, never a URL. | `(user_id, record_date DESC)`, `(user_id, type)`, `(file_status, upload_requested_at) WHERE file_status = 'pending'` | CASCADE; the service deletes the stored object, and the nightly job retries orphans |
-| `lab_panels` | `reported_at >= collected_at`; `record_id` unique (one panel per document) | `(user_id, collected_at DESC)`, UK | CASCADE; record SET NULL |
+| `health_records` | File columns all null when `file_status = 'none'`; `file_key` and `upload_requested_at` set when `pending`; all set when `attached`. A replacement upload waits in `replacement_key`/`replacement_name` (attached rows only) and swaps in on confirm, so the old file stays until then. `file_size` ≤ 25 MB; `file_type` in an allow-list (PDF, JPEG, PNG, HEIC). Stores a storage key, never a URL. | `(user_id, record_date DESC)`, `(user_id, type)`, `(file_status, upload_requested_at) WHERE file_status = 'pending'` | CASCADE; the service queues the stored object in `file_deletions` in the same transaction, deletes it after commit, and the nightly job deletes whatever is still queued |
+| `lab_panels` | `reported_at >= collected_at`; `record_id` unique (one panel per document); `(record_id, user_id)` references `health_records (id, user_id)`, so a panel can only point at its owner's record | `(user_id, collected_at DESC)`, UK | CASCADE; record SET NULL (`record_id` only) |
 | `lab_results` | UK `(panel_id, analyte)`; `ref_low < ref_high` when both set; `decimals` 0–4. `interpretation()` uses the lab's reported value when present, otherwise computes from the range (just outside = borderline). The "previous" value is the same analyte in the user's latest earlier panel. **Blood-group analytes (ABO, Rh) are rejected** by the service. | `(panel_id)` | CASCADE |
 | `medications` | `refills_left >= 0`; `status = 'stopped' ⇔ stopped_on IS NOT NULL`; `stopped_on >= started_on` | `(user_id, status)` | CASCADE |
 | `medication_schedules` | UK `(medication_id, local_time)`; `days_mask` 1–127 | UK | CASCADE |

@@ -41,11 +41,12 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.jdbc.core.simple.JdbcClient;
@@ -97,6 +98,8 @@ public class RecordService implements UserData {
             String fileName,
             Integer fileSize,
             String fileType,
+            String replacementKey,
+            String replacementName,
             UUID panelId) {}
 
     private static RecordRow recordRow(ResultSet rs, int i) throws SQLException {
@@ -114,6 +117,8 @@ public class RecordService implements UserData {
                 rs.getString("file_name"),
                 fileSize,
                 rs.getString("file_type"),
+                rs.getString("replacement_key"),
+                rs.getString("replacement_name"),
                 rs.getObject("panel_id", UUID.class));
     }
 
@@ -257,20 +262,30 @@ public class RecordService implements UserData {
                 .param("id", id)
                 .param("u", me.id())
                 .update();
-        if (r.fileKey() != null) {
-            deleteAfterCommit(List.of(r.fileKey()));
-        }
+        deleteAfterCommit(Stream.of(r.fileKey(), r.replacementKey())
+                .filter(Objects::nonNull)
+                .toList());
     }
 
+    /**
+     * Queues the objects in {@code file_deletions} in this transaction, then deletes them once it commits.
+     * The queue is the safety net: if Storage is down then, the nightly job deletes them later
+     * ({@link #drainFileDeletions}), so a deleted record or account never leaves its files behind.
+     */
     private void deleteAfterCommit(List<String> keys) {
         if (keys.isEmpty()) {
             return;
+        }
+        for (String k : keys) {
+            jdbc.sql("INSERT INTO vitallink.file_deletions (key) VALUES (:k) ON CONFLICT DO NOTHING")
+                    .param("k", k)
+                    .update();
         }
         Runnable work = () -> keys.forEach(k -> {
             try {
                 storage.delete(k);
             } catch (RuntimeException e) {
-                log.error("couldn't delete stored file {}; the nightly job retries orphans", k, e);
+                log.error("couldn't delete stored file {}; the nightly job retries it", k, e);
             }
         });
         if (TransactionSynchronizationManager.isSynchronizationActive()) {
@@ -296,17 +311,35 @@ public class RecordService implements UserData {
             throw new ApiError(413, "file_too_large", "Files can be up to 25 MB.");
         }
         String key = me.id() + "/" + id + "/" + Ids.uuid7();
-        jdbc.sql("""
-                        UPDATE vitallink.health_records SET file_status = 'pending', file_key = :key, file_name = :name,
-                          file_size = NULL, file_type = NULL, upload_requested_at = now(), updated_at = now()
-                        WHERE id = :id
-                        """)
-                .param("key", key)
-                .param("name", body.fileName())
-                .param("id", id)
-                .update();
-        if (r.fileKey() != null) {
-            deleteAfterCommit(List.of(r.fileKey())); // a replaced file goes
+        if (r.fileStatus().equals("attached")) {
+            // A replacement waits beside the attached file, which stays until the new one is confirmed: an
+            // abandoned or rejected replacement loses nothing.
+            jdbc.sql("""
+                            UPDATE vitallink.health_records SET replacement_key = :key, replacement_name = :name,
+                              upload_requested_at = now(), updated_at = now()
+                            WHERE id = :id
+                            """)
+                    .param("key", key)
+                    .param("name", body.fileName())
+                    .param("id", id)
+                    .update();
+            if (r.replacementKey() != null) {
+                deleteAfterCommit(List.of(r.replacementKey())); // an earlier replacement that never arrived
+            }
+        } else {
+            jdbc.sql("""
+                            UPDATE vitallink.health_records SET file_status = 'pending', file_key = :key,
+                              file_name = :name, file_size = NULL, file_type = NULL, upload_requested_at = now(),
+                              updated_at = now()
+                            WHERE id = :id
+                            """)
+                    .param("key", key)
+                    .param("name", body.fileName())
+                    .param("id", id)
+                    .update();
+            if (r.fileKey() != null) {
+                deleteAfterCommit(List.of(r.fileKey())); // an earlier pending upload
+            }
         }
         FileStorage.SignedUpload signed = storage.signUpload(key, body.contentType());
         return new UploadOut(signed.url(), signed.method(), signed.headers(), signed.expiresAt());
@@ -315,25 +348,40 @@ public class RecordService implements UserData {
     /** Checks what was stored; only an allowed type of at most 25 MB becomes attached. */
     public HealthRecord confirmUpload(CurrentUser me, UUID id) {
         RecordRow r = record(me.id(), id);
-        if (!r.fileStatus().equals("pending")) {
+        boolean replacing = r.replacementKey() != null;
+        if (!replacing && !r.fileStatus().equals("pending")) {
             throw new ApiError(409, "no_pending_upload", "There's no upload waiting for this record.");
         }
-        var stored = storage.stat(r.fileKey())
+        String key = replacing ? r.replacementKey() : r.fileKey();
+        var stored = storage.stat(key)
                 .orElseThrow(() ->
                         new ApiError(409, "file_missing", "The file hasn't arrived yet. Upload it, then confirm."));
         if (stored.size() < 1 || stored.size() > MAX_BYTES || !ALLOWED_TYPES.contains(stored.contentType())) {
-            // The bad object goes now; the record stays pending until a new upload (or the nightly cleanup).
-            storage.delete(r.fileKey());
+            // The bad object goes now; the upload stays waiting until a new one (or the nightly cleanup).
+            storage.delete(key);
             throw new ApiError(422, "file_rejected", "The stored file isn't a PDF or image of at most 25 MB.");
         }
-        jdbc.sql("""
+        // Conditional on the key, so a confirm racing the nightly cleanup can't attach a reset record.
+        int n = jdbc.sql(replacing ? """
+                        UPDATE vitallink.health_records SET file_key = replacement_key, file_name = replacement_name,
+                          file_size = :size, file_type = :type, replacement_key = NULL, replacement_name = NULL,
+                          upload_requested_at = NULL, updated_at = now()
+                        WHERE id = :id AND replacement_key = :key
+                        """ : """
                         UPDATE vitallink.health_records SET file_status = 'attached', file_size = :size, file_type = :type,
-                          updated_at = now() WHERE id = :id
+                          updated_at = now() WHERE id = :id AND file_status = 'pending' AND file_key = :key
                         """)
                 .param("size", (int) stored.size())
                 .param("type", stored.contentType())
                 .param("id", id)
+                .param("key", key)
                 .update();
+        if (n == 0) {
+            throw new ApiError(409, "no_pending_upload", "There's no upload waiting for this record.");
+        }
+        if (replacing) {
+            deleteAfterCommit(List.of(r.fileKey())); // the replaced file goes once the new one is attached
+        }
         return get(me.id(), me.user().timezone(), id);
     }
 
@@ -708,27 +756,66 @@ public class RecordService implements UserData {
 
     @Override
     public void beforeDelete(UUID userId) {
-        List<String> keys = jdbc.sql(
-                        "SELECT file_key FROM vitallink.health_records WHERE user_id = :u AND file_key IS NOT NULL")
-                .param("u", userId)
-                .query(String.class)
-                .list();
+        List<String> keys = jdbc.sql("""
+                        SELECT f.k FROM vitallink.health_records r,
+                          LATERAL (VALUES (r.file_key), (r.replacement_key)) AS f(k)
+                        WHERE r.user_id = :u AND f.k IS NOT NULL
+                        """).param("u", userId).query(String.class).list();
         deleteAfterCommit(keys);
     }
 
-    /** Uploads started over a day ago and never confirmed: delete the object (if any) and reset. */
+    /**
+     * Uploads started over a day ago and never confirmed: delete the object (if any) and reset; a waiting
+     * replacement is dropped and the attached file kept. Each is one statement that locks and re-checks the
+     * rows, so a confirm committing meanwhile is never undone.
+     */
     public int cleanAbandonedUploads() {
-        List<Map<String, Object>> rows = jdbc.sql("""
-                        SELECT id, file_key FROM vitallink.health_records
-                        WHERE file_status = 'pending' AND upload_requested_at < now() - interval '1 day'
-                        """).query().listOfRows();
-        for (Map<String, Object> r : rows) {
-            jdbc.sql("""
-                            UPDATE vitallink.health_records SET file_status = 'none', file_key = NULL, file_name = NULL,
-                              file_size = NULL, file_type = NULL, upload_requested_at = NULL WHERE id = :id
-                            """).param("id", r.get("id")).update();
+        List<String> keys = new ArrayList<>(jdbc.sql("""
+                        UPDATE vitallink.health_records r SET file_status = 'none', file_key = NULL, file_name = NULL,
+                          file_size = NULL, file_type = NULL, upload_requested_at = NULL
+                        FROM (SELECT id, file_key FROM vitallink.health_records
+                              WHERE file_status = 'pending' AND upload_requested_at < now() - interval '1 day'
+                              FOR UPDATE) old
+                        WHERE r.id = old.id AND r.file_status = 'pending' AND r.file_key = old.file_key
+                        RETURNING old.file_key
+                        """).query(String.class).list());
+        keys.addAll(jdbc.sql("""
+                        UPDATE vitallink.health_records r SET replacement_key = NULL, replacement_name = NULL,
+                          upload_requested_at = NULL
+                        FROM (SELECT id, replacement_key FROM vitallink.health_records
+                              WHERE replacement_key IS NOT NULL AND upload_requested_at < now() - interval '1 day'
+                              FOR UPDATE) old
+                        WHERE r.id = old.id AND r.replacement_key = old.replacement_key
+                        RETURNING old.replacement_key
+                        """).query(String.class).list());
+        deleteAfterCommit(keys);
+        return keys.size();
+    }
+
+    /**
+     * Deletes the queued objects (nightly). Deleting a missing object is fine, so a key whose immediate
+     * delete worked is just deleted again. Tries every key, then fails if any couldn't be deleted; those
+     * stay queued for the next run.
+     */
+    public int drainFileDeletions() {
+        List<String> keys = jdbc.sql("SELECT key FROM vitallink.file_deletions ORDER BY requested_at, key LIMIT 5000")
+                .query(String.class)
+                .list();
+        int failed = 0;
+        for (String k : keys) {
+            try {
+                storage.delete(k);
+                jdbc.sql("DELETE FROM vitallink.file_deletions WHERE key = :k")
+                        .param("k", k)
+                        .update();
+            } catch (RuntimeException e) {
+                failed++;
+                log.error("couldn't delete stored file {}", k, e);
+            }
         }
-        deleteAfterCommit(rows.stream().map(r -> (String) r.get("file_key")).collect(Collectors.toList()));
-        return rows.size();
+        if (failed > 0) {
+            throw new IllegalStateException(failed + " stored files couldn't be deleted; they stay queued");
+        }
+        return keys.size();
     }
 }

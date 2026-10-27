@@ -5,8 +5,8 @@ monolith) serves the web portal and the mobile app: accounts with export and del
 (sync ingest, series, dashboard, devices, My Health overview and seven tabs), sharing with the consent
 engine and the append-only audit log, training, nutrition, care (medications and doses, appointments,
 conditions, the emergency medical ID), goals and streaks, records with stored files and lab panels,
-notifications, the health library, the family view, and the nightly job. 214 tests run against a real
-Postgres (82.8% of lines covered). Every frontend call is live except Messages (decision D1).
+notifications, the health library, the family view, and the nightly job. 239 tests run against a real
+Postgres (80.4% of lines covered). Every frontend call is live except Messages (decision D1).
 
 The backend was built in Python (FastAPI) through phase 5b and ported to Java on 23 Oct 2026 with the
 same schema, paths and JSON; see [docs/11-java-stack.md](docs/11-java-stack.md). The Render and
@@ -133,7 +133,7 @@ provider or admin interface anywhere.
 | 1 | [Introduction](docs/01-introduction.md) | Purpose, users, scope, hard constraints, requirements |
 | 2 | [Architecture](docs/02-architecture.md) | System diagram, layers, the modules and what each owns |
 | 3 | [Class diagram](docs/03-class-diagram.md) | Domain model and the as-built Java classes |
-| 4 | [Database](docs/04-database.md) | ER diagrams, every table with its constraints, indexes, migrations V1–V10 |
+| 4 | [Database](docs/04-database.md) | ER diagrams, every table with its constraints, indexes, migrations V1–V11 |
 | 5 | [API](docs/05-api.md) | Conventions and the endpoint catalogue, mapped to `packages/api` client calls |
 | 6 | [Security & consent](docs/06-security-and-consent.md) | Consent rules, Supabase lockdown, threats, privacy commitments |
 | 7 | [Key flows](docs/07-flows.md) | Sequence diagrams: sign-in, sync, sharing, upload, doses, nightly job |
@@ -142,6 +142,7 @@ provider or admin interface anywhere.
 | 10 | [Open decisions](docs/10-open-decisions.md) | Choices the owner must make |
 | 11 | [Java stack](docs/11-java-stack.md) | Every package, library, plugin and tool, with versions and why |
 | 12 | [Test report](docs/12-test-report.md) | What each test suite covers, results and coverage |
+| 13 | [Phase 10 review](docs/13-review.md) | Security, schema and incident review: findings and fixes |
 
 Diagrams are Mermaid, so GitHub and VS Code render them inline.
 
@@ -174,7 +175,7 @@ backend/
     notifications/ library/ jobs/ ops/ tools/    one package per module, each with a README
   src/main/resources/
     application.yml             configuration (env vars)
-    db/migration/V1…V10__*.sql  Flyway migrations
+    db/migration/V1…V11__*.sql  Flyway migrations
     library/                    health library articles (Markdown)
   src/test/java/…               the test suites
   Dockerfile, docker-compose.yml, .env.example

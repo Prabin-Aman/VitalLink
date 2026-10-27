@@ -10,7 +10,9 @@ import com.vitallink.api.account.AccountDtos.Units;
 import com.vitallink.api.account.CurrentUser.User;
 import com.vitallink.api.core.ApiError;
 import com.vitallink.api.core.Ids;
+import com.vitallink.api.core.Settings;
 import com.vitallink.api.core.security.Claims;
+import com.vitallink.api.core.security.IdentityAdmin;
 import com.vitallink.api.core.web.Patch;
 import java.math.BigDecimal;
 import java.sql.ResultSet;
@@ -58,9 +60,23 @@ public class AccountService {
     private static final String USER_COLUMNS = "id, auth_subject, email, email_confirmed_at, timezone, created_at";
 
     private final JdbcClient jdbc;
+    private final Settings settings;
+    private final IdentityAdmin identities;
 
-    public AccountService(JdbcClient jdbc) {
+    public AccountService(JdbcClient jdbc, Settings settings, IdentityAdmin identities) {
         this.jdbc = jdbc;
+        this.settings = settings;
+        this.identities = identities;
+    }
+
+    /**
+     * Is the token's email confirmed? Consent rule 2 depends on it. The token's flag lives in user_metadata,
+     * which a user can set themselves ({@code auth.updateUser}), so production ignores it and asks Supabase's
+     * admin API, whose {@code email_confirmed_at} decides. Asked only while the account isn't confirmed (once,
+     * normally). Dev tokens are signed by us, so their flag counts.
+     */
+    boolean emailConfirmed(Claims claims) {
+        return settings.isDev() ? claims.emailVerified() : identities.emailConfirmed(claims.subject(), claims.email());
     }
 
     static User user(ResultSet rs, int i) throws SQLException {
@@ -94,7 +110,7 @@ public class AccountService {
                         .param("id", Ids.uuid7())
                         .param("subject", claims.subject())
                         .param("email", claims.email())
-                        .param("confirmed", claims.emailVerified() ? com.vitallink.api.core.Clock.now() : null)
+                        .param("confirmed", emailConfirmed(claims) ? com.vitallink.api.core.Clock.now() : null)
                         .query(UUID.class)
                         .optional()
                         .orElse(null);
@@ -115,10 +131,15 @@ public class AccountService {
             user = bySubject(claims.subject()).orElseThrow();
         }
         // Keep email and confirmation in step with Supabase (an email change is confirmed there).
-        if (!user.email().equals(claims.email()) || (claims.emailVerified() && user.emailConfirmedAt() == null)) {
-            OffsetDateTime confirmed = claims.emailVerified()
-                    ? (user.emailConfirmedAt() != null ? user.emailConfirmedAt() : com.vitallink.api.core.Clock.now())
-                    : null;
+        boolean changed = !user.email().equals(claims.email());
+        if (changed || (user.emailConfirmedAt() == null && emailConfirmed(claims))) {
+            OffsetDateTime confirmed = !changed
+                    ? com.vitallink.api.core.Clock.now() // was unconfirmed and Supabase now says confirmed
+                    : emailConfirmed(claims)
+                            ? (user.emailConfirmedAt() != null
+                                    ? user.emailConfirmedAt()
+                                    : com.vitallink.api.core.Clock.now())
+                            : null;
             try {
                 jdbc.sql("UPDATE vitallink.users SET email = :email, email_confirmed_at = :confirmed WHERE id = :id")
                         .param("email", claims.email())

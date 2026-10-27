@@ -24,5 +24,5 @@ jobs:
           JOB_SECRET: ${{ secrets.JOB_SECRET }}
         run: |
           curl --fail --silent --retry 6 --retry-delay 20 --retry-all-errors --max-time 60 "$API_URL/ready"
-          curl --fail --show-error --silent --max-time 600 -X POST \
+          curl --fail-with-body --show-error --silent --max-time 600 -X POST \
             -H "X-Job-Secret: $JOB_SECRET" "$API_URL/internal/jobs/nightly"

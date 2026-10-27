@@ -124,6 +124,32 @@ class NightlyJobTest extends ApiTest {
         assertThat(summary.get("users_failed").asInt()).isZero();
     }
 
+    /** Review finding R4: a run with failures answers 500, so the scheduled workflow goes red. */
+    @Test
+    void aRunWithFailuresIsAnErrorNotASuccess() throws Exception {
+        UUID broken = UUID.fromString(get(user(), "/v1/me").at("/id").asString());
+        try (var c = sql()) {
+            // Not an IANA zone: this user's step throws (the API never stores one; this stands in for any bug).
+            c.createStatement()
+                    .executeUpdate("UPDATE vitallink.users SET timezone = 'Mars/Olympus' WHERE id = '" + broken + "'");
+        }
+        try {
+            var res = mvc.perform(MockMvcRequestBuilders.post("/internal/jobs/nightly")
+                            .header("X-Job-Secret", "test-job-secret"))
+                    .andReturn()
+                    .getResponse();
+            assertThat(res.getStatus()).isEqualTo(500);
+            var summary = json.readTree(res.getContentAsString());
+            assertThat(summary.get("users_failed").asInt()).isEqualTo(1);
+            assertThat(summary.get("steps_failed").isEmpty()).isTrue(); // the cleanups still ran
+            assertThat(summary.has("abandoned_uploads")).isTrue();
+        } finally {
+            try (var c = sql()) {
+                c.createStatement().executeUpdate("DELETE FROM vitallink.users WHERE id = '" + broken + "'");
+            }
+        }
+    }
+
     /** A 5-minute bucket start just in the past, ISO with offset. */
     static final class HealthTestBucket {
         static String now() {

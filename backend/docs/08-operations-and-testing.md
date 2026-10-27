@@ -47,7 +47,7 @@ commit it). `frontend.yml` runs `npm run typecheck`, which includes `contract.ts
 | Workflow | Schedule | Does |
 |---|---|---|
 | `frontend.yml` (built) | push / PR touching `apps/`, `packages/` | `npm ci`, typecheck (web and mobile, each with its own TypeScript, plus the API contract), web build |
-| `nightly.yml` (built) | 09:00 UTC (≈ 03:00–04:00 Central) | Wake `/ready` (retries for the cold start), then `POST /internal/jobs/nightly`; the summary reports per-user failures |
+| `nightly.yml` (built) | 09:00 UTC (≈ 03:00–04:00 Central) | Wake `/ready` (retries for the cold start), then `POST /internal/jobs/nightly`; any failed user or step makes it answer 500, so the run fails (8.8) |
 | `backup.yml` (built) | weekly | `pg_dump` → `gpg` AES-256 (`BACKUP_PASSPHRASE`) → workflow artifact kept 90 days. **Repo must be private** |
 | `deploy-check.yml` (built) | on merge + daily | The lockdown checks in 6.2 against the live project |
 
@@ -102,6 +102,29 @@ the append-only trigger, check constraints) live in the database.
 **Seed data.** `tools.DemoSeed` creates a demo account with 90 days of realistic data in every module. The Figma
 sample values are the anchor, so a live demo looks like the designs. The data has a planted
 screen-time → lower deep-sleep pattern, so the insight engine finds something real.
+
+## 8.8 Failure modes: ingest, nightly job, record files
+
+From the phase 10 review (docs/13). "Detect" means what someone sees without opening the code.
+
+| Failure | Detect | Recover |
+|---|---|---|
+| **Ingest.** Render is cold (~15 s) and the phone times out, then retries | Duplicate `idempotency_key` replays in logs (`replayed: true`) | Nothing to do. Same key + same payload replays the stored counts. The advisory lock stops a retry that races the original from applying twice |
+| A retry carries the same key but a changed payload (an app bug) | 409 `idempotency_conflict` | The app must send a new key for new data. Nothing was written |
+| One bad bucket (unknown metric, off the 5-minute grid, out of range, in the future) | 422 `invalid_buckets` with up to 20 indices. A user stuck re-sending the same batch shows up as repeated 422s from one user | The whole batch is refused, so nothing is half-saved. The app must drop or fix the listed buckets and send the rest under a **new** key, or sync stalls for good |
+| Phone over its quota (60 batches/hour) | 429 `rate_limited` + `Retry-After` | The app waits `Retry-After`. Nothing is lost: buckets are re-sent and upserted |
+| Database full (500 MB) or down | `/ready` 503; ingest 500s; Supabase usage page | The phone keeps its queue. Free space (raise the retention of `ingest_batches`, export and delete old readings) or wait for Supabase. Re-sync is idempotent |
+| **Nightly job.** The workflow can't wake Render or the call times out (600 s) | The `nightly` workflow run fails (GitHub emails the owner) | Re-run the workflow (`workflow_dispatch`). Every step is a condition and every notification has a dedupe key, so a second run adds nothing twice |
+| One user's step throws (bad data, a bug) | **HTTP 500** with `users_failed` > 0 in the summary, so the workflow goes red; the log line names the user id | The other users and all cleanups still ran. Fix the data or the bug, then re-run |
+| A cleanup step throws (e.g. Storage down while draining file deletions) | HTTP 500 with the step in `steps_failed` | The other steps still ran. Queued file deletions stay queued and are retried next night |
+| Two runs at once (manual + cron) | 409 `job_running` | None needed: one instance, one lock |
+| `JOB_SECRET` missing, or shorter than 32 characters in production | 503 `jobs_not_configured` | Set a long secret (`openssl rand -hex 32`) on Render and in the repo secrets |
+| **Record files.** The client never uploads after `/upload` | Record stays `pending` | The nightly job resets it to `none` after a day and deletes any half-written object |
+| The stored file isn't a PDF/image ≤ 25 MB | 422 `file_rejected` on `/confirm` | The object is deleted at once. The record keeps waiting for a new upload |
+| A **replacement** upload is abandoned or rejected | The record stays `attached` with the old file | The old file is kept until the new one is confirmed. The nightly job drops a replacement older than a day |
+| `/confirm` runs while the nightly cleanup resets the same record | One of them wins cleanly. The cleanup locks and re-checks the row, and confirm only updates the key it checked (409 `no_pending_upload` if it lost) | Upload again |
+| Storage is down at upload, confirm or download | 503 `storage_unavailable` (logged with the request id) | Nothing was changed (the request's transaction rolls back). Try again |
+| Storage is down when a record or account is deleted | `couldn't delete stored file` in the log | The key was queued in `file_deletions` in the same transaction. The nightly job deletes it later, and the step fails (red workflow) until Storage answers |
 
 **Gate.** Nothing merges unless formatting, compilation, tests and guardrails pass. Every consent
 rule has at least one test. Results and coverage: [12-test-report.md](12-test-report.md).

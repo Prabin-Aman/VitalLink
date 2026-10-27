@@ -32,8 +32,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 /**
  * The nightly job (docs/08 §8.4), run by GitHub Actions cron. It's synchronous and safe to re-run: every
- * notification has a dedupe key, every cleanup is a condition rather than a counter. Each user runs in
- * their own transaction, so one user's failure is logged and the rest carry on.
+ * notification has a dedupe key, every cleanup is a condition rather than a counter. Each user and each
+ * cleanup step runs in its own transaction, so one failure is logged and the rest carry on; the summary
+ * counts the failures and the endpoint answers 500 when there are any.
  */
 @Service
 public class NightlyJob {
@@ -90,20 +91,35 @@ public class NightlyJob {
         summary.put("users", users.size());
         summary.put("users_failed", failed);
         summary.put("notifications_created", notified);
-        summary.put("notifications_deleted", tx.execute(s -> notifications.deleteOld()));
-        summary.put(
+        // Each cleanup in its own transaction and try: one failing step doesn't skip the rest.
+        List<String> stepsFailed = new java.util.ArrayList<>();
+        step(summary, stepsFailed, "notifications_deleted", notifications::deleteOld);
+        step(
+                summary,
+                stepsFailed,
                 "ingest_batches_deleted",
-                tx.execute(s -> jdbc.sql(
-                                "DELETE FROM vitallink.ingest_batches WHERE received_at < now() - interval '30 days'")
-                        .update()));
-        summary.put("expired_shares_closed", tx.execute(s -> jdbc.sql("""
+                () -> jdbc.sql("DELETE FROM vitallink.ingest_batches WHERE received_at < now() - interval '30 days'")
+                        .update());
+        step(summary, stepsFailed, "expired_shares_closed", () -> jdbc.sql("""
                         UPDATE vitallink.consents SET revoked_at = now(), revoke_reason = 'expired_cleanup'
                         WHERE revoked_at IS NULL AND expires_at < now() - interval '30 days'
-                        """).update()));
-        summary.put("abandoned_uploads", tx.execute(s -> records.cleanAbandonedUploads()));
+                        """).update());
+        step(summary, stepsFailed, "abandoned_uploads", records::cleanAbandonedUploads);
+        step(summary, stepsFailed, "stored_files_deleted", records::drainFileDeletions);
+        summary.put("steps_failed", stepsFailed);
         summary.put("ms", System.currentTimeMillis() - started);
         log.info("nightly job: {}", summary);
         return summary;
+    }
+
+    private void step(
+            Map<String, Object> summary, List<String> failed, String name, java.util.function.IntSupplier work) {
+        try {
+            summary.put(name, tx.execute(s -> work.getAsInt()));
+        } catch (RuntimeException e) {
+            failed.add(name);
+            log.error("nightly job step {} failed", name, e);
+        }
     }
 
     /** One user's notifications and goal updates. Returns how many notifications were added. */

@@ -142,7 +142,8 @@ After this phase every `pending()` call except `conversations()` is live.
 
 ## Phase 10: Hardening and demo (M)
 
-- Run the backend-design reviews (schema, security, incident thinking) and fix what they find.
+- ~~Run the backend-design reviews (schema, security, incident thinking) and fix what they find.~~ Done
+  27 Oct 2026: 10 findings fixed (docs/13), failure modes in docs/08 §8.8.
 - Load test ingest (5,000 buckets < 2 s) and the dashboard (p95 < 300 ms warm).
 - ~~Restore drill from the encrypted backup~~ Passed locally (docs/08 §8.4); repeat on the real project.
 - ~~Generate types from OpenAPI~~ Done as a check rather than a replacement: `openapi.gen.ts` is generated,

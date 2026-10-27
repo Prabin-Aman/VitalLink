@@ -7,7 +7,8 @@ import java.util.UUID;
  * The verified caller, from the access token.
  *
  * @param subject Supabase's user id ({@code sub})
- * @param emailVerified Supabase sets this once the address is confirmed
+ * @param emailVerified {@code user_metadata.email_verified}: trusted for dev tokens only: users can write
+ *     their own user_metadata, so in production {@code AccountService} asks Supabase instead
  * @param aal "aal1" password/OAuth, "aal2" with a second factor
  */
 public record Claims(

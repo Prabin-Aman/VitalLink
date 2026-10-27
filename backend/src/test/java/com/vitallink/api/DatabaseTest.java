@@ -50,6 +50,23 @@ class DatabaseTest extends ApiTest {
                         """)).isEmpty();
     }
 
+    /**
+     * Deleting a parent row scans the child table without one (review: unindexed foreign keys). Exception:
+     * health_readings → metrics. The catalogue's rows are never deleted, and an index on the largest table
+     * would slow every ingest.
+     */
+    @Test
+    void everyForeignKeyHasAnIndexStartingWithIt() throws SQLException {
+        assertThat(strings("""
+                        SELECT c.conrelid::regclass || '.' || c.conname FROM pg_constraint c
+                        JOIN pg_namespace n ON n.oid = c.connamespace
+                        WHERE c.contype = 'f' AND n.nspname = 'vitallink'
+                          AND c.conname <> 'health_readings_metric_id_fkey'
+                          AND NOT EXISTS (SELECT 1 FROM pg_index i
+                                          WHERE i.indrelid = c.conrelid AND i.indkey[0] = c.conkey[1])
+                        """)).isEmpty();
+    }
+
     private long insertRead(String outcome, String reason) throws SQLException {
         try (var c = sql();
                 var st = c.prepareStatement(

@@ -36,6 +36,7 @@ public class TokenVerifier {
 
     public static final String DEV_ISSUER = "vitallink-dev";
     private static final Set<String> REQUIRED = Set.of("exp", "iat", "sub");
+    private static final int MAX_NAME = 60;
 
     private final Settings settings;
     private volatile DefaultJWTProcessor<SecurityContext> production;
@@ -76,6 +77,9 @@ public class TokenVerifier {
         if (!(email instanceof String e) || e.isBlank()) {
             throw new ApiError(403, "email_required", "VitalLink accounts need an email address.");
         }
+        if (e.strip().length() > 254) { // longer than any deliverable address (and users_email_shape)
+            throw new ApiError(403, "email_required", "VitalLink accounts need a valid email address.");
+        }
         UUID subject;
         try {
             subject = UUID.fromString(c.getSubject());
@@ -90,8 +94,22 @@ public class TokenVerifier {
                 Boolean.TRUE.equals(meta.get("email_verified")),
                 aal instanceof String s ? s : "aal1",
                 c.getIssueTime().toInstant().getEpochSecond(),
-                meta.get("first_name") instanceof String f ? f : null,
-                meta.get("last_name") instanceof String l ? l : null);
+                name(meta.get("first_name")),
+                name(meta.get("last_name")));
+    }
+
+    /**
+     * A sign-up name from user_metadata, which the user writes freely: stripped and cut to the 60
+     * characters the profile allows, so the first request can't store what PATCH /me/account would refuse.
+     */
+    static String name(Object value) {
+        if (!(value instanceof String s) || s.isBlank()) {
+            return null;
+        }
+        String t = s.strip();
+        return t.codePointCount(0, t.length()) <= MAX_NAME
+                ? t
+                : t.substring(0, t.offsetByCodePoints(0, MAX_NAME)).strip();
     }
 
     private DefaultJWTProcessor<SecurityContext> processor() {

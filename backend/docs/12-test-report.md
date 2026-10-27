@@ -1,15 +1,15 @@
 # 12. Test report
 
-Run on 24 Oct 2026 on Windows 11, Java 25, Postgres 16 (Docker in WSL). CI runs the same suites on
+Run on 27 Oct 2026 (after the phase 10 review, docs/13) on Windows 11, Java 25, Postgres 16 (Docker in WSL). CI runs the same suites on
 Ubuntu with a Postgres service container on every push that touches `backend/`.
 
 ## 12.1 Summary
 
 | Check | Command | Result |
 |---|---|---|
-| Unit, API, database and guardrail tests | `./mvnw verify` | **222 passed, 0 failed, 0 skipped** |
+| Unit, API, database and guardrail tests | `./mvnw verify` | **239 passed, 0 failed, 0 skipped** |
 | Coverage (JaCoCo) | `target/site/jacoco/index.html` | **80.4% of lines** (the hand-run `tools` package, now with LoadCheck, counts as uncovered; see 12.4) |
-| System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **44 of 44 steps passed** |
+| System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **44 of 44 steps passed** (24 Oct, before V11; not re-run after the review because the local dev database is shared with the `backend-java` checkout) |
 | Load test (packaged jar, demo account) | `LoadCheck http://localhost:8000` | **Pass**: 5,000-bucket ingest 1.1 s (target < 2 s); warm p95 dashboard 40 ms, overview 60 ms, training 25 ms, goals 25 ms (target < 300 ms) |
 | Container | `docker build` + run with a 512 MB limit | Ready in 6 s; 231 MiB in use; heaviest endpoint 0.43 s cold |
 | Formatting | `./mvnw spotless:check` | Clean |
@@ -26,7 +26,7 @@ through MockMvc, against a real Postgres. Each test makes its own accounts, so t
 |---|---|---|
 | `ConsentRulesTest` | 15 | Every rule of `decide()` without a database: owner, unconfirmed email, no grant, grant to someone else, binding follows the account not the email, scope not granted, revoked, not yet valid, expiry exclusive, live grant wins, vitals never opens records |
 | `SecurityTest` | 12 | Missing, expired, wrong-audience, wrong-issuer, wrong-signature, no-expiry and garbage tokens → 401; no email → 403; dev tokens can't be minted in production; production never accepts HS256; request ids in headers and error bodies; bodies over 2 MB → 413 |
-| `DatabaseTest` | 9 | `/ready`; nothing in `public`; every table has row-level security; the audit log accepts inserts but refuses UPDATE, DELETE and TRUNCATE; refusal reasons only on blocked entries |
+| `DatabaseTest` | 10 | `/ready`; nothing in `public`; every table has row-level security; **every foreign key has an index starting with it** (guardrail); the audit log accepts inserts but refuses UPDATE, DELETE and TRUNCATE; refusal reasons only on blocked entries |
 | `AccountTest` | 19 | First call creates the account (UUIDv7); emails stored lowercase; 6 parallel first requests create one account; same email with a new identity → 409; defaults; PATCH (null clears, mass assignment and bad values refused); targets; isolation; deleting a user cascades |
 | `DataRightsTest` | 4 | Export holds the user's data and nobody else's; **every table with user data is exported** (guardrail); delete needs a sign-in in the last 10 minutes; delete removes everything and revokes shares received, and a later sign-up with that email inherits nothing |
 | `HealthTest` | 30 | Catalogue in the database matches the code and has no blood features; ingest inserts → updates → unchanged; idempotent replay; same key + new payload → 409; keys per user; invalid buckets reject the whole batch; duplicates; 5,001 buckets → 413; day and week series in local time; averages skip gaps; blood pressure pairs and categories; manual readings; dashboard and readiness; devices; isolation |
@@ -39,10 +39,15 @@ through MockMvc, against a real Postgres. Each test makes its own accounts, so t
 | `GoalsTest` | 14 | Daily goals average the last 7 days (on track at 85%); no data → at risk; weekly workout goals; target goals from a baseline (halfway → on track, met → achieved); lifecycle (pause, achieve, resume, abandon); consistency grid and step streak; today's progress and streaks; validation (no blood goals); isolation |
 | `RecordsTest` | 14 | Upload → confirm → download through signed URLs (tokens can't be reused for another method or tampered with; others can't download; deleting the record deletes the file); the server rejects a stored file of the wrong type; upload limits; overview counts every type; validation; lab panels with previous values and interpretation (lab's reading wins); **blood-group results refused**; lab validation and isolation; shared records need the records scope |
 | `FeedLibraryFamilyTest` | 4 | A new lab result is in the feed, and only its owner can mark it read; owners hear (once a day) when shared records are opened; the library loads from resources (categories without blood, featured, trending, no reviewer names, articles by slug); family shows only what each share covers, and the summary read is audited |
-| `NightlyJobTest` | 3 | Needs the secret; notifies once about a missed dose, tomorrow's appointment and an overdue device, and a re-run adds nothing; a full run returns a summary with no failed users |
+| `NightlyJobTest` | 4 | Needs the secret; notifies once about a missed dose, tomorrow's appointment and an overdue device, and a re-run adds nothing; a full run returns a summary with no failed users; **a run where a user fails answers 500 and the cleanups still ran** |
+| `JobSecretTest` | 2 | In production a `JOB_SECRET` under 32 characters leaves the endpoint shut (503); local runs keep short secrets |
 | `RateLimiterTest` | 2 | With a fixed clock: the call over the limit is refused with 429 `rate_limited` and the seconds to the next window, while other calls and other users keep their own counts; a new hour starts a fresh count |
 | `CorsTest` | 3 | A preflight from each listed origin (comma-separated `CORS_ORIGIN`) is allowed; any other origin gets 403 and no allow header |
 | `OpenApiTest` | 2 | The OpenAPI document uses the names the API sends (no camelCase anywhere), and the caller and consent gate are not documented as parameters while shared routes declare `user_id` |
+| `ReviewFixesTest` | 7 | The phase 10 fixes (docs/13): replacing a file keeps the old one until the new one is confirmed; an abandoned replacement is dropped and the original kept; the upload cleanup never undoes a confirm committing meanwhile (two connections); deleted files stay queued until the nightly job deletes them; long sign-up names are cut to 60; a lab panel can't point at another user's record; the API's limits hold in the schema |
+| `EmailConfirmationTest` | 2 | Production ignores the token's user-writable `email_verified` and asks Supabase; dev tokens' flag counts |
+| `IdentityAdminTest` | 2 | Against a fake Supabase: confirmed only when `email_confirmed_at` is set for the same address; errors, bad JSON and no configuration mean "not confirmed" |
+| `TokenClaimsTest` | 2 | Sign-up names stripped and cut to 60; emails over 254 characters refused |
 | `SupabaseStorageTest` | 4 | The production storage and identity clients against a fake Supabase: the right REST calls with the service key, size and type from HEAD, missing objects, failures surfacing as "storage unavailable" (503) |
 
 ## 12.3 System test
@@ -61,16 +66,16 @@ so "today at 9:00" is never in the future, whatever time the suite runs.
 
 | Package | Lines covered | Package | Lines covered |
 |---|---|---|---|
-| account | 98.1% | notifications | 97.6% |
+| account | 97.5% | notifications | 97.6% |
 | care | 87.1% | nutrition | 99.0% |
-| core | 83.2% | ops | 77.8% |
-| core.audit | 95.5% | records | 87.1% |
+| core | 81.0% | ops | 77.8% |
+| core.audit | 95.5% | records | 88.0% |
 | core.consent | 99.0% | sharing | 83.7% |
 | core.db | 83.1% | training | 97.5% |
-| core.security | 89.5% | goals | 88.6% |
+| core.security | 90.4% | goals | 87.2% |
 | core.storage | 80.9% | health | 93.4% |
-| core.userdata | 100% | jobs | 95.5% |
-| core.web | 85.6% | library | 93.3% |
+| core.userdata | 100% | jobs | 89.5% |
+| core.web | 88.5% | library | 93.3% |
 
 `tools` (DevToken, DemoSeed, SystemCheck, LoadCheck) is run by hand and in CI, not by the unit suites, so it reads
 0% there; the system test exercises the API end to end instead.
