@@ -51,6 +51,13 @@ commit it). `frontend.yml` runs `npm run typecheck`, which includes `contract.ts
 | `backup.yml` (built) | weekly | `pg_dump` → `gpg` AES-256 (`BACKUP_PASSPHRASE`) → workflow artifact kept 90 days. **Repo must be private** |
 | `deploy-check.yml` (built) | on merge + daily | The lockdown checks in 6.2 against the live project |
 
+**Restore drill** (`backend/scripts/restore-drill.sh`, run 27 Oct 2026 on the local demo database): the
+same dump and encryption as `backup.yml`, then decrypt, `pg_restore` into `<db>_restore`, and compare
+every table. Result: 34 tables, 190,080 rows identical (Flyway's history included), row-level security on
+every table. What it taught: restore into a server of the **same major version as the dump tools** — a
+PG 17 dump fails on PG 16 (`transaction_timeout`), so the script picks the server's version and the
+workflow's restore note says 17 (Supabase's version). Repeat it against the real backup once Supabase exists.
+
 Keepalive is **not** a GitHub workflow. Each run bills at least one minute, and pinging every 10 minutes
 would use about 3,000 of a private repo's 2,000 free minutes a month. A free external monitor
 (UptimeRobot or similar) calls `GET /ready` every 10 minutes from 12:00 to 05:00 UTC instead. That

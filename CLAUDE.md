@@ -83,7 +83,7 @@ items, 9 My Health tabs, Lab Results, Document Viewer, Create Account, public ho
 the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs (real auth = Supabase Auth).
 Backend (Java) is complete through phase 8 and every screen except Messages reads live data (23 Oct 2026).
 **Next:** owner decides D1–D16 → create the group Supabase/Render accounts → Supabase sign-in in the
-apps → phase 9 (phone sync on devices) → phase 10 leftovers (restore drill, load test on Render).
+apps → phase 9 (phone sync on devices) → phase 10 leftovers (LoadCheck and `scripts/restore-drill.sh` against the real project).
 
 ## Open issues flagged to the owner (awaiting decisions)
 - Desktop Privacy shows "Hospitals with access" + hospital rows — conflicts with consumers-only. Built as

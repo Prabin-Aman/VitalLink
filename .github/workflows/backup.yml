@@ -2,7 +2,8 @@
 # the runner, kept as a workflow artifact for 90 days. The repository must be private.
 #
 # Repository secrets: DATABASE_URL (Supabase session pooler, postgresql://…) and BACKUP_PASSPHRASE.
-# Restore: download the artifact, then
+# Restore (into a server of the same major version as the dump tools, 17; rehearse with
+# backend/scripts/restore-drill.sh): download the artifact, then
 #   gpg --batch --decrypt --passphrase "$BACKUP_PASSPHRASE" vitallink.dump.gpg > vitallink.dump
 #   pg_restore --no-owner --dbname "$TARGET_URL" vitallink.dump
 name: backup
