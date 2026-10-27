@@ -142,7 +142,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
 - Local: Postgres via `docker compose up` in WSL; `.env` `DATABASE_URL` may be `postgresql://…` or JDBC
   (use 127.0.0.1, not localhost). Live web: `VITE_API_URL=http://localhost:8000` + dev token in
-  `sessionStorage["vl.token"]`. Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
+  `sessionStorage["vl.token"]` or `VITE_DEV_TOKEN` in `apps/web/.env.local` (any tab). Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
   (`.github/workflows/nightly.yml`).
 - Decisions applied by default (owner hasn't decided): D2 (QR on the phone), D4 (doctor/family/other),
   D5 (user confirms appointments), D6 (labs typed in), D9 (no push), D14 (no reviewer names). Messages (D1)

@@ -9,7 +9,8 @@ export function ApiProvider({ children }: { children: ReactNode }) {
     () =>
       new VitalLinkClient({
         baseUrl: import.meta.env.VITE_API_URL || undefined,
-        getToken: async () => sessionStorage.getItem("vl.token"),
+        // Until Supabase sign-in: a dev token from this tab, or VITE_DEV_TOKEN (apps/web/.env.local) for any tab.
+        getToken: async () => sessionStorage.getItem("vl.token") ?? import.meta.env.VITE_DEV_TOKEN ?? null,
       }),
   );
   return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
