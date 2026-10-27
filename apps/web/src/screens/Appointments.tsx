@@ -3,7 +3,7 @@ import { loadAppointments, type CalendarVM } from "@vitallink/api";
 import { useState } from "react";
 import { Action, cx, PageHeader, Panel, PillTabs, Split, Txt } from "../components/kit";
 import { Button, Chip } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useReloadableScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Appointments.module.css";
 
@@ -11,7 +11,12 @@ const TABS = ["Upcoming", "Past", "Cancelled"] as const;
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
 export function Appointments() {
-  const state = useScreen(loadAppointments);
+  const api = useApi();
+  const [state, reload] = useReloadableScreen(loadAppointments);
+  const cancel = (id: string, title: string) => {
+    if (!confirm(`Cancel ${title}? Let the clinic know too; VitalLink doesn't contact them.`)) return;
+    api.cancelAppointment(id).then(reload, (e: Error) => alert(e.message));
+  };
   const [tab, setTab] = useState<string>(TABS[0]);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
@@ -56,10 +61,18 @@ export function Appointments() {
                 </div>
                 {a.group === "Upcoming" && (
                   <div className={s.actions}>
-                    <button type="button" className={cx("vl-label-m", s.btn, s.primary)}>{a.primary}</button>
+                    <button
+                      type="button"
+                      className={cx("vl-label-m", s.btn, s.primary)}
+                      onClick={a.mapsUrl ? () => window.open(a.mapsUrl!, "_blank", "noopener") : undefined}
+                    >
+                      {a.primary}
+                    </button>
                     <div className={s.more}>
                       <button type="button" className={cx("vl-label-m", s.btn)}>Reschedule</button>
-                      <button type="button" className={cx("vl-label-m", s.btn)}>Cancel</button>
+                      <button type="button" className={cx("vl-label-m", s.btn)} onClick={a.canCancel ? () => cancel(a.id, a.title) : undefined}>
+                        Cancel
+                      </button>
                     </div>
                   </div>
                 )}

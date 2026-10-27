@@ -155,6 +155,8 @@ export interface DocumentVM {
   details: { label: string; value: string }[];
   sharing: { name: string; caption: string; color: ColorToken }[];
   note: string | null;
+  /** The record has an uploaded file, so Download can fetch it (GET /me/records/{id}/download). */
+  canDownload: boolean;
 }
 
 export async function loadDocument(api: VitalLinkClient, recordId: string): Promise<DocumentVM> {
@@ -192,5 +194,6 @@ export async function loadDocument(api: VitalLinkClient, recordId: string): Prom
       ? [{ name: share.grantee, caption: `Shared${share.expires_at ? ` · expires in ${daysFrom(share.expires_at, now, tz)} days` : ""}`, color: "goalOnTrack" }]
       : [{ name: "Not shared", caption: "Only you can see this record", color: "textTertiary" }],
     note: p.note,
+    canDownload: rec.file?.status === "attached",
   };
 }

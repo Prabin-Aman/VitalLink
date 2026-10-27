@@ -158,6 +158,10 @@ export interface AppointmentVM {
   shortStatus: string;
   primary: string;
   mobilePrimary: string;
+  /** Google Maps search for an in-person visit ("Directions"); null for telehealth. */
+  mapsUrl: string | null;
+  /** Upcoming and not cancelled, so the user can cancel it. */
+  canCancel: boolean;
   group: "Upcoming" | "Past" | "Cancelled";
 }
 
@@ -223,6 +227,8 @@ export async function loadAppointments(api: VitalLinkClient): Promise<Appointmen
         shortStatus: short,
         primary: a.mode === "telehealth" ? "Join Telehealth" : "Directions",
         mobilePrimary: a.mode === "telehealth" ? "Join call" : "Directions",
+        mapsUrl: a.mode === "telehealth" ? null : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.location)}`,
+        canCancel: group === "Upcoming" && a.status !== "cancelled",
         group,
       };
     });

@@ -3,7 +3,7 @@ import { loadDevices, type DeviceVM } from "@vitallink/api";
 import { Icon, type IconName } from "../components/Icon";
 import { PageHeader, RowButton, Txt } from "../components/kit";
 import { Chip } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useReloadableScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Devices.module.css";
 
@@ -16,7 +16,12 @@ export const DEVICE_ICON: Record<DeviceVM["icon"], IconName> = {
 };
 
 export function Devices() {
-  const state = useScreen(loadDevices);
+  const api = useApi();
+  const [state, reload] = useReloadableScreen(loadDevices);
+  const disconnect = (id: string, name: string) => {
+    if (!confirm(`Disconnect ${name}? Its past readings stay in your account.`)) return;
+    api.disconnectDevice(id).then(reload, (e: Error) => alert(e.message));
+  };
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
 
@@ -40,7 +45,7 @@ export function Devices() {
             <div className={s.actions}>
               <RowButton>Sync now</RowButton>
               <RowButton>Permissions</RowButton>
-              <RowButton>Disconnect</RowButton>
+              <RowButton onClick={() => disconnect(d.id, d.name)}>Disconnect</RowButton>
             </div>
           </article>
         ))}

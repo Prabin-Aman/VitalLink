@@ -14,6 +14,7 @@ import java.util.Map;
 import java.util.UUID;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.MethodParameter;
+import org.springframework.http.HttpHeaders;
 import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
@@ -52,7 +53,7 @@ public class WebConfig implements WebMvcConfigurer {
                 .allowedOrigins(settings.corsOrigin().split("\\s*,\\s*"))
                 .allowedMethods("GET", "POST", "PATCH", "PUT", "DELETE")
                 .allowedHeaders("Authorization", "Content-Type")
-                .exposedHeaders(RequestIdFilter.HEADER);
+                .exposedHeaders(RequestIdFilter.HEADER, HttpHeaders.CONTENT_DISPOSITION, HttpHeaders.RETRY_AFTER);
     }
 
     @Override

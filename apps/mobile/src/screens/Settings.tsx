@@ -1,10 +1,10 @@
 // Settings — Mobile 390 (Figma 151:1098). Sub-pages without a mobile frame stay put.
 import { loadDevices, loadSettings, type VitalLinkClient } from "@vitallink/api";
 import { useRouter } from "expo-router";
-import { Text } from "react-native";
+import { Alert, Platform, Text } from "react-native";
 import { MenuRow, Screen, Section } from "../components/kit";
 import { ScreenState } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useScreen } from "../data";
 import { t } from "../theme";
 
 async function load(api: VitalLinkClient) {
@@ -12,7 +12,26 @@ async function load(api: VitalLinkClient) {
   return { settings, devices };
 }
 
+/** GET /me/export. The web build saves the file; the phone apps need a share sheet that isn't built yet. */
+async function exportData(api: VitalLinkClient) {
+  if (Platform.OS !== "web") {
+    Alert.alert("Export my data", "Download your export from the VitalLink web portal (My Health › Export Data) for now.");
+    return;
+  }
+  try {
+    const file = await api.exportData();
+    if (!file) return window.alert("Export works when the app is connected to your account.");
+    const url = URL.createObjectURL(file.blob);
+    const a = Object.assign(document.createElement("a"), { href: url, download: file.filename });
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } catch (e) {
+    window.alert(e instanceof Error ? e.message : String(e));
+  }
+}
+
 export function SettingsScreen() {
+  const api = useApi();
   const state = useScreen(load);
   const router = useRouter();
   if (state.status !== "ready") return <ScreenState state={state} />;
@@ -34,7 +53,7 @@ export function SettingsScreen() {
       </Section>
       <Section gap={6}>
         <Text style={t("labelS", "textTertiary")}>Data</Text>
-        <MenuRow icon="download-16" label="Export my data" />
+        <MenuRow icon="download-16" label="Export my data" onPress={() => exportData(api)} />
         <MenuRow icon="devices-16" label="Connected Devices" value={devices?.shortSubtitle.split(" · ")[0]} onPress={() => router.push("/profile/devices" as never)} />
         <MenuRow icon="emergency-16" iconColor="textCritical" label="Delete account" danger />
       </Section>

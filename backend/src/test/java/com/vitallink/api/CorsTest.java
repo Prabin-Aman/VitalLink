@@ -3,6 +3,7 @@ package com.vitallink.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.vitallink.api.support.ApiTest;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.http.HttpHeaders;
@@ -24,5 +25,18 @@ class CorsTest extends ApiTest {
                 .getResponse();
         assertThat(res.getStatus()).isEqualTo(status);
         assertThat(res.getHeader(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN)).isEqualTo(status == 200 ? origin : null);
+    }
+
+    @Test
+    void exposesTheHeadersTheAppsRead() throws Exception {
+        String token = user();
+        var res = mvc.perform(MockMvcRequestBuilders.get("/v1/me/export")
+                        .header(HttpHeaders.ORIGIN, "http://portal.test")
+                        .header(HttpHeaders.AUTHORIZATION, token))
+                .andReturn()
+                .getResponse();
+        assertThat(res.getStatus()).isEqualTo(200);
+        assertThat(res.getHeader(HttpHeaders.ACCESS_CONTROL_EXPOSE_HEADERS))
+                .contains("Content-Disposition", "Retry-After", "X-Request-ID");
     }
 }

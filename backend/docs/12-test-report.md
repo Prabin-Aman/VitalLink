@@ -7,7 +7,7 @@ Ubuntu with a Postgres service container on every push that touches `backend/`.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit, API, database and guardrail tests | `./mvnw verify` | **239 passed, 0 failed, 0 skipped** |
+| Unit, API, database and guardrail tests | `./mvnw verify` | **240 passed, 0 failed, 0 skipped** |
 | Coverage (JaCoCo) | `target/site/jacoco/index.html` | **80.4% of lines** (the hand-run `tools` package, now with LoadCheck, counts as uncovered; see 12.4) |
 | System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **44 of 44 steps passed** (24 Oct, before V11; not re-run after the review because the local dev database is shared with the `backend-java` checkout) |
 | Load test (packaged jar, demo account) | `LoadCheck http://localhost:8000` | **Pass**: 5,000-bucket ingest 1.1 s (target < 2 s); warm p95 dashboard 40 ms, overview 60 ms, training 25 ms, goals 25 ms (target < 300 ms) |
@@ -42,7 +42,7 @@ through MockMvc, against a real Postgres. Each test makes its own accounts, so t
 | `NightlyJobTest` | 4 | Needs the secret; notifies once about a missed dose, tomorrow's appointment and an overdue device, and a re-run adds nothing; a full run returns a summary with no failed users; **a run where a user fails answers 500 and the cleanups still ran** |
 | `JobSecretTest` | 2 | In production a `JOB_SECRET` under 32 characters leaves the endpoint shut (503); local runs keep short secrets |
 | `RateLimiterTest` | 2 | With a fixed clock: the call over the limit is refused with 429 `rate_limited` and the seconds to the next window, while other calls and other users keep their own counts; a new hour starts a fresh count |
-| `CorsTest` | 3 | A preflight from each listed origin (comma-separated `CORS_ORIGIN`) is allowed; any other origin gets 403 and no allow header |
+| `CorsTest` | 4 | A preflight from each listed origin (comma-separated `CORS_ORIGIN`) is allowed; any other origin gets 403 and no allow header; responses expose `Content-Disposition`, `Retry-After` and `X-Request-ID` to the apps |
 | `OpenApiTest` | 2 | The OpenAPI document uses the names the API sends (no camelCase anywhere), and the caller and consent gate are not documented as parameters while shared routes declare `user_id` |
 | `ReviewFixesTest` | 7 | The phase 10 fixes (docs/13): replacing a file keeps the old one until the new one is confirmed; an abandoned replacement is dropped and the original kept; the upload cleanup never undoes a confirm committing meanwhile (two connections); deleted files stay queued until the nightly job deletes them; long sign-up names are cut to 60; a lab panel can't point at another user's record; the API's limits hold in the schema |
 | `EmailConfirmationTest` | 2 | Production ignores the token's user-writable `email_verified` and asks Supabase; dev tokens' flag counts |

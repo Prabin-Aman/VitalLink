@@ -130,6 +130,25 @@ export class VitalLinkClient {
     this.send<{ updated: number }>("POST", "/me/notifications/read", ids === "all" ? { all: true } : { ids });
   setEmergencyOnLockScreen = (on: boolean) =>
     this.send<PrivacySettings>("PATCH", "/me/privacy", { emergency_on_lock_screen: on });
+  /** The user cancels a visit (it stays in the Cancelled list). */
+  cancelAppointment = (id: string) => this.send<Appointment>("PATCH", `/me/appointments/${id}`, { state: "cancelled" });
+  /** Removes a connected device and its sync state (its past readings stay). */
+  disconnectDevice = (id: string) => this.send("DELETE", `/me/devices/${id}`);
+  /** A signed, 5-minute URL for a record's attached file; null in mock mode (no files there). */
+  recordDownloadUrl = async (id: string): Promise<string | null> =>
+    this.isMock ? null : (await this.get<{ url: string }>(`/me/records/${id}/download`, () => ({ url: "" }))).url;
+  /** Everything the account owns, as the JSON file GET /me/export sends; null in mock mode. */
+  exportData = async (): Promise<{ blob: Blob; filename: string } | null> => {
+    if (this.isMock) return null;
+    const token = await this.opts.getToken?.();
+    const res = await fetch(`${this.opts.baseUrl}/v1/me/export`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    if (!res.ok) {
+      const e = (await res.json().catch(() => ({})))?.error ?? {};
+      throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
+    }
+    const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "vitallink-export.json";
+    return { blob: await res.blob(), filename: name };
+  };
 
   me = () => this.get<Me>("/me", () => mock.me);
   account = () => this.get<AccountProfile>("/me/account", () => mock.account);

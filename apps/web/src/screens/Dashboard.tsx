@@ -1,5 +1,6 @@
 import { loadDashboard, thousands } from "@vitallink/api";
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { BPChart, ScoreRing, WeekBars } from "../components/Charts";
 import { Icon, tokenVar } from "../components/Icon";
 import { AccentDot, Button, Card, Chip, MetricCard, Segmented } from "../components/ui";
@@ -10,6 +11,7 @@ import s from "./Dashboard.module.css";
 const RANGES = ["D", "W", "M", "6M", "Y"];
 
 export function Dashboard() {
+  const nav = useNavigate();
   const state = useScreen(loadDashboard);
   const [stepRange, setStepRange] = useState("W");
   const [bpRange, setBpRange] = useState("W");
@@ -44,7 +46,7 @@ export function Dashboard() {
               {d.scoreLabel} · {d.scoreDelta >= 0 ? "up" : "down"} {Math.abs(d.scoreDelta)} points this week
             </span>
           </div>
-          <Button size="cta" className={s.scoreCta}>
+          <Button size="cta" className={s.scoreCta} onClick={() => nav("/health/overview")}>
             View Health Summary
           </Button>
         </section>

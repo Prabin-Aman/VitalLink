@@ -4,12 +4,13 @@ import { useCallback } from "react";
 import { useParams } from "react-router-dom";
 import { Action, KeyValues, PageHeader, Panel, Txt } from "../components/kit";
 import { Button } from "../components/ui";
-import { useScreen } from "../data";
+import { useApi, useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./DocumentViewer.module.css";
 
 export function DocumentViewer() {
   const { id = "" } = useParams();
+  const api = useApi();
   const state = useScreen(useCallback((api) => loadDocument(api, id), [id]));
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
@@ -23,7 +24,16 @@ export function DocumentViewer() {
           <>
             <Action onClick={() => window.print()}>Print</Action>
             <Action>Share</Action>
-            <Action primary>Download</Action>
+            <Action
+              primary
+              onClick={() =>
+                v.canDownload
+                  ? api.recordDownloadUrl(id).then((url) => url && window.open(url, "_blank", "noopener"), (e: Error) => alert(e.message))
+                  : alert("This record has no file attached. Print it to save a copy.")
+              }
+            >
+              Download
+            </Action>
           </>
         }
       />

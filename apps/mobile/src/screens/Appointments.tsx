@@ -1,7 +1,7 @@
 // Appointments — Mobile 390 (Figma 150:124).
 import { loadAppointments } from "@vitallink/api";
 import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { Linking, StyleSheet, Text, View } from "react-native";
 import { ChipRow, Pill, Screen, Section, SmallButton } from "../components/kit";
 import { ScreenState } from "../components/ui";
 import { useScreen } from "../data";
@@ -36,7 +36,7 @@ export function AppointmentsScreen() {
           <Pill chip={{ ...a.status, label: a.shortStatus }} />
           {a.group === "Upcoming" && (
             <View style={st.actions}>
-              <SmallButton label={a.mobilePrimary} primary style={st.flex} />
+              <SmallButton label={a.mobilePrimary} primary style={st.flex} onPress={a.mapsUrl ? () => Linking.openURL(a.mapsUrl!) : undefined} />
               <SmallButton label="Reschedule" style={st.flex} />
             </View>
           )}

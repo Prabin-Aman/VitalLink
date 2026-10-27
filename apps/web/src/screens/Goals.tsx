@@ -25,7 +25,7 @@ export function Goals() {
         subtitle={v.subtitle}
         actions={
           <>
-            <Action>Goal History</Action>
+            <Action onClick={() => setTab("Achieved")}>Goal History</Action>
             <Action primary>New Goal</Action>
           </>
         }

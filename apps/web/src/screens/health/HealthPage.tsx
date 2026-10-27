@@ -1,6 +1,8 @@
 // Shared My Health header and tabs (Heading + Tabs frames, e.g. 77:512).
 import type { ReactNode } from "react";
 import { Action, PageHeader, PillLinks } from "../../components/kit";
+import { useApi } from "../../data";
+import { exportMyData } from "../../download";
 
 export const HEALTH_TABS = [
   { label: "Overview", to: "/health/overview" },
@@ -15,6 +17,7 @@ export const HEALTH_TABS = [
 ];
 
 export function HealthPage({ subtitle, children }: { subtitle: ReactNode; children: ReactNode }) {
+  const api = useApi();
   return (
     <>
       <PageHeader
@@ -22,7 +25,7 @@ export function HealthPage({ subtitle, children }: { subtitle: ReactNode; childr
         subtitle={subtitle}
         actions={
           <>
-            <Action compact>Export Data</Action>
+            <Action compact onClick={() => exportMyData(api)}>Export Data</Action>
             <Action compact primary>Add Reading</Action>
           </>
         }

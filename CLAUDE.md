@@ -136,7 +136,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
   = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
 - Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
-- Tests: 222 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
+- Tests: 240 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
   (44-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
   `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
@@ -150,7 +150,11 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Rate limits: `core/web/RateLimiter` (60 ingest / 600 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
-- Frontend writes: Medications "Mark Taken" (web + mobile), Settings Save/theme, notifications read.
+- Frontend writes (only buttons that already exist in Figma; forms like Add Medication / Book Appointment /
+  New Goal / Log Food wait for their Figma frames): Mark Taken (web + mobile), Settings Save/theme,
+  notifications read, appointment Cancel (web) and Directions (web + mobile, Google Maps), device
+  Disconnect, Document Viewer Download (signed URL), My Health "Export Data" and mobile "Export my data"
+  (GET /me/export; native share sheet not built), Goals "Goal History" → Achieved, Dashboard summary link.
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),
