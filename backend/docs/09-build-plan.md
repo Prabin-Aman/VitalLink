@@ -14,7 +14,7 @@
 | 7 Care | Built in Java. Phone-side local reminders are frontend work |
 | 8 Health tabs, family, notifications, library, nightly job | Built in Java (`nightly.yml`, `backup.yml`, `deploy-check.yml`) |
 | 9 Mobile sync on devices | Not started (needs a development build on devices) |
-| 10 Hardening and demo | Partly: rate limiting, load test (`LoadCheck`, targets met locally), Supabase client tests, coverage report. Still to do: types from OpenAPI, restore drill, load test on Render |
+| 10 Hardening and demo | Partly: rate limiting, load test (`LoadCheck`, targets met locally), Supabase client tests, coverage report. OpenAPI contract (`openapi.gen.ts` + `contract.ts`, checked in CI). Still to do: restore drill, load test on Render |
 
 Ten phases. Each one ends with something deployed and demoable, and each turns some of the
 frontend's `pending()` calls into live endpoints. Phases 0–3 must go in order. After phase 3 the
@@ -145,7 +145,10 @@ After this phase every `pending()` call except `conversations()` is live.
 - Run the backend-design reviews (schema, security, incident thinking) and fix what they find.
 - Load test ingest (5,000 buckets < 2 s) and the dashboard (p95 < 300 ms warm).
 - Restore drill from the encrypted backup.
-- Generate `packages/api/src/types.ts` from OpenAPI; delete the contract tests that duplicate it.
+- ~~Generate types from OpenAPI~~ Done as a check rather than a replacement: `openapi.gen.ts` is generated,
+  and `contract.ts` proves every field in the hand-written `types.ts` exists in it. `types.ts` stays
+  hand-written because it carries what the schema can't (literal unions, nullability, the mock-only
+  fields of the design) and the My Health tabs are untyped objects in the schema.
 - Demo script; open the app 5 minutes before presenting (cold start).
 
 ## Definition of done (every endpoint)

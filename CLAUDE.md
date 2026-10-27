@@ -15,7 +15,7 @@ Owner prefers concise, direct, actionable answers.
 packages/tokens  figma-variables.json → build.mjs → css/tokens.css (web, --vl-* vars, .vl-<style> classes)
                                                   + src/generated.ts (colors.light/dark, space, radius, text, elevation)
 packages/assets  icons/*.svg (stroke="currentColor", one file per shape+size, e.g. health-18), emergency-qr.json
-packages/api     types.ts, client.ts (VitalLinkClient; no baseUrl = mock mode), mock.ts + mock-data/*.ts (Figma
+packages/api     types.ts (hand-written; contract.ts checks it against openapi.gen.ts, `npm run api:types`), client.ts (VitalLinkClient; no baseUrl = mock mode), mock.ts + mock-data/*.ts (Figma
                  sample data), format.ts, screens.ts (dashboard/activity/privacy) and views/*.ts (fitness, care,
                  records, health) → loadX(api) view-models with display strings, web + mobile variants
 apps/web         React 19 + Vite 5 + React Router 6 + CSS modules + vite-plugin-svgr (?react imports)
@@ -83,7 +83,7 @@ items, 9 My Health tabs, Lab Results, Document Viewer, Create Account, public ho
 the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs (real auth = Supabase Auth).
 Backend (Java) is complete through phase 8 and every screen except Messages reads live data (23 Oct 2026).
 **Next:** owner decides D1–D16 → create the group Supabase/Render accounts → Supabase sign-in in the
-apps → phase 9 (phone sync on devices) → phase 10 (rate limits, load tests, types from OpenAPI).
+apps → phase 9 (phone sync on devices) → phase 10 leftovers (restore drill, load test on Render).
 
 ## Open issues flagged to the owner (awaiting decisions)
 - Desktop Privacy shows "Hospitals with access" + hospital rows — conflicts with consumers-only. Built as
@@ -136,7 +136,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
   = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
 - Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
-- Tests: 217 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
+- Tests: 219 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
   (44-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
   `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
@@ -148,7 +148,8 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   D5 (user confirms appointments), D6 (labs typed in), D9 (no push), D14 (no reviewer names). Messages (D1)
   and dependents (D3) are not built. Compliance: FTC Health Breach Notification Rule (not HIPAA).
 - Rate limits: `core/web/RateLimiter` (60 ingest / 600 other per user per hour → 429). `LoadCheck <url>`
-  checks the load targets. Workflows: `backend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
+  checks the load targets. Workflows: `backend.yml` (also fails if
+  `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
 - Frontend writes: Medications "Mark Taken" (web + mobile), Settings Save/theme, notifications read.
   Mobile live mode takes a dev token from `EXPO_PUBLIC_DEV_TOKEN`.
 - Not built yet: stored insights (computed on read),

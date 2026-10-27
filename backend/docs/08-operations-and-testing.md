@@ -37,13 +37,16 @@ Any failure stops the pipeline. Render keeps the previous version serving until 
 healthy, and rolling back is one click. Migrations follow expand → migrate → contract, so the old
 version keeps working while the new one deploys.
 
-`npm run typecheck` in the root also runs against `packages/api` whenever `types.ts` changes, so
-contract drift shows up on the frontend side too. A later step generates `types.ts` from `/openapi.json`.
+Contract drift is caught on both sides. Backend CI regenerates `packages/api/src/openapi.gen.ts` from the
+packaged jar and fails if the committed copy differs (run `npm run api:types` against a local API and
+commit it). `frontend.yml` runs `npm run typecheck`, which includes `contract.ts`: every field
+`types.ts` declares must exist in the generated schema.
 
 ## 8.4 Scheduled workflows (GitHub Actions)
 
 | Workflow | Schedule | Does |
 |---|---|---|
+| `frontend.yml` (built) | push / PR touching `apps/`, `packages/` | `npm ci`, typecheck (web and mobile, each with its own TypeScript, plus the API contract), web build |
 | `nightly.yml` (built) | 09:00 UTC (≈ 03:00–04:00 Central) | Wake `/ready` (retries for the cold start), then `POST /internal/jobs/nightly`; the summary reports per-user failures |
 | `backup.yml` (built) | weekly | `pg_dump` → `gpg` AES-256 (`BACKUP_PASSPHRASE`) → workflow artifact kept 90 days. **Repo must be private** |
 | `deploy-check.yml` (built) | on merge + daily | The lockdown checks in 6.2 against the live project |

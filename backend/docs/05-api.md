@@ -1,8 +1,10 @@
 # 5. API
 
 A JSON REST API under `/v1`. springdoc generates the OpenAPI document (`/openapi.json`, Swagger UI at `/docs`).
-`packages/api/src/types.ts` is kept in step with it, and each interface there is the contract for
-one endpoint below.
+Its schemas use the JSON names the API sends (snake_case); fields filled from the token (the caller,
+the consent gate) are not parameters. `npm run api:types` generates `packages/api/src/openapi.gen.ts`
+from it, and `packages/api/src/contract.ts` fails the typecheck if an interface in `types.ts` (the
+contract for one endpoint below) names a field the schema doesn't have.
 
 ## 5.1 Conventions
 

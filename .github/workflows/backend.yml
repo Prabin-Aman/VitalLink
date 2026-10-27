@@ -5,9 +5,9 @@ name: backend
 on:
   push:
     branches: [main]
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "packages/api/src/openapi.gen.ts", ".github/workflows/backend.yml"]
   pull_request:
-    paths: ["backend/**", ".github/workflows/backend.yml"]
+    paths: ["backend/**", "packages/api/src/openapi.gen.ts", ".github/workflows/backend.yml"]
 
 permissions:
   contents: read
@@ -55,6 +55,13 @@ jobs:
           java -jar target/vitallink-api.jar > target/system-api.log 2>&1 &
           for i in $(seq 1 60); do curl -sf localhost:8000/ready && break; sleep 2; done
           ./mvnw -B -q exec:java -Dexec.mainClass=com.vitallink.api.tools.SystemCheck -Dexec.args="http://localhost:8000"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Frontend types match the API (packages/api/src/openapi.gen.ts; run `npm run api:types`)
+        run: |
+          npx --yes openapi-typescript@7.13.0 http://localhost:8000/openapi.json -o ../packages/api/src/openapi.gen.ts
+          git diff --exit-code -- ../packages/api/src/openapi.gen.ts
       - name: Keep the test and coverage reports
         if: always()
         uses: actions/upload-artifact@v4
