@@ -11,7 +11,7 @@ contract for one endpoint below) names a field the schema doesn't have.
 | Topic | Rule |
 |---|---|
 | Route families | `/v1/me/…` is the caller acting on their own data. `/v1/users/{user_id}/…` is a shared view of someone else's data, and every such route declares a scope and passes the consent check. `/v1/library/…` and `/v1/foods/…` are shared content (signed-in only). |
-| Auth | `Authorization: Bearer <Supabase access token>` on everything except `/health` and `/ready`. No cookies, so there's no CSRF surface. CORS allows only the web portal's origin. |
+| Auth | `Authorization: Bearer <Supabase access token>` on everything except `/health` and `/ready`. No cookies, so there's no CSRF surface. CORS allows only the web portal's origin (`CORS_ORIGIN`; locally a comma-separated list can add the mobile web build). |
 | Sensitive actions | `DELETE /me` requires a token issued within the last 10 min (`iat`), and `aal2` when MFA is enrolled. `POST /me/shares` has no recency check: Supabase's token refresh resets `iat`, so it would add friction without security; it will require `aal2` once MFA enrolment is readable. |
 | Status codes | 200 read · 201 created · 202 accepted (ingest) · 204 deleted · 401 bad/missing token · 403 consent refused or step-up needed · 404 not found **and** unknown/unshared user (existence never leaks) · 409 conflict · 413 batch too large · 422 invalid body · 429 rate limited · 503 DB unavailable |
 | Errors | `{"error": {"code", "message", "detail", "request_id"}}`. Clients switch on `code`. |

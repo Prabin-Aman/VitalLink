@@ -7,7 +7,7 @@ Ubuntu with a Postgres service container on every push that touches `backend/`.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit, API, database and guardrail tests | `./mvnw verify` | **219 passed, 0 failed, 0 skipped** |
+| Unit, API, database and guardrail tests | `./mvnw verify` | **222 passed, 0 failed, 0 skipped** |
 | Coverage (JaCoCo) | `target/site/jacoco/index.html` | **80.4% of lines** (the hand-run `tools` package, now with LoadCheck, counts as uncovered; see 12.4) |
 | System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **44 of 44 steps passed** |
 | Load test (packaged jar, demo account) | `LoadCheck http://localhost:8000` | **Pass**: 5,000-bucket ingest 1.1 s (target < 2 s); warm p95 dashboard 40 ms, overview 60 ms, training 25 ms, goals 25 ms (target < 300 ms) |
@@ -15,6 +15,7 @@ Ubuntu with a Postgres service container on every push that touches `backend/`.
 | Formatting | `./mvnw spotless:check` | Clean |
 | Frontend contract | `npm run typecheck` (web + mobile, incl. `contract.ts` against the generated OpenAPI types), `npm run web:build` | Pass |
 | Live portal | Web portal against the API with the demo account | All 24 pages render live data; only Messages says "isn't available yet" (D1) |
+| Live mobile app | Expo web build (`:8081`) against the API with the demo account | All 18 tab and Profile screens render live data (Messages: D1); Mark Taken saves through a cross-origin PUT |
 
 ## 12.2 Test suites
 
@@ -40,6 +41,7 @@ through MockMvc, against a real Postgres. Each test makes its own accounts, so t
 | `FeedLibraryFamilyTest` | 4 | A new lab result is in the feed, and only its owner can mark it read; owners hear (once a day) when shared records are opened; the library loads from resources (categories without blood, featured, trending, no reviewer names, articles by slug); family shows only what each share covers, and the summary read is audited |
 | `NightlyJobTest` | 3 | Needs the secret; notifies once about a missed dose, tomorrow's appointment and an overdue device, and a re-run adds nothing; a full run returns a summary with no failed users |
 | `RateLimiterTest` | 2 | With a fixed clock: the call over the limit is refused with 429 `rate_limited` and the seconds to the next window, while other calls and other users keep their own counts; a new hour starts a fresh count |
+| `CorsTest` | 3 | A preflight from each listed origin (comma-separated `CORS_ORIGIN`) is allowed; any other origin gets 403 and no allow header |
 | `OpenApiTest` | 2 | The OpenAPI document uses the names the API sends (no camelCase anywhere), and the caller and consent gate are not documented as parameters while shared routes declare `user_id` |
 | `SupabaseStorageTest` | 4 | The production storage and identity clients against a fake Supabase: the right REST calls with the service key, size and type from HEAD, missing objects, failures surfacing as "storage unavailable" (503) |
 

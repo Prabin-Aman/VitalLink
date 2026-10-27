@@ -6,7 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
  * All configuration comes from environment variables (or backend/.env locally); see application.yml.
  *
  * @param env local, test or production
- * @param corsOrigin the only browser origin allowed to call the API (the web portal)
+ * @param corsOrigin the browser origin allowed to call the API: the web portal in production; locally a
+ *     comma-separated list may add the mobile app's web build (native apps don't use CORS)
  * @param supabaseUrl production: tokens are verified against this project's JWKS
  * @param jwtAudience the {@code aud} every token must carry
  * @param devJwtSecret local/test only: signs and verifies HS256 dev tokens

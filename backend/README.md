@@ -106,7 +106,7 @@ docker run --rm --network host --env-file .env -e PORT=8100 vitallink-api   # ht
 |---|---|
 | `ENV` | `local`, `test` or `production` (dev tokens and the demo seed only work in local/test) |
 | `DATABASE_URL` | `postgresql://user:pass@host:port/db` (as Supabase shows it) or a JDBC URL with `DATABASE_USER` / `DATABASE_PASSWORD` |
-| `CORS_ORIGIN` | The web portal's origin |
+| `CORS_ORIGIN` | The web portal's origin; locally a comma-separated list (add `http://localhost:8081` for the mobile web build) |
 | `SUPABASE_URL` | Production: tokens are verified against this project's JWKS |
 | `SUPABASE_SERVICE_ROLE_KEY` | Production: Storage signing and deleting sign-in identities (server-side only) |
 | `STORAGE_BUCKET` | Private bucket for record files (default `records`) |
