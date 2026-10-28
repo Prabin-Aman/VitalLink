@@ -8,8 +8,10 @@ import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import t from "../components/Table.module.css";
 import s from "./Records.module.css";
+import { UploadDocumentDialog } from "../forms/RecordForms";
 
 export function Records() {
+  const [form, setForm] = useState(false);
   const state = useScreen(loadRecords);
   const [type, setType] = useState<RecordType | null>(null);
   if (state.status !== "ready") return <ScreenState state={state} />;
@@ -24,7 +26,8 @@ export function Records() {
         actions={
           <>
             <Action>Import Records</Action>
-            <Action primary>Upload Document</Action>
+            <Action primary onClick={() => setForm(true)}>Upload Document</Action>
+            {form && <UploadDocumentDialog onClose={() => setForm(false)} />}
           </>
         }
       />

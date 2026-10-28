@@ -7,3 +7,4 @@ export * from "./views/fitness";
 export * from "./views/care";
 export * from "./views/records";
 export * from "./views/health";
+export * from "./forms";

@@ -70,7 +70,7 @@ Figma asset URLs (www.figma.com) may be blocked by the proxy → use `get_screen
 Every screen file starts with a comment naming its Figma frame (e.g. `// Workouts — Desktop 1440 (Figma 129:1142)`).
 Pages: 4:3 mobile auth · 4:4 mobile health · 4:5 mobile fitness · 4:6 mobile records · 149:2 mobile care ·
 4:8 mobile profile · 4:10 public site · 4:11 web auth · 4:12 portal (care + My Health tabs) · 4:13 dashboard ·
-4:14 web fitness · 4:15 web records. Icon components live on 2:298.
+4:14 web fitness · 4:15 web records · 195:2 proposed entry forms. Icon components live on 2:298.
 
 Web shell: sidebar 260, top bar 64, content px32 pt28 gap24. Mobile: header px16 py14, tab bar 72
 (Home, Health, Train, Records, Profile). Health and Train are stacks (chips switch screens); care screens
@@ -150,11 +150,13 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Rate limits: `core/web/RateLimiter` (60 ingest / 600 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
-- Frontend writes (only buttons that already exist in Figma; forms like Add Medication / Book Appointment /
-  New Goal / Log Food wait for their Figma frames): Mark Taken (web + mobile), Settings Save/theme,
-  notifications read, appointment Cancel (web) and Directions (web + mobile, Google Maps), device
-  Disconnect, Document Viewer Download (signed URL), My Health "Export Data" and mobile "Export my data"
-  (GET /me/export; native share sheet not built), Goals "Goal History" → Achieved, Dashboard summary link.
+- Frontend writes: Mark Taken (web + mobile), Settings Save/theme, notifications read, appointment Cancel
+  and Directions, device Disconnect, Document Viewer Download, Export Data, Goal History, and the nine web
+  entry forms (Add Reading, Log Food, Log Workout, New Goal, Add Medication, Book Appointment, Reschedule,
+  Upload Document, Edit Emergency Info) designed on Figma page 195:2 "15 — Proposed · Entry forms" (web
+  dialogs + mobile sheets; owner review pending). Rules/bodies in `packages/api/src/forms.ts`, parts in
+  `apps/web/src/components/Form.tsx`, dialogs in `apps/web/src/forms/`; a save calls `notifyChanged()` so
+  every screen on view reloads. Mobile sheets are designed but not built yet.
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

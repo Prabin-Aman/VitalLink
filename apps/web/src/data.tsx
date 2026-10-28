@@ -19,6 +19,10 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 /** The client, for screens that write (mark a dose taken, save settings…). */
 export const useApi = () => useContext(ApiContext);
 
+/** Fired after a form saves, so every screen on view fetches again. */
+const changes = new EventTarget();
+export const notifyChanged = () => changes.dispatchEvent(new Event("changed"));
+
 export type Loadable<T> = { status: "loading" } | { status: "error"; error: Error } | { status: "ready"; data: T };
 
 export function useScreen<T>(load: (api: VitalLinkClient) => Promise<T>): Loadable<T> {
@@ -41,5 +45,9 @@ export function useReloadableScreen<T>(load: (api: VitalLinkClient) => Promise<T
     };
   }, [api, load, version]);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
+  useEffect(() => {
+    changes.addEventListener("changed", reload);
+    return () => changes.removeEventListener("changed", reload);
+  }, [reload]);
   return [state, reload];
 }

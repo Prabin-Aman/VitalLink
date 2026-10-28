@@ -1,0 +1,7 @@
+<svg width="30" height="30" viewBox="0 0 30 30" fill="none" xmlns="http://www.w3.org/2000/svg">
+<!-- The VitalLink logo mark (ui.tsx Logo): bg/brand tile, radius 9, Icon / health 17 at 6.5,6.5 in text/on-brand. -->
+<rect width="30" height="30" rx="9" fill="#1848db"/>
+<g transform="translate(6.5 6.5)">
+<path d="M15.5833 8.5H12.75L10.625 14.875L6.375 2.125L4.25 8.5H1.41667" stroke="#ffffff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/>
+</g>
+</svg>

@@ -7,8 +7,11 @@ import { Avatar } from "../components/ui";
 import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Emergency.module.css";
+import { useState } from "react";
+import { EditEmergencyDialog } from "../forms/CareForms";
 
 export function Emergency() {
+  const [form, setForm] = useState(false);
   const state = useScreen(loadEmergency);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
@@ -66,7 +69,8 @@ export function Emergency() {
                 <div className={s.btns}>
                   <RowButton onClick={() => window.print()}>Print Card</RowButton>
                   <RowButton>Download PDF</RowButton>
-                  <RowButton>Edit Information</RowButton>
+                  <RowButton onClick={() => setForm(true)}>Edit Information</RowButton>
+                  {form && <EditEmergencyDialog onClose={() => setForm(false)} />}
                 </div>
               </div>
             </div>

@@ -7,10 +7,12 @@ import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Lists.module.css";
 import n from "./Nutrition.module.css";
+import { LogFoodDialog } from "../forms/FitnessForms";
 
 const TABS = ["Today", "Week", "Meals", "Recipes", "Hydration"];
 
 export function Nutrition() {
+  const [form, setForm] = useState(false);
   const state = useScreen(loadNutrition);
   const [tab, setTab] = useState(TABS[0]);
   if (state.status !== "ready") return <ScreenState state={state} />;
@@ -24,7 +26,8 @@ export function Nutrition() {
         actions={
           <>
             <Action>Scan Barcode</Action>
-            <Action primary>Log Food</Action>
+            <Action primary onClick={() => setForm(true)}>Log Food</Action>
+            {form && <LogFoodDialog onClose={() => setForm(false)} />}
           </>
         }
       />

@@ -7,10 +7,12 @@ import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Lists.module.css";
 import g from "./Goals.module.css";
+import { NewGoalDialog } from "../forms/FitnessForms";
 
 const TABS = ["Active", "Achieved", "Paused", "All"];
 
 export function Goals() {
+  const [form, setForm] = useState(false);
   const state = useScreen(loadGoals);
   const [tab, setTab] = useState(TABS[0]);
   if (state.status !== "ready") return <ScreenState state={state} />;
@@ -26,7 +28,8 @@ export function Goals() {
         actions={
           <>
             <Action onClick={() => setTab("Achieved")}>Goal History</Action>
-            <Action primary>New Goal</Action>
+            <Action primary onClick={() => setForm(true)}>New Goal</Action>
+            {form && <NewGoalDialog onClose={() => setForm(false)} />}
           </>
         }
       />

@@ -12,3 +12,6 @@ backend/.storage/
 
 # Claude Code session files
 .claude/
+
+# Playwright MCP screenshots and logs
+.playwright-mcp/

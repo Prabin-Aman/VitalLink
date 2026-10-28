@@ -57,6 +57,18 @@
 .secondary:hover {
   background: var(--vl-bg-subtle);
 }
+/* Button / Style=Tertiary: text only, brand colour (Remove, + Add contact). */
+.tertiary {
+  background: transparent;
+  color: var(--vl-text-brand);
+}
+.tertiary:hover {
+  background: var(--vl-bg-brand-subtle);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
 /* Sizes taken from the Figma frames that use each one. */
 .block {
   width: 100%;

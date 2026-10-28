@@ -7,11 +7,14 @@ import { useApi, useReloadableScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import t from "../components/Table.module.css";
 import k from "./Lists.module.css";
+import { useState } from "react";
+import { AddMedicationDialog } from "../forms/CareForms";
 
 // Column widths from the header row (196/100/140/165/145/90/130/110 inside 20px padding).
 const COLS = [216, 100, 140, 165, 145, 90, 130, 130];
 
 export function Medications() {
+  const [form, setForm] = useState(false);
   const api = useApi();
   const [state, reload] = useReloadableScreen(loadMedications);
   if (state.status !== "ready") return <ScreenState state={state} />;
@@ -22,7 +25,7 @@ export function Medications() {
 
   return (
     <>
-      <PageHeader title="Medications" subtitle={v.subtitle} actions={<Action primary>Add Medication</Action>} />
+      <PageHeader title="Medications" subtitle={v.subtitle} actions={<><Action primary onClick={() => setForm(true)}>Add Medication</Action>{form && <AddMedicationDialog onClose={() => setForm(false)} />}</>} />
       <div className={k.tints}>
         {v.tints.map((x) => (
           <TintCard key={x.key} label={x.label} value={x.value} bg={x.bg} fg={x.fg} />

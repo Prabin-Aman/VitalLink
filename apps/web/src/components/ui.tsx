@@ -23,7 +23,7 @@ export function Logo({ large, inverse }: { large?: boolean; inverse?: boolean })
 }
 
 type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
-  variant?: "primary" | "secondary";
+  variant?: "primary" | "secondary" | "tertiary";
   size?: "block" | "md" | "cta" | "sm";
   children: ReactNode;
 };

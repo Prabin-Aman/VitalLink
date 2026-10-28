@@ -1,0 +1,209 @@
+/* Entry forms — Figma "15 — Proposed · Entry forms": Dialog 560, Form / Field, Form / Choice. */
+.dialog {
+  width: min(560px, calc(100vw - 32px));
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: none;
+  border-radius: var(--vl-radius-xl);
+  background: var(--vl-bg-surface);
+  color: var(--vl-text-primary);
+  box-shadow: var(--vl-elevation-modal);
+  overflow: auto;
+}
+.dialog::backdrop {
+  background: var(--vl-bg-overlay-scrim);
+}
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 24px;
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.overline {
+  color: var(--vl-text-tertiary);
+  text-transform: uppercase;
+}
+.sub {
+  color: var(--vl-text-secondary);
+}
+.fields {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.row {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  gap: 12px;
+}
+
+/* Form / Field: Label/Large, 7px gap, 46px Input (12/14 padding, bg/canvas, border/default, radius/md), Caption helper. */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  min-width: 0;
+}
+.input {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 14px;
+  border: 1px solid var(--vl-border-default);
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-canvas);
+}
+.input:focus-within {
+  border-color: var(--vl-border-focus);
+  box-shadow: 0 0 0 3px var(--vl-bg-brand-subtle);
+}
+.control {
+  flex: 1;
+  min-width: 0;
+  padding: 11px 0; /* 11 + 22 + 11 + 1px border each side = the 46px Figma Input */
+  border: none;
+  outline: none;
+  background: transparent;
+  color: var(--vl-text-primary);
+  font: inherit;
+  appearance: none;
+}
+.control::placeholder {
+  color: var(--vl-text-placeholder);
+}
+.control::-webkit-calendar-picker-indicator {
+  display: none;
+}
+select.control {
+  cursor: pointer;
+}
+.chevron {
+  transform: rotate(90deg);
+  pointer-events: none;
+}
+.helper {
+  color: var(--vl-text-tertiary);
+}
+
+/* Form / Choice: Label/Large, 8/14 padding, radius/full; Selected = bg/brand-subtle + border/brand + text/brand. */
+.choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.choice {
+  padding: 7px 13px;
+  border: 1px solid var(--vl-border-default);
+  border-radius: var(--vl-radius-full);
+  background: var(--vl-bg-canvas);
+  color: var(--vl-text-secondary);
+  cursor: pointer;
+}
+.choice[aria-pressed="true"],
+.choice[aria-checked="true"] {
+  border-color: var(--vl-border-brand);
+  background: var(--vl-bg-brand-subtle);
+  color: var(--vl-text-brand);
+}
+.choice:focus-visible {
+  outline: 2px solid var(--vl-border-focus);
+  outline-offset: 2px;
+}
+
+.note {
+  padding: 12px 14px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-subtle);
+  color: var(--vl-text-secondary);
+}
+
+.drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 24px 16px;
+  border: 1px dashed var(--vl-border-strong);
+  border-radius: var(--vl-radius-lg);
+  background: var(--vl-bg-canvas);
+  text-align: center;
+}
+.dropOver {
+  border-color: var(--vl-border-brand);
+  background: var(--vl-bg-brand-subtle);
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--vl-border-subtle);
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-canvas);
+}
+.item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px 10px 14px;
+}
+.item + .item {
+  border-top: 1px solid var(--vl-border-subtle);
+}
+.itemText {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.empty {
+  padding: 12px 14px;
+  color: var(--vl-text-tertiary);
+}
+
+/* Food search results under the Food field. */
+.results {
+  display: flex;
+  flex-direction: column;
+  margin-top: -8px;
+  border: 1px solid var(--vl-border-subtle);
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-surface);
+  box-shadow: var(--vl-elevation-popover);
+  max-height: 200px;
+  overflow: auto;
+}
+.result {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  border: none;
+  background: transparent;
+  color: var(--vl-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.result:hover,
+.result:focus-visible {
+  background: var(--vl-bg-subtle);
+  outline: none;
+}
+
+.error {
+  color: var(--vl-text-critical);
+}
+.done {
+  color: var(--vl-text-secondary);
+}
+.actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}

@@ -184,7 +184,7 @@ USES: dict[str, list[int]] = {
     "dumbbell": [16],
     "emergency": [20, 22, 26, 28, 36],
     "family": [16, 20, 22],
-    "file-text": [16, 18, 20],
+    "file-text": [16, 18, 20, 24],
     "flame": [16],
     "goals": [16, 20],
     "health": [16],

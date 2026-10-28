@@ -34,6 +34,9 @@ import type {
   Targets,
   Training,
   Workout,
+  FoodHit,
+  GoalMetricOption,
+  ConditionItem,
 } from "./types";
 import { mock } from "./mock";
 
@@ -132,6 +135,43 @@ export class VitalLinkClient {
     this.send<PrivacySettings>("PATCH", "/me/privacy", { emergency_on_lock_screen: on });
   /** The user cancels a visit (it stays in the Cancelled list). */
   cancelAppointment = (id: string) => this.send<Appointment>("PATCH", `/me/appointments/${id}`, { state: "cancelled" });
+  // ---- Entry forms (Figma page "15 — Proposed · Entry forms"); bodies are built in forms.ts.
+  /** One manual reading (POST /me/health/manual); blood pressure is two calls, systolic and diastolic. */
+  addReading = (metric: string, value: number, at: string) => this.send("POST", "/me/health/manual", { metric, value, at });
+  /** Seeded and own foods matching `q` (2+ letters); empty in mock mode. */
+  searchFoods = (q: string) => (this.isMock ? Promise.resolve([] as FoodHit[]) : this.get<FoodHit[]>(`/foods/search?q=${encodeURIComponent(q)}`, () => []));
+  logMeal = (body: object) => this.send("POST", "/me/meals", body);
+  logWorkout = (body: object) => this.send("POST", "/me/workouts", body);
+  addMedication = (body: object) => this.send("POST", "/me/medications", body);
+  addAppointment = (body: object) => this.send("POST", "/me/appointments", body);
+  rescheduleAppointment = (id: string, startsAt: string) => this.send("PATCH", `/me/appointments/${id}`, { starts_at: startsAt });
+  /** What a goal can track (GET /me/goals/metrics). */
+  goalMetrics = () => this.get<GoalMetricOption[]>("/me/goals/metrics", () => mock.goalMetrics);
+  createGoal = (body: object) => this.send("POST", "/me/goals", body);
+  /** Conditions and allergies with their ids (the emergency profile only lists labels). */
+  conditions = () => this.get<ConditionItem[]>("/me/conditions", () => mock.conditions);
+  addCondition = (label: string, kind: "chronic" | "allergy") => this.send("POST", "/me/conditions", { label, kind });
+  removeCondition = (id: string) => this.send("DELETE", `/me/conditions/${id}`);
+  addContact = (body: { name: string; relation: string; phone: string; primary?: boolean }) => this.send("POST", "/me/emergency-contacts", body);
+  removeContact = (id: string) => this.send("DELETE", `/me/emergency-contacts/${id}`);
+  /**
+   * A record with a file: create it, PUT the file to the signed URL the API hands out, then confirm so the
+   * API checks what was stored. Resolves with the record id, or null in mock mode.
+   */
+  uploadRecord = async (record: object, file: File): Promise<string | null> => {
+    const created = await this.send<{ id: string }>("POST", "/me/records", record);
+    if (!created) return null;
+    const target = await this.send<{ upload_url: string; method: string; headers: Record<string, string> }>(
+      "POST",
+      `/me/records/${created.id}/upload`,
+      { file_name: file.name, content_type: file.type, size: file.size },
+    );
+    const put = await fetch(target!.upload_url, { method: target!.method, headers: target!.headers, body: file });
+    if (!put.ok) throw new ApiError(put.status, "upload_failed", "The file didn't upload. Try again.");
+    await this.send("POST", `/me/records/${created.id}/confirm`);
+    return created.id;
+  };
+
   /** Removes a connected device and its sync state (its past readings stay). */
   disconnectDevice = (id: string) => this.send("DELETE", `/me/devices/${id}`);
   /** A signed, 5-minute URL for a record's attached file; null in mock mode (no files there). */

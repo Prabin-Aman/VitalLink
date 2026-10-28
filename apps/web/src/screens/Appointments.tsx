@@ -6,11 +6,13 @@ import { Button, Chip } from "../components/ui";
 import { useApi, useReloadableScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Appointments.module.css";
+import { BookAppointmentDialog, RescheduleDialog } from "../forms/CareForms";
 
 const TABS = ["Upcoming", "Past", "Cancelled"] as const;
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
 export function Appointments() {
+  const [form, setForm] = useState<{ kind: "book" } | { kind: "reschedule"; id: string; title: string; startsAt: string } | null>(null);
   const api = useApi();
   const [state, reload] = useReloadableScreen(loadAppointments);
   const cancel = (id: string, title: string) => {
@@ -24,7 +26,8 @@ export function Appointments() {
 
   return (
     <>
-      <PageHeader title="Appointments" subtitle={v.subtitle} actions={<Action primary>Book Appointment</Action>} />
+      <PageHeader title="Appointments" subtitle={v.subtitle} actions={<><Action primary onClick={() => setForm({ kind: "book" })}>Book Appointment</Action>{form?.kind === "book" && <BookAppointmentDialog onClose={() => setForm(null)} />}</>} />
+      {form?.kind === "reschedule" && <RescheduleDialog id={form.id} title={form.title} startsAt={form.startsAt} onClose={() => setForm(null)} />}
       <PillTabs label="Appointment filter" tabs={[...TABS]} value={tab} onChange={setTab} />
       <Split
         rail={
@@ -69,7 +72,13 @@ export function Appointments() {
                       {a.primary}
                     </button>
                     <div className={s.more}>
-                      <button type="button" className={cx("vl-label-m", s.btn)}>Reschedule</button>
+                      <button
+                        type="button"
+                        className={cx("vl-label-m", s.btn)}
+                        onClick={a.canCancel ? () => setForm({ kind: "reschedule", id: a.id, title: a.title, startsAt: a.startsAt }) : undefined}
+                      >
+                        Reschedule
+                      </button>
                       <button type="button" className={cx("vl-label-m", s.btn)} onClick={a.canCancel ? () => cancel(a.id, a.title) : undefined}>
                         Cancel
                       </button>

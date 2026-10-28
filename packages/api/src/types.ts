@@ -597,3 +597,37 @@ export interface DigitalTab {
   deep_sleep: { heavy_min: number; light_min: number; heavy_nights: number; light_nights: number } | null;
   limits: { name: string; detail: string; on: boolean }[];
 }
+
+// ---------------------------------------------------------------- entry forms
+
+/** GET /foods/search: macros per 100 g. */
+export interface FoodHit {
+  id: string;
+  name: string;
+  brand: string | null;
+  serving_g: number;
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fibre_g: number;
+}
+
+/** GET /me/goals/metrics */
+export interface GoalMetricOption {
+  code: string;
+  label: string;
+  unit: string;
+  source: string;
+  kind: "daily_total" | "weekly_count" | "target_value";
+  area: "activity" | "training" | "nutrition" | "recovery" | "body" | "heart" | "mind";
+}
+
+/** GET /me/conditions */
+export interface ConditionItem {
+  id: string;
+  label: string;
+  kind: "chronic" | "allergy";
+  note: string | null;
+  noted_on: string | null;
+}

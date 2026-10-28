@@ -43,6 +43,7 @@ import Family22 from "../../../../packages/assets/icons/family-22.svg?react";
 import FileText16 from "../../../../packages/assets/icons/file-text-16.svg?react";
 import FileText18 from "../../../../packages/assets/icons/file-text-18.svg?react";
 import FileText20 from "../../../../packages/assets/icons/file-text-20.svg?react";
+import FileText24 from "../../../../packages/assets/icons/file-text-24.svg?react";
 import Flame16 from "../../../../packages/assets/icons/flame-16.svg?react";
 import Goals16 from "../../../../packages/assets/icons/goals-16.svg?react";
 import Goals18 from "../../../../packages/assets/icons/goals-18.svg?react";
@@ -159,6 +160,7 @@ export const ICONS = {
   "file-text-16": FileText16,
   "file-text-18": FileText18,
   "file-text-20": FileText20,
+  "file-text-24": FileText24,
   "flame-16": Flame16,
   "goals-16": Goals16,
   "goals-18": Goals18,

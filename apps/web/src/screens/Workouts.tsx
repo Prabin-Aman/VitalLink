@@ -8,10 +8,12 @@ import { useScreen } from "../data";
 import { WORKOUT_ICON } from "./Activity";
 import { ScreenState } from "./ScreenState";
 import s from "./Lists.module.css";
+import { LogWorkoutDialog } from "../forms/FitnessForms";
 
 const TABS = ["Overview", "History", "Training Plans", "Exercise Library", "Personal Records"];
 
 export function Workouts() {
+  const [form, setForm] = useState(false);
   const state = useScreen(loadWorkouts);
   const [tab, setTab] = useState(TABS[0]);
   const [range, setRange] = useState("Week");
@@ -26,7 +28,8 @@ export function Workouts() {
         actions={
           <>
             <Action>Browse Exercises</Action>
-            <Action primary>Log Workout</Action>
+            <Action primary onClick={() => setForm(true)}>Log Workout</Action>
+            {form && <LogWorkoutDialog onClose={() => setForm(false)} />}
           </>
         }
       />
