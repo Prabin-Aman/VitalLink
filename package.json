@@ -13,9 +13,11 @@
     "mobile": "npm run start -w @vitallink/mobile",
     "typecheck": "npm exec -w @vitallink/web -- tsc --noEmit && npm exec -w @vitallink/mobile -- tsc --noEmit",
     "mobile:web": "npm run web -w @vitallink/mobile",
-    "api:types": "openapi-typescript http://localhost:8000/openapi.json -o packages/api/src/openapi.gen.ts"
+    "api:types": "openapi-typescript http://localhost:8000/openapi.json -o packages/api/src/openapi.gen.ts",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "openapi-typescript": "^7.13.0"
+    "openapi-typescript": "^7.13.0",
+    "vitest": "^3.2.7"
   }
 }

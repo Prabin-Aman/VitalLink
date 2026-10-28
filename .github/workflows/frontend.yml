@@ -1,13 +1,13 @@
-# Frontend CI: both apps typecheck (including packages/api/src/contract.ts, the check that every field the
+# Frontend CI: unit tests for packages/api, both apps typecheck (including packages/api/src/contract.ts, the check that every field the
 # screens read exists in the API's OpenAPI schema) and the web portal builds.
 name: frontend
 
 on:
   push:
     branches: [main]
-    paths: ["apps/**", "packages/**", "package.json", "package-lock.json", ".github/workflows/frontend.yml"]
+    paths: ["apps/**", "packages/**", "package.json", "package-lock.json", "vitest.config.mts", ".github/workflows/frontend.yml"]
   pull_request:
-    paths: ["apps/**", "packages/**", "package.json", "package-lock.json", ".github/workflows/frontend.yml"]
+    paths: ["apps/**", "packages/**", "package.json", "package-lock.json", "vitest.config.mts", ".github/workflows/frontend.yml"]
 
 permissions:
   contents: read
@@ -25,5 +25,7 @@ jobs:
       - run: npm ci
       - name: Typecheck (web and mobile, each with its own TypeScript)
         run: npm run typecheck
+      - name: Unit tests (form rules, time zones, every view-model from the sample data)
+        run: npm test
       - name: Build the web portal
         run: npm run web:build
