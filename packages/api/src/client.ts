@@ -210,9 +210,9 @@ export class VitalLinkClient {
       `/me/health/series/${metric}?days=${days}&interval=${interval}`,
       () => mock.series[metric] ?? { metric, unit: "", interval, points: [] },
     );
-  bloodPressure = () =>
+  bloodPressure = (days = 7, interval: Series["interval"] = "day") =>
     this.get<{ systolic: Series; diastolic: Series }>(
-      "/me/health/series/blood_pressure?days=7&interval=day",
+      `/me/health/series/blood_pressure?days=${days}&interval=${interval}`,
       () => mock.bloodPressure,
     );
   /** Daily targets (steps, move, exercise, stand, sleep): the one source for goals on every screen. */

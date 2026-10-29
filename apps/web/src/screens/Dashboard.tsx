@@ -1,5 +1,5 @@
-import { loadDashboard, thousands } from "@vitallink/api";
-import { useState } from "react";
+import { CHART_RANGES, loadBloodPressureRange, loadDashboard, loadStepsRange, thousands } from "@vitallink/api";
+import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { BPChart, ScoreRing, WeekBars } from "../components/Charts";
 import { Icon, tokenVar } from "../components/Icon";
@@ -8,15 +8,19 @@ import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import s from "./Dashboard.module.css";
 
-const RANGES = ["D", "W", "M", "6M", "Y"];
 
 export function Dashboard() {
   const nav = useNavigate();
   const state = useScreen(loadDashboard);
   const [stepRange, setStepRange] = useState("W");
   const [bpRange, setBpRange] = useState("W");
+  // W is the designed week (loaded with the dashboard); other ranges load when picked.
+  const steps = useScreen(useCallback((api) => loadStepsRange(api, stepRange), [stepRange]));
+  const bp = useScreen(useCallback((api) => (bpRange === "W" ? Promise.resolve(null) : loadBloodPressureRange(api, bpRange)), [bpRange]));
   if (state.status !== "ready") return <ScreenState state={state} />;
   const d = state.data;
+  const stepsVM = steps.status === "ready" ? steps.data : null;
+  const bpLines = bp.status === "ready" && bp.data ? bp.data : d.bloodPressure;
 
   return (
     <>
@@ -62,14 +66,14 @@ export function Dashboard() {
 
           <div className={s.charts}>
             <Card className={s.chart}>
-              <h2 className="vl-h5">Activity This Week</h2>
+              <h2 className="vl-h5">{stepsVM?.title ?? "Activity This Week"}</h2>
               <p className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
-                Steps · daily goal {thousands(d.steps.goal)}
+                {stepsVM?.caption ?? `Steps · daily goal ${thousands(d.steps.goal)}`}
               </p>
               <div className={s.range}>
-                <Segmented label="Steps range" options={RANGES} value={stepRange} onChange={setStepRange} />
+                <Segmented label="Steps range" options={CHART_RANGES} value={stepRange} onChange={setStepRange} />
               </div>
-              <WeekBars bars={d.steps.bars} />
+              <WeekBars bars={stepsVM?.bars ?? d.steps.bars} perPx={stepsVM?.perPx ?? 100} />
             </Card>
 
             {d.bloodPressure && (
@@ -79,10 +83,14 @@ export function Dashboard() {
                   Systolic / diastolic · mmHg
                 </p>
                 <div className={s.range}>
-                  <Segmented label="Blood pressure range" options={RANGES} value={bpRange} onChange={setBpRange} />
+                  <Segmented label="Blood pressure range" options={CHART_RANGES} value={bpRange} onChange={setBpRange} />
                 </div>
                 <div className={s.bpPlot}>
-                  <BPChart systolic={d.bloodPressure.systolic} diastolic={d.bloodPressure.diastolic} />
+                  {bpLines && bpLines.systolic.length > 0 ? (
+                    <BPChart systolic={bpLines.systolic} diastolic={bpLines.diastolic} />
+                  ) : (
+                    <p className="vl-body-s" style={{ color: tokenVar("textTertiary") }}>No blood pressure readings in this range.</p>
+                  )}
                 </div>
                 <div className={s.legend}>
                   <span><AccentDot color="dataBloodPressure" /> Systolic {d.bloodPressure.latestSys}</span>

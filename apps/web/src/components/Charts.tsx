@@ -27,20 +27,21 @@ export function ScoreRing({ score, size = 112, stroke = 10 }: { score: number; s
 }
 
 /** Dashboard "Activity This Week": 7 touching bars, 1px per 100 steps, baseline 126px down a 150px plot. */
-export function WeekBars({ bars }: { bars: BarVM[] }) {
+/** Dashboard steps bars. `perPx` steps per pixel: 100 for the designed week; other ranges fit the plot. */
+export function WeekBars({ bars, perPx = 100 }: { bars: BarVM[]; perPx?: number }) {
   return (
     <div>
-      <div className={s.weekPlot} role="img" aria-label={bars.map((b) => `${b.label} ${b.valueLabel} steps`).join(", ")}>
+      <div className={s.weekPlot} style={bars.length > 7 ? { gap: 3 } : undefined} role="img" aria-label={bars.map((b) => `${b.label.replace(/-\d+$/, "")} ${b.valueLabel} steps`).join(", ")}>
         {bars.map((b) => (
           <div key={b.label} className={s.weekCol}>
             <div
               className={s.weekBar}
-              style={{ height: b.value / 100, background: tokenVar(b.metGoal ? "dataActivity" : "bgBrandMuted") }}
+              style={{ height: Math.max(2, b.value / perPx), background: tokenVar(b.metGoal ? "dataActivity" : "bgBrandMuted") }}
             />
           </div>
         ))}
       </div>
-      <div className={s.weekAxis}>
+      <div className={s.weekAxis} style={bars.length > 7 ? { gap: 3 } : undefined}>
         {bars.map((b) => (
           <span key={b.label} className="vl-caption">
             {b.shortLabel}
@@ -73,6 +74,18 @@ export function BPChart({ systolic, diastolic, width = 324, height = 150 }: { sy
       ))}
       <path d={path(systolic)} fill="none" stroke={tokenVar("dataBloodPressure")} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
       <path d={path(diastolic)} fill="none" stroke={tokenVar("dataHeartRate")} strokeWidth={2.5} strokeLinejoin="round" strokeLinecap="round" vectorEffect="non-scaling-stroke" />
+      {/* One or two readings (a single day) make no visible line, so they show as points. */}
+      {systolic.length < 3 &&
+        [...systolic.map((v, i) => [v, i, "dataBloodPressure"] as const), ...diastolic.map((v, i) => [v, i, "dataHeartRate"] as const)].map(([v, i, c]) => (
+          <path
+            key={`${c}-${i}`}
+            d={`M${(systolic.length === 1 ? width / 2 : x(i, systolic.length)).toFixed(1)},${y(v).toFixed(1)} l0.01,0`}
+            stroke={tokenVar(c)}
+            strokeWidth={9}
+            strokeLinecap="round"
+            vectorEffect="non-scaling-stroke"
+          />
+        ))}
     </svg>
   );
 }

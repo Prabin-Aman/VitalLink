@@ -4,9 +4,11 @@ import type { ColorToken } from "@vitallink/tokens";
 import { VitalLinkClient } from "./client";
 import {
   dayKey,
+  dayMonth,
   greeting,
   longDate,
   metresToMiles,
+  monthYear,
   relativeDay,
   shortDateTime,
   thousands,
@@ -14,7 +16,7 @@ import {
   weekday,
   weekdayTime,
 } from "./format";
-import type { AccessLogEntry, LabResult, RangeStatus, Share, Workout, WorkoutType } from "./types";
+import type { AccessLogEntry, LabResult, RangeStatus, Series, Share, Workout, WorkoutType } from "./types";
 
 // ---------------------------------------------------------------- shared
 
@@ -98,6 +100,70 @@ const stepBars = (points: { bucket: string; value: number }[], goal: number, tz:
     metGoal: p.value >= goal,
   }));
 };
+
+// ---------------------------------------------------------------- dashboard chart ranges (D / W / M / 6M / Y)
+
+export const CHART_RANGES = ["D", "W", "M", "6M", "Y"];
+const RANGE: Record<string, { days: number; interval: Series["interval"]; title: string; per: string }> = {
+  D: { days: 1, interval: "hour", title: "Activity Today", per: "by hour" },
+  W: { days: 7, interval: "day", title: "Activity This Week", per: "" },
+  M: { days: 30, interval: "day", title: "Activity · Last 30 Days", per: "" },
+  "6M": { days: 182, interval: "week", title: "Activity · Last 6 Months", per: "daily average by week" },
+  Y: { days: 365, interval: "month", title: "Activity · Last 12 Months", per: "daily average by month" },
+};
+
+export interface StepsRangeVM {
+  title: string;
+  caption: string;
+  bars: BarVM[];
+  /** Steps per pixel of bar height (100 for the designed week; others fit the 126px plot). */
+  perPx: number;
+}
+
+/** Steps for a range. Weekly and monthly buckets show the daily average, so the goal colour still means "met". */
+export async function loadStepsRange(api: VitalLinkClient, range: string): Promise<StepsRangeVM> {
+  const r = RANGE[range] ?? RANGE.W;
+  const [me, targets, series] = await Promise.all([api.me(), api.targets(), api.series("steps", r.days, r.interval)]);
+  const tz = me.timezone;
+  const goal = targets.daily_steps_goal;
+  const nowMs = Date.parse(api.now());
+  const days = (p: { bucket: string }, i: number, n: number) => {
+    if (r.interval === "week") return i === n - 1 ? Math.max(1, Math.ceil((nowMs - Date.parse(p.bucket)) / 86400000)) : 7;
+    if (r.interval === "month") {
+      const d = new Date(p.bucket);
+      const inMonth = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 0)).getUTCDate();
+      return i === n - 1 ? Math.max(1, Math.ceil((nowMs - Date.parse(p.bucket)) / 86400000)) : inMonth;
+    }
+    return 1;
+  };
+  const pts = series.points;
+  const bars: BarVM[] = pts.map((p, i) => {
+    const value = p.value / days(p, i, pts.length);
+    const label =
+      r.interval === "hour" ? timeOfDay(p.bucket, tz) : r.interval === "month" ? monthYear(p.bucket, tz).slice(0, 3) : r.interval === "week" ? dayMonth(p.bucket, tz) : weekday(p.bucket, tz);
+    const every = r.interval === "hour" ? 6 : range === "M" ? 5 : range === "6M" ? 4 : 1;
+    return {
+      label: `${label}-${i}`,
+      shortLabel: i % every === 0 ? (r.interval === "hour" ? label.replace(":00 ", " ").replace(/ (AM|PM)/, (m) => m.trim()[0].toLowerCase()) : r.interval === "day" && range === "W" ? label[0] : label) : "",
+      value,
+      valueLabel: String(Math.round(value)),
+      metGoal: r.interval === "hour" ? false : value >= goal,
+    };
+  });
+  const max = Math.max(1, ...bars.map((b) => b.value));
+  return {
+    title: r.title,
+    caption: `Steps · ${r.per || `daily goal ${thousands(goal)}`}`,
+    bars,
+    perPx: range === "W" ? 100 : max / 110,
+  };
+}
+
+export async function loadBloodPressureRange(api: VitalLinkClient, range: string) {
+  const r = RANGE[range] ?? RANGE.W;
+  const bp = await api.bloodPressure(r.days, r.interval);
+  return { systolic: bp.systolic.points.map((p) => p.value), diastolic: bp.diastolic.points.map((p) => p.value) };
+}
 
 export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> {
   const [me, dash, steps, targets, bp, bpLatest, meds, appt, streaks, lab] = await Promise.all([
