@@ -177,8 +177,11 @@ export function Panel({
   children,
   className,
   style,
+  titleColor,
 }: {
   title?: string;
+  /** Delete Account titles in text/critical. */
+  titleColor?: ColorToken;
   level?: "h3" | "h5";
   caption?: ReactNode;
   action?: ReactNode;
@@ -193,7 +196,9 @@ export function Panel({
       {title ? (
         <div className={s.panelHead}>
           <div className={s.panelTitles}>
-            <Heading className={`vl-${level}`}>{title}</Heading>
+            <Heading className={`vl-${level}`} style={titleColor ? { color: tokenVar(titleColor) } : undefined}>
+              {title}
+            </Heading>
             {caption ? <Txt s="caption" c="textTertiary">{caption}</Txt> : null}
           </div>
           {action}
@@ -205,7 +210,13 @@ export function Panel({
 }
 
 /** Text link in a card header ("View all history"). */
-export function HeadLink({ children, href = "#" }: { children: ReactNode; href?: string }) {
+export function HeadLink({ children, href = "#", onClick }: { children: ReactNode; href?: string; onClick?: () => void }) {
+  if (onClick)
+    return (
+      <button type="button" className={cx("vl-label-l", s.link, s.linkButton)} onClick={onClick}>
+        {children}
+      </button>
+    );
   return (
     <Link className={cx("vl-label-l", s.link)} to={href}>
       {children}

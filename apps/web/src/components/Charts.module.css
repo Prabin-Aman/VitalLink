@@ -132,3 +132,45 @@
   flex: 1;
   text-align: center;
 }
+
+/* Goal bars (Nutrition › Week / Hydration): 160px plot, 24px gaps, dashed goal line. */
+.goalBars {
+  padding-top: 24px;
+}
+.goalPlot {
+  position: relative;
+  height: 160px;
+  display: flex;
+  align-items: flex-end;
+  gap: 24px;
+}
+.goalCol {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 4px;
+}
+.goalBar {
+  width: 100%;
+  border-radius: var(--vl-radius-sm) var(--vl-radius-sm) 0 0;
+}
+.goalLine {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 1px dashed var(--vl-text-tertiary);
+  pointer-events: none;
+}
+.goalAxis {
+  display: flex;
+  gap: 24px;
+  margin-top: 10px;
+  color: var(--vl-data-axis-label);
+}
+.goalAxis span {
+  flex: 1;
+  text-align: center;
+}

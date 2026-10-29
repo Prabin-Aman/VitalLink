@@ -3,7 +3,10 @@
 import type {
   AccessLogEntry,
   ConditionItem,
+  ExerciseItem,
   GoalMetricOption,
+  NutritionDay,
+  TrainingPlan,
   Dashboard,
   Goal,
   Me,
@@ -144,6 +147,53 @@ export const mock = {
   privacy: { emergency_on_lock_screen: true, devices: { total: 5, syncing: 4, overdue: 1 } },
   training,
   nutrition,
+  /** A different-looking sample day for the Week and Meals tabs (same meals, scaled by the date). */
+  nutritionOn: (date: string): NutritionDay => {
+    if (date === nutrition.date.slice(0, 10)) return nutrition;
+    const d = Number(date.slice(8, 10));
+    const f = 0.95 + ((d * 37) % 41) / 100;
+    const r = (n: number) => Math.round(n * f);
+    return {
+      ...nutrition,
+      date: `${date}T00:00:00-05:00`,
+      kcal: r(nutrition.kcal),
+      protein_g: r(nutrition.protein_g),
+      carbs_g: r(nutrition.carbs_g),
+      fat_g: r(nutrition.fat_g),
+      water_ml: Math.round((nutrition.water_ml * f) / 50) * 50,
+      meals: nutrition.meals.map((m) => ({ ...m, id: `${m.id}-${date}`, eaten_at: `${date}${m.eaten_at.slice(10)}`, kcal: r(m.kcal) })),
+    };
+  },
+  exercises: [
+    { id: 1, name: "Back Squat", primary_muscle: "legs" },
+    { id: 2, name: "Romanian Deadlift", primary_muscle: "legs" },
+    { id: 3, name: "Walking Lunge", primary_muscle: "legs" },
+    { id: 4, name: "Deadlift", primary_muscle: "back" },
+    { id: 5, name: "Barbell Row", primary_muscle: "back" },
+    { id: 6, name: "Pull-up", primary_muscle: "back" },
+    { id: 7, name: "Bench Press", primary_muscle: "chest" },
+    { id: 8, name: "Push-up", primary_muscle: "chest" },
+    { id: 9, name: "Overhead Press", primary_muscle: "shoulders" },
+    { id: 10, name: "Lateral Raise", primary_muscle: "shoulders" },
+    { id: 11, name: "Biceps Curl", primary_muscle: "arms" },
+    { id: 12, name: "Plank", primary_muscle: "core" },
+    { id: 13, name: "Hip Thrust", primary_muscle: "glutes" },
+    { id: 14, name: "Burpee", primary_muscle: "full_body" },
+  ] as ExerciseItem[],
+  plans: [
+    {
+      id: "plan1",
+      name: "Strength + 5K base",
+      status: "active",
+      weekly_target_sessions: 3,
+      sessions: [
+        { id: "p0", title: "Legs", kind: "strength", starts_at: "2026-09-11T19:05:00-05:00", exercises: 5, minutes: 52 },
+        { id: "p1", title: "Push Day", kind: "strength", starts_at: "2026-09-14T18:30:00-05:00", exercises: 6, minutes: 50 },
+        { id: "p2", title: "Easy Run", kind: "cardio", starts_at: "2026-09-16T07:00:00-05:00", exercises: 0, minutes: 35 },
+        { id: "p3", title: "Pull Day", kind: "strength", starts_at: "2026-09-17T09:00:00-05:00", exercises: 6, minutes: 50 },
+      ],
+    },
+  ] as TrainingPlan[],
   goalsOverview,
   medicationsOverview,
   appointments,

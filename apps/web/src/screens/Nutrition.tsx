@@ -1,4 +1,4 @@
-// Nutrition — Desktop 1440 (Figma 131:100).
+// Nutrition — Desktop 1440 (Figma 131:100); Week, Meals and Hydration are in NutritionTabs.tsx (Figma 195:2).
 import { loadNutrition } from "@vitallink/api";
 import { useState } from "react";
 import { tokenVar } from "../components/Icon";
@@ -8,6 +8,7 @@ import { ScreenState } from "./ScreenState";
 import s from "./Lists.module.css";
 import n from "./Nutrition.module.css";
 import { LogFoodDialog } from "../forms/FitnessForms";
+import { HydrationTab, MealsTab, WeekTab } from "./NutritionTabs";
 
 const TABS = ["Today", "Week", "Meals", "Recipes", "Hydration"];
 
@@ -32,7 +33,13 @@ export function Nutrition() {
         }
       />
       <PillTabs label="Nutrition sections" tabs={TABS} value={tab} onChange={setTab} />
-      {tab !== TABS[0] ? (
+      {tab === "Week" ? (
+        <WeekTab />
+      ) : tab === "Meals" ? (
+        <MealsTab />
+      ) : tab === "Hydration" ? (
+        <HydrationTab />
+      ) : tab !== TABS[0] ? (
         <NotDesigned what={tab} />
       ) : (
         <>

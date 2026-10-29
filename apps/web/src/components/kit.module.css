@@ -281,3 +281,10 @@
   border-left: 3px solid;
   border-radius: 2px;
 }
+
+.linkButton {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}

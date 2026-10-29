@@ -7,6 +7,7 @@ import { Avatar, Button } from "../components/ui";
 import { useApi, useReloadableScreen } from "../data";
 import { applyTheme, storedTheme, type Theme } from "../theme";
 import { ScreenState } from "./ScreenState";
+import { DataExportSection, DeleteAccountSection } from "./SettingsSections";
 import s from "./Settings.module.css";
 
 // Sections with their own page link there; Profile and Appearance live here.
@@ -106,6 +107,10 @@ export function Settings() {
         </Panel>
       </>
     );
+  } else if (section === "Data Export") {
+    body = <DataExportSection />;
+  } else if (section === "Delete Account") {
+    body = <DeleteAccountSection />;
   } else {
     body = <NotDesigned what={section} />;
   }

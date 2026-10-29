@@ -47,3 +47,10 @@
   display: flex;
   gap: 16px;
 }
+
+/* A row of buttons (Hydration › Add water). */
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}

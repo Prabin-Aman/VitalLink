@@ -1,0 +1,69 @@
+/* Workouts tabs (Figma 203:622, 203:1805, 203:2373). */
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.divider {
+  width: 1px;
+  height: 24px;
+  margin: 0 4px;
+  background: var(--vl-border-subtle);
+}
+.group {
+  margin: 16px 0 4px;
+}
+section:first-of-type > .group {
+  margin-top: 4px;
+}
+
+.searchRow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+.search {
+  width: 360px;
+  max-width: 100%;
+}
+/* Exercise cards: 267 wide at 1440, 16 apart, surface + border/subtle + Elevation/02. */
+.cards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 16px;
+}
+.card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--vl-border-subtle);
+  border-radius: var(--vl-radius-lg);
+  background: var(--vl-bg-surface);
+  box-shadow: var(--vl-elevation-card);
+}
+.cardText {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.records {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.record {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 12px 0;
+  border-top: 1px solid var(--vl-border-subtle);
+}

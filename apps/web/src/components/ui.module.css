@@ -57,6 +57,14 @@
 .secondary:hover {
   background: var(--vl-bg-subtle);
 }
+/* Destructive confirm (Settings › Delete Account): bg/critical with on-brand text. */
+.danger {
+  background: var(--vl-bg-critical);
+  color: var(--vl-text-on-brand);
+}
+.danger:hover:not(:disabled) {
+  filter: brightness(0.92);
+}
 /* Button / Style=Tertiary: text only, brand colour (Remove, + Add contact). */
 .tertiary {
   background: transparent;

@@ -631,3 +631,21 @@ export interface ConditionItem {
   note: string | null;
   noted_on: string | null;
 }
+
+// ---------------------------------------------------------------- workouts and nutrition tabs
+
+/** GET /exercises */
+export interface ExerciseItem {
+  id: number;
+  name: string;
+  primary_muscle: "chest" | "back" | "shoulders" | "arms" | "core" | "legs" | "glutes" | "full_body";
+}
+
+/** GET /me/training/plans */
+export interface TrainingPlan {
+  id: string;
+  name: string;
+  status: string;
+  weekly_target_sessions: number;
+  sessions: PlannedSession[];
+}

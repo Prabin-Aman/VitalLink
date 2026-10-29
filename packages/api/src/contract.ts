@@ -60,4 +60,6 @@ export type Contract = [
   Fits<Missing<T.FoodHit, S["FoodOut"]>>,
   Fits<Missing<T.GoalMetricOption, S["GoalMetric"]>>,
   Fits<Missing<T.ConditionItem, S["Condition"]>>,
+  Fits<Missing<T.ExerciseItem, S["ExerciseOut"]>>,
+  Fits<Missing<T.TrainingPlan, S["PlanOut"]>>,
 ];

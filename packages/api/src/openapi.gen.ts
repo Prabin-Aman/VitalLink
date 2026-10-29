@@ -362,7 +362,7 @@ export interface paths {
         };
         get?: never;
         put?: never;
-        /** Run the nightly job now (X-Job-Secret header). Synchronous; returns a summary. */
+        /** Run the nightly job now (X-Job-Secret header). Synchronous; returns a summary, with HTTP 500 when any user or step failed so the scheduled workflow fails visibly. */
         post: operations["runNightly"];
         delete?: never;
         options?: never;
@@ -823,6 +823,23 @@ export interface paths {
         };
         /** This week's load, recent sessions, muscle balance, personal records and the next planned session. */
         get: operations["training_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/training/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Every personal record: heaviest set per exercise, then the fastest 5 km and 10 km. */
+        get: operations["records_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4376,6 +4393,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Training"];
+                };
+            };
+        };
+    };
+    records_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PersonalRecord"][];
                 };
             };
         };

@@ -139,7 +139,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
   = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
 - Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
-- Tests: 240 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
+- Tests: 241 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
   (44-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
   `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
@@ -160,6 +160,12 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   dialogs + mobile sheets; owner review pending). Rules/bodies in `packages/api/src/forms.ts`, parts in
   `apps/web/src/components/Form.tsx`, dialogs in `apps/web/src/forms/`; a save calls `notifyChanged()` so
   every screen on view reloads. Mobile sheets are designed but not built yet.
+- Web tabs/sections designed on 195:2 "Web · Proposed tabs and sections" and built: Workouts › History,
+  Training Plans, Exercise Library, Personal Records (`GET /me/training/records`); Nutrition › Week, Meals
+  (remove a meal), Hydration (add water); Settings › Data Export, Delete Account (`DELETE /me`). View-models
+  in `packages/api/src/views/tabs.ts`, screens in `WorkoutTabs.tsx`, `NutritionTabs.tsx`,
+  `SettingsSections.tsx`. Still placeholders: Nutrition › Recipes (no backend), Lab Results other panels,
+  Settings › Account/Security/Language (wait for Supabase sign-in). `npm test` = Vitest for packages/api.
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

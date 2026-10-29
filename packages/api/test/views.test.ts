@@ -32,6 +32,39 @@ describe("view-models from the Figma sample data", () => {
   });
 });
 
+describe("tab view-models", () => {
+  it("keeps half kilos in the heaviest lift", async () => {
+    const c = new VitalLinkClient();
+    c.personalRecords = async () => [
+      { exercise: "Back Squat", achieved_at: "2026-09-10T07:00:00-05:00", weight_kg: 92.5, reps: 5, time_s: null },
+      { exercise: "5 km run", achieved_at: "2026-09-06T07:00:00-05:00", weight_kg: null, reps: null, time_s: 1662 },
+    ];
+    const vm = await api.loadPersonalRecords(c);
+    expect(vm.stats.find((s) => s.key === "heaviest")?.value).toBe("92.5");
+    expect(vm.rows.map((r) => r.value)).toEqual(["92.5 kg × 5", "27:42"]);
+  });
+
+  it("filters exercises by name and muscle", async () => {
+    const vm = await api.loadExerciseLibrary(client);
+    expect(api.filterExercises(vm, "row", "all").map((e) => e.name)).toEqual(["Barbell Row"]);
+    expect(api.filterExercises(vm, "", "legs").every((e) => e.muscle === "Legs")).toBe(true);
+  });
+
+  it("builds a week of nutrition with today's real sample day", async () => {
+    const vm = await api.loadNutritionWeek(client);
+    expect(vm.bars).toHaveLength(7);
+    expect(vm.days[0].kcal).toBe("1,842 kcal"); // newest first: today is the sample day
+    expect(vm.bars.some((b) => b.onTarget)).toBe(true);
+  });
+
+  it("filters workout history by type", async () => {
+    const runs = await api.loadWorkoutHistory(client, 90, "run");
+    expect(runs.groups.flatMap((g) => g.rows).every((r) => r.icon === "run")).toBe(true);
+    const none = await api.loadWorkoutHistory(client, 30, "strength");
+    expect(none.empty === null || none.empty.includes("strength")).toBe(true);
+  });
+});
+
 describe("mock mode writes", () => {
   it("change nothing and resolve with null", async () => {
     expect(client.isMock).toBe(true);

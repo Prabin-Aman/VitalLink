@@ -37,6 +37,9 @@ import type {
   FoodHit,
   GoalMetricOption,
   ConditionItem,
+  ExerciseItem,
+  PersonalRecord,
+  TrainingPlan,
 } from "./types";
 import { mock } from "./mock";
 
@@ -172,6 +175,10 @@ export class VitalLinkClient {
     return created.id;
   };
 
+  deleteMeal = (id: string) => this.send("DELETE", `/me/meals/${id}`);
+  addWater = (ml: number) => this.send("POST", "/me/hydration", { ml });
+  /** DELETE /me: needs a sign-in within the last 10 minutes (403 reauth_required otherwise). */
+  deleteAccount = () => this.send("DELETE", "/me");
   /** Removes a connected device and its sync state (its past readings stay). */
   disconnectDevice = (id: string) => this.send("DELETE", `/me/devices/${id}`);
   /** A signed, 5-minute URL for a record's attached file; null in mock mode (no files there). */
@@ -217,8 +224,14 @@ export class VitalLinkClient {
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
   workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
+  /** Every personal record (heaviest set per exercise, fastest 5 km and 10 km). */
+  personalRecords = () => this.get<PersonalRecord[]>("/me/training/records", () => mock.training.records);
+  exercises = () => this.get<ExerciseItem[]>("/exercises", () => mock.exercises);
+  trainingPlans = () => this.get<TrainingPlan[]>("/me/training/plans", () => mock.plans);
   training = () => this.get<Training>("/me/training", () => mock.training);
-  nutrition = () => this.get<NutritionDay>("/me/nutrition/day", () => mock.nutrition);
+  /** One local day (default today). Mock mode scales the sample day so a week doesn't look copied. */
+  nutrition = (date?: string) =>
+    this.get<NutritionDay>(`/me/nutrition/day${date ? `?date=${date}` : ""}`, () => (date ? mock.nutritionOn(date) : mock.nutrition));
   shares = () => this.get<Share[]>("/me/shares", () => mock.shares);
   sharedWithMe = () => this.get<SharedWithMe[]>("/me/shared-with-me", () => []);
   accessLog = () => this.get<AccessLogEntry[]>("/me/access-log?limit=20", () => mock.accessLog);

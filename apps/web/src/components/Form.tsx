@@ -201,6 +201,7 @@ export function Choices({
   onChange,
   multiple,
   extra,
+  hideLabel,
 }: {
   label: string;
   options: Option[];
@@ -208,6 +209,8 @@ export function Choices({
   onChange: (next: string[]) => void;
   multiple?: boolean;
   extra?: ReactNode;
+  /** Filter rows (Workouts › History) name the group for screen readers only. */
+  hideLabel?: boolean;
 }) {
   const id = useId();
   // Two quick clicks can land before a re-render; toggle against the newest selection, not the rendered one.
@@ -215,7 +218,7 @@ export function Choices({
   latest.current = selected;
   return (
     <div className={s.field} role="group" aria-labelledby={id}>
-      <span id={id} className="vl-label-l">
+      <span id={id} className={hideLabel ? "sr-only" : "vl-label-l"}>
         {label}
       </span>
       <div className={s.choices} role={multiple ? undefined : "radiogroup"} aria-labelledby={id}>

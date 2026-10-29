@@ -203,3 +203,28 @@ export function Rings({ rings, size = 132, stroke = 13, gap = 3 }: { rings: { fr
     </svg>
   );
 }
+
+/**
+ * Daily bars against a goal (Nutrition › Week 204:1068, Hydration 204:1973): 160px plot, value above each
+ * bar, a dashed goal line; bars on target take `color`, the rest bg/brand-muted.
+ */
+export function GoalBars({ bars, goalFraction, color, label }: { bars: { key: string; label: string; value: string; fraction: number; onTarget: boolean }[]; goalFraction: number; color: ColorToken; label: string }) {
+  return (
+    <div className={s.goalBars} role="img" aria-label={`${label}: ${bars.map((b) => `${b.label} ${b.value}`).join(", ")}`}>
+      <div className={s.goalPlot}>
+        <span className={s.goalLine} style={{ bottom: `${goalFraction * 100}%` }} />
+        {bars.map((b) => (
+          <div key={b.key} className={s.goalCol}>
+            <span className={`vl-caption ${s.valueLabel}`}>{b.value}</span>
+            <span className={s.goalBar} style={{ height: `${Math.max(2, b.fraction * 100)}%`, background: tokenVar(b.onTarget ? color : "bgBrandMuted") }} />
+          </div>
+        ))}
+      </div>
+      <div className={`vl-label-m ${s.goalAxis}`}>
+        {bars.map((b) => (
+          <span key={b.key}>{b.label}</span>
+        ))}
+      </div>
+    </div>
+  );
+}

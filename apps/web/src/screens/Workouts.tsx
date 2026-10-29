@@ -1,14 +1,15 @@
-// Workouts — Desktop 1440 (Figma 129:1142).
+// Workouts — Desktop 1440 (Figma 129:1142); the other tabs are in WorkoutTabs.tsx (Figma 195:2).
 import { loadWorkouts } from "@vitallink/api";
 import { useState } from "react";
 import { StackedBars } from "../components/Charts";
-import { Action, BarRow, HeadLink, IconTile, Legend, NotDesigned, PageHeader, Panel, PillTabs, Split, StatRow, StatusPill, Txt } from "../components/kit";
+import { Action, BarRow, HeadLink, IconTile, Legend, PageHeader, Panel, PillTabs, Split, StatRow, StatusPill, Txt } from "../components/kit";
 import { Button, Segmented } from "../components/ui";
 import { useScreen } from "../data";
 import { WORKOUT_ICON } from "./Activity";
 import { ScreenState } from "./ScreenState";
 import s from "./Lists.module.css";
 import { LogWorkoutDialog } from "../forms/FitnessForms";
+import { ExerciseLibraryTab, HistoryTab, PlansTab, RecordsTab } from "./WorkoutTabs";
 
 const TABS = ["Overview", "History", "Training Plans", "Exercise Library", "Personal Records"];
 
@@ -27,15 +28,21 @@ export function Workouts() {
         subtitle={w.subtitle}
         actions={
           <>
-            <Action>Browse Exercises</Action>
+            <Action onClick={() => setTab("Exercise Library")}>Browse Exercises</Action>
             <Action primary onClick={() => setForm(true)}>Log Workout</Action>
             {form && <LogWorkoutDialog onClose={() => setForm(false)} />}
           </>
         }
       />
       <PillTabs label="Workout sections" tabs={TABS} value={tab} onChange={setTab} />
-      {tab !== TABS[0] ? (
-        <NotDesigned what={tab} />
+      {tab === "History" ? (
+        <HistoryTab />
+      ) : tab === "Training Plans" ? (
+        <PlansTab />
+      ) : tab === "Exercise Library" ? (
+        <ExerciseLibraryTab />
+      ) : tab === "Personal Records" ? (
+        <RecordsTab />
       ) : (
         <>
           <StatRow stats={w.stats} />
@@ -84,7 +91,7 @@ export function Workouts() {
               <Legend items={w.legend} />
             </Panel>
 
-            <Panel title="Recent sessions" action={<HeadLink>View all history</HeadLink>}>
+            <Panel title="Recent sessions" action={<HeadLink onClick={() => setTab("History")}>View all history</HeadLink>}>
               <ul className={s.list}>
                 {w.sessions.map((x) => (
                   <li key={x.id} className={s.row}>
