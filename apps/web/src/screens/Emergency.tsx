@@ -68,7 +68,7 @@ export function Emergency() {
                 <Txt s="bodyS" c="textSecondary" as="p">Scanning shows this card only — no login, no access to the rest of your record.</Txt>
                 <div className={s.btns}>
                   <RowButton onClick={() => window.print()}>Print Card</RowButton>
-                  <RowButton>Download PDF</RowButton>
+                  <RowButton onClick={() => window.print()}>Download PDF</RowButton>
                   <RowButton onClick={() => setForm(true)}>Edit Information</RowButton>
                   {form && <EditEmergencyDialog onClose={() => setForm(false)} />}
                 </div>

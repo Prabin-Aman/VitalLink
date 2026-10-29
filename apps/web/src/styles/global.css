@@ -58,3 +58,11 @@ a {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* Printed pages (Emergency Medical ID, lab results) carry no controls. */
+@media print {
+  button,
+  [role="combobox"] {
+    display: none !important;
+  }
+}

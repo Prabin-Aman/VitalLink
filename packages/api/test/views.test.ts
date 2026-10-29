@@ -82,6 +82,17 @@ describe("top-bar search", () => {
   });
 });
 
+describe("lab export", () => {
+  it("writes the panel as CSV with quoting", async () => {
+    const vm = await api.loadLabResults(client);
+    const f = api.labCsv({ ...vm, rows: [{ ...vm.rows[0], name: 'LDL, "bad"' }] }, "Lipid Profile", "2026-10-26");
+    expect(f.filename).toBe("lipid-profile-2026-10-26.csv");
+    const [head, row] = f.text.trim().split("\r\n");
+    expect(head).toBe("Test,Result,Unit,Reference range,Status,Previous");
+    expect(row.startsWith('"LDL, ""bad"""')).toBe(true);
+  });
+});
+
 describe("article reader", () => {
   it("parses the library's Markdown subset into safe blocks", () => {
     const blocks = api.parseArticle("Intro with **60 and 100** bpm.\nsame paragraph\n\n## Why it moves\n\n- **Fitness:** lower\n- Sleep\n\nLast <b>raw</b> line.");

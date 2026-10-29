@@ -172,6 +172,10 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Top bar (Figma 207:1493, 207:1541): search over pages, records + the tests in lab panels, medications,
   appointments and library (`views/search.ts`, index built on first focus); profile menu with sign out
   (drops the tab's dev token until Supabase). The shell loads only `/me` (`loadShell`).
+- Also working on web: dashboard D/W/M/6M/Y chart ranges (`loadStepsRange`, `loadBloodPressureRange`),
+  Health Library article reader `/library/:slug` (Figma 208:3270; `parseArticle` renders the Markdown
+  subset as text-only elements), Lab Results Export (CSV with BOM), Emergency Download PDF / Print Card
+  (browser print; `@media print` hides the shell and buttons).
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

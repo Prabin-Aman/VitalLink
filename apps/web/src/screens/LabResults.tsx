@@ -1,5 +1,5 @@
 // Lab Results — Desktop 1440 (Figma 61:53).
-import { loadLabResults } from "@vitallink/api";
+import { labCsv, loadLabResults } from "@vitallink/api";
 import { useCallback, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { tokenVar } from "../components/Icon";
@@ -8,6 +8,7 @@ import { Chip } from "../components/ui";
 import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import { ShareDialog } from "../forms/ShareForms";
+import { saveFile } from "../download";
 import t from "../components/Table.module.css";
 import k from "./Lists.module.css";
 
@@ -28,7 +29,15 @@ export function LabResults() {
         subtitle={v.subtitle}
         actions={
           <>
-            <Action>Export</Action>
+            <Action
+              onClick={() => {
+                const f = labCsv(v, v.panelName, v.collectedOn);
+                // The byte-order mark makes Excel read the file as UTF-8 (ranges use "–").
+                saveFile(new Blob(["\uFEFF", f.text], { type: "text/csv;charset=utf-8" }), f.filename);
+              }}
+            >
+              Export
+            </Action>
             <Action primary onClick={() => setSharing(true)}>Share with Doctor</Action>
             {sharing && <ShareDialog preset={{ kind: "doctor", scopes: ["records"], overline: "Lab Results › Share with Doctor" }} onClose={() => setSharing(false)} />}
           </>

@@ -167,3 +167,17 @@
     padding: 28px 24px 32px;
   }
 }
+
+/* Printing (Emergency › Download PDF uses the browser's Save as PDF): the page content only. */
+@media print {
+  .sidebar,
+  .topbar {
+    display: none;
+  }
+  .shell {
+    background: none;
+  }
+  .content {
+    padding: 0;
+  }
+}

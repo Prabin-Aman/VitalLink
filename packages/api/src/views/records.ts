@@ -96,6 +96,9 @@ export interface LabRowVM {
 
 export interface LabResultsVM {
   panelId: string;
+  /** For the CSV export's file name. */
+  panelName: string;
+  collectedOn: string;
   /** Every panel, newest first, for the tabs ("Lipid", or "Lipid · 12 Sep" when two share a name). */
   panels: { id: string; label: string }[];
   subtitle: string;
@@ -143,6 +146,8 @@ export async function loadLabResults(api: VitalLinkClient, panelId?: string): Pr
   const count = (i: LabResult["interpretation"]) => p.results.filter((r) => r.interpretation === i).length;
   return {
     panelId: p.id,
+    panelName: p.name,
+    collectedOn: p.collected_at.slice(0, 10),
     panels,
     subtitle: `${p.name} · ${p.facility} · ordered by ${p.ordered_by} · collected ${date(p.collected_at, me.timezone).replace(/^0/, "")}`,
     tints: [
@@ -205,4 +210,12 @@ export async function loadDocument(api: VitalLinkClient, recordId: string): Prom
     note: p.note,
     canDownload: rec.file?.status === "attached",
   };
+}
+
+/** Lab Results › Export: the panel as CSV (RFC 4180 quoting), and a file name like "lipid-profile-2026-10-26.csv". */
+export function labCsv(vm: LabResultsVM, title: string, collected: string): { filename: string; text: string } {
+  const q = (v: string) => (/[",\n]/.test(v) ? `"${v.replace(/"/g, '""')}"` : v);
+  const rows = [["Test", "Result", "Unit", "Reference range", "Status", "Previous"], ...vm.rows.map((r) => [r.name, r.value, r.unit, r.range, r.status.label, r.previous])];
+  const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+  return { filename: `${slug}-${collected}.csv`, text: rows.map((r) => r.map(q).join(",")).join("\r\n") + "\r\n" };
 }
