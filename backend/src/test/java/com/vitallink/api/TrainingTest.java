@@ -114,6 +114,28 @@ class TrainingTest extends ApiTest {
     }
 
     @Test
+    void personalRecordsCoverAllHistory() {
+        String u = user();
+        save(u, strength(400, 90)); // older than the training view's year, still a record
+        save(u, strength(3, 80));
+        save(u, strength(1, 85));
+        save(u, Map.of("type", "run", "title", "10K", "started_at", at(2, 6), "duration_s", 3000, "distance_m", 10000));
+        save(u, Map.of("type", "run", "title", "Easy", "started_at", at(4, 6), "duration_s", 1800, "distance_m", 5000));
+        Res r = get(u, "/v1/me/training/records");
+        assertThat(r.status()).isEqualTo(200);
+        assertThat(r.at("/0/exercise").asString()).isEqualTo("Back Squat");
+        assertThat(r.at("/0/weight_kg").asDouble()).isEqualTo(90);
+        assertThat(r.at("/0/reps").asInt()).isEqualTo(5);
+        // 10 km in 50:00 is a 5:00/km pace, faster than the 6:00/km 5 km run, so it sets both run records.
+        assertThat(r.at("/1/exercise").asString()).isEqualTo("5 km run");
+        assertThat(r.at("/1/time_s").asInt()).isEqualTo(1500);
+        assertThat(r.at("/2/exercise").asString()).isEqualTo("10 km run");
+        assertThat(r.at("/2/time_s").asInt()).isEqualTo(3000);
+        assertThat(r.body().size()).isEqualTo(3);
+        assertThat(get(user(), "/v1/me/training/records").body().size()).isZero();
+    }
+
+    @Test
     void trainingView() {
         String u = user();
         save(u, strength(3, 80));

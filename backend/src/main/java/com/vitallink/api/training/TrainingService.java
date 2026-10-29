@@ -417,6 +417,50 @@ public class TrainingService {
 
     record Best(double weight, int reps, OffsetDateTime at, String name) {}
 
+    /**
+     * Every personal record (Workouts › Personal Records): the heaviest set per exercise over all history,
+     * newest first, then the fastest 5 km and 10 km, timed from runs at least that long at their average pace.
+     */
+    public List<PersonalRecord> records(UUID userId, String tzName) {
+        ZoneId tz = ZoneId.of(tzName);
+        List<WorkoutRow> history = load("user_id = :u", Map.of("u", userId));
+        Map<Integer, Best> best = new LinkedHashMap<>();
+        for (WorkoutRow w : history) {
+            for (SetRow s : w.sets()) {
+                if (s.weightKg() == null || s.reps() == null || s.reps() == 0) {
+                    continue;
+                }
+                double weight = s.weightKg().doubleValue();
+                Best previous = best.get(s.exerciseId());
+                if (previous == null || weight > previous.weight()) {
+                    best.put(
+                            s.exerciseId(),
+                            new Best(
+                                    weight,
+                                    s.reps(),
+                                    w.startedAt(),
+                                    s.exercise().name()));
+                }
+            }
+        }
+        List<PersonalRecord> out = new ArrayList<>(best.values().stream()
+                .sorted(Comparator.comparing(Best::at).reversed())
+                .map(b -> new PersonalRecord(b.name(), local(b.at(), tz), b.weight(), b.reps(), null))
+                .toList());
+        for (int metres : new int[] {5000, 10000}) {
+            history.stream()
+                    .filter(w -> w.type() == WorkoutType.run && w.distance() != null && w.distance() >= metres)
+                    .min(Comparator.comparingDouble(w -> w.durationS() / w.distance()))
+                    .ifPresent(fastest -> out.add(new PersonalRecord(
+                            metres / 1000 + " km run",
+                            local(fastest.startedAt(), tz),
+                            null,
+                            null,
+                            Num.roundInt(fastest.durationS() * metres / fastest.distance()))));
+        }
+        return out;
+    }
+
     public Training training(UUID userId, String tzName) {
         ZoneId tz = ZoneId.of(tzName);
         OffsetDateTime now = now();

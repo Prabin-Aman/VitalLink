@@ -114,6 +114,7 @@ send `null` for blocks without data; the view-models show "—" for those.
 |---|---|
 | `POST, GET /me/workouts`; `GET, DELETE /me/workouts/{id}` | Workouts with sets (a synced workout re-sent with its platform id is updated) |
 | `GET /me/training?week=` | `Training`: week aggregate, sessions, muscle sets, records, next planned session, lifetime total |
+| `GET /me/training/records` | Every personal record: heaviest set per exercise over all history (newest first), then the fastest 5 km and 10 km from runs at least that long |
 | `POST, GET /me/training/plans` | Plans and planned sessions; a new plan archives the previous |
 | `GET /exercises` | Exercise catalogue |
 

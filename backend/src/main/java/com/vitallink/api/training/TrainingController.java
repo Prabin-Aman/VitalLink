@@ -2,6 +2,7 @@ package com.vitallink.api.training;
 
 import com.vitallink.api.account.CurrentUser;
 import com.vitallink.api.training.TrainingDtos.ExerciseOut;
+import com.vitallink.api.training.TrainingDtos.PersonalRecord;
 import com.vitallink.api.training.TrainingDtos.PlanIn;
 import com.vitallink.api.training.TrainingDtos.PlanOut;
 import com.vitallink.api.training.TrainingDtos.Training;
@@ -68,6 +69,12 @@ public class TrainingController {
                     "This week's load, recent sessions, muscle balance, personal records and the next planned session.")
     public Training training(CurrentUser me) {
         return service.training(me.id(), me.user().timezone());
+    }
+
+    @GetMapping("/me/training/records")
+    @Operation(summary = "Every personal record: heaviest set per exercise, then the fastest 5 km and 10 km.")
+    public List<PersonalRecord> records(CurrentUser me) {
+        return service.records(me.id(), me.user().timezone());
     }
 
     @PostMapping("/me/training/plans")
