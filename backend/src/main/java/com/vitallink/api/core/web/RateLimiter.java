@@ -45,7 +45,7 @@ public class RateLimiter {
     @Autowired
     public RateLimiter(
             @Value("${vitallink.rate-limit.ingest-per-hour:60}") int ingestPerHour,
-            @Value("${vitallink.rate-limit.other-per-hour:600}") int otherPerHour) {
+            @Value("${vitallink.rate-limit.other-per-hour:3000}") int otherPerHour) {
         this(ingestPerHour, otherPerHour, Clock.systemUTC());
     }
 

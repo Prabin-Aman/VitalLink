@@ -19,7 +19,7 @@ contract for one endpoint below) names a field the schema doesn't have.
 | Time | ISO 8601 with offset in and out; day-based queries use the user's timezone |
 | Units | SI in and out (m, kg, ml, °C, s); the client converts per `profiles.units` |
 | Idempotency | Ingest takes `idempotency_key`. A same-key, same-payload replay returns the first result with `replayed: true`; a same key with a different payload → 409. Dose logging is idempotent through its natural key. |
-| Rate limits | Per user: 60 ingest / 600 other per hour, fixed hourly windows (in memory, single instance; `vitallink.rate-limit.*`). Over the limit → 429 `rate_limited` with `Retry-After` and `detail.retry_after_s` |
+| Rate limits | Per user: 60 ingest / 3,000 other per hour (a portal page makes 10–20 calls, so 600 cut off a normal session after about 40 page views), fixed hourly windows (in memory, single instance; `vitallink.rate-limit.*`). Over the limit → 429 `rate_limited` with `Retry-After` and `detail.retry_after_s` |
 | Versioning | Additive changes stay in `/v1`; breaking changes go to `/v2` |
 
 ## 5.2 Endpoints that are live (built and called by the client)

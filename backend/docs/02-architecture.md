@@ -109,7 +109,7 @@ decisions D1 and D3 are made.
 | `userdata` | `UserData`, the export/delete hook each module implements |
 | `jobs` (module) | `NightlyJob`: per-user steps, each in its own transaction, then global cleanup; returns a summary |
 
-Rate limiting (planned: 60 ingest / 600 other per hour) is not built yet; it's in phase 10.
+Rate limiting: 60 ingest / 3,000 other requests per user per hour (`core/web/RateLimiter`, in memory).
 
 ## Cross-cutting decisions
 
