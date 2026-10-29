@@ -7,6 +7,7 @@ import com.vitallink.api.support.ApiTest;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -21,6 +22,18 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 /** Nutrition: food catalogue, meals with copied macros, water, targets, the day view. */
 class NutritionTest extends ApiTest {
+
+    /** Users here live in {@link ApiTest#AFTERNOON}, so "today at 00:40" is never in the future. */
+    static final ZoneId ZONE = AFTERNOON;
+
+    @Override
+    protected String user() {
+        return afternoonUser();
+    }
+
+    protected static ZonedDateTime todayAt(int hour, int minute, int daysAgo) {
+        return todayAt(ZONE, hour, minute, daysAgo);
+    }
 
     static String today(int hour, int minute) {
         return iso(todayAt(hour, minute, 0));
@@ -145,7 +158,7 @@ class NutritionTest extends ApiTest {
                         today(0, 30),
                         "items",
                         List.of(Map.of("food_id", banana, "quantity_g", 118))));
-        String yesterday = iso(ZonedDateTime.now(CHICAGO).minusDays(1));
+        String yesterday = iso(ZonedDateTime.now(ZONE).minusDays(1));
         post(
                 u,
                 "/v1/me/meals",
@@ -173,11 +186,11 @@ class NutritionTest extends ApiTest {
         assertThat(d.at("/meals").size()).isEqualTo(1);
         assertThat(d.at("/meals/0/name").asString()).isEqualTo("Snack");
         assertThat(OffsetDateTime.parse(d.at("/date").asString())
-                        .atZoneSameInstant(CHICAGO)
+                        .atZoneSameInstant(ZONE)
                         .toLocalTime())
                 .isEqualTo(LocalTime.MIDNIGHT);
         // An explicit date reads that day.
-        assertThat(get(u, "/v1/me/nutrition/day?date=" + LocalDate.now(CHICAGO).minusDays(1))
+        assertThat(get(u, "/v1/me/nutrition/day?date=" + LocalDate.now(ZONE).minusDays(1))
                         .at("/meals/0/name")
                         .asString())
                 .isEqualTo("Dinner");
@@ -189,7 +202,7 @@ class NutritionTest extends ApiTest {
         patch(u, "/v1/me/account", Map.of("height_cm", 178, "date_of_birth", "1994-04-17", "sex", "male"));
         post(u, "/v1/me/health/manual", Map.of("metric", "weight", "value", 72.4));
         int burn = get(u, "/v1/me/nutrition/day").at("/base_burn_kcal").asInt();
-        long age = ChronoUnit.DAYS.between(LocalDate.of(1994, 4, 17), LocalDate.now(CHICAGO)) / 365;
+        long age = ChronoUnit.DAYS.between(LocalDate.of(1994, 4, 17), LocalDate.now(ZONE)) / 365;
         assertThat(burn).isEqualTo((int) Math.rint(10 * 72.4 + 6.25 * 178 - 5 * age + 5));
     }
 

@@ -72,7 +72,8 @@ public final class RecordDtos {
             UUID panelId,
             FileInfo file) {}
 
-    public record RecordShare(String grantee, Integer records, String scope, OffsetDateTime expiresAt) {}
+    /** {@code id} is the share's, for Revoke (DELETE /me/shares/{id}). */
+    public record RecordShare(UUID id, String grantee, Integer records, String scope, OffsetDateTime expiresAt) {}
 
     public record RecordsOverview(
             Map<RecordType, Integer> counts, List<HealthRecord> recent, List<RecordShare> shares) {}

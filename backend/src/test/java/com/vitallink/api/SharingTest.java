@@ -75,7 +75,8 @@ class SharingTest extends ApiTest {
     }
 
     Res read(String viewer, String ownerId, String metric) {
-        return get(viewer, "/v1/users/" + ownerId + "/health/series/" + metric + "?days=1");
+        // Two days: the steps are logged ten minutes ago, which is yesterday just after midnight.
+        return get(viewer, "/v1/users/" + ownerId + "/health/series/" + metric + "?days=2");
     }
 
     Res read(String viewer, String ownerId) {

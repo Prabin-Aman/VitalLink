@@ -283,6 +283,9 @@ class RecordsTest extends ApiTest {
         Res o = get(owner, "/v1/me/records/overview");
         assertThat(o.at("/shares/0/grantee").asString()).isEqualTo("Dr. Bennett");
         assertThat(o.at("/shares/0/records").asInt()).isEqualTo(1);
+        // The overview names the share, so Revoke on the Records page can stop it.
+        String shareId = o.at("/shares/0/id").asString();
+        assertThat(get(owner, "/v1/me/shares").at("/0/id").asString()).isEqualTo(shareId);
         List<String> names = new ArrayList<>();
         get(viewer, "/v1/users/" + ownerId + "/labs")
                 .body()

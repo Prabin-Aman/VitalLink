@@ -422,8 +422,8 @@ public class RecordService implements UserData {
                 .orElse(null);
         List<RecordShare> shares = live.stream()
                 .map(c -> c.scopes().contains(Scope.records)
-                        ? new RecordShare(c.granteeLabel(), all.size(), null, c.expiresAt())
-                        : new RecordShare(c.granteeLabel(), null, scopeLabel(c.scopes()), c.expiresAt()))
+                        ? new RecordShare(c.id(), c.granteeLabel(), all.size(), null, c.expiresAt())
+                        : new RecordShare(c.id(), c.granteeLabel(), null, scopeLabel(c.scopes()), c.expiresAt()))
                 .toList();
         return new RecordsOverview(
                 counts, all.stream().limit(6).map(r -> out(r, zone, shared)).toList(), shares);
