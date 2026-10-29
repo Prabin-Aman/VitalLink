@@ -66,7 +66,8 @@ export interface WorkoutsVM {
   sessions: SessionRowVM[];
   muscles: { caption: string; groups: BarRowVM[]; note: string };
   records: { name: string; when: string; value: string }[];
-  next: { title: string; detail: string } | null;
+  /** `start` prefills Log Workout when the session is started (Workouts › Start Session). */
+  next: { title: string; detail: string; start: { title: string; type: WorkoutType } } | null;
 }
 
 const sessionRow = (s: TrainingSession, tz: string): SessionRowVM => {
@@ -171,6 +172,10 @@ export async function loadWorkouts(api: VitalLinkClient): Promise<WorkoutsVM> {
       ? {
           title: `${t.next.title} · ${t.next.kind}`,
           detail: `${relativeDay(t.next.starts_at, now, tz)} · ${t.next.exercises} exercises · about ${t.next.minutes} min`,
+          start: {
+            title: t.next.title,
+            type: (/strength/i.test(t.next.kind) ? "strength" : /mobility/i.test(t.next.kind) ? "yoga" : "run") as WorkoutType,
+          },
         }
       : null,
   };

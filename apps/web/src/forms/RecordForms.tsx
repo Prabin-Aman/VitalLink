@@ -1,7 +1,7 @@
-// Upload Document — Dialog 560 (Figma 197:468).
-import { checkUpload, RECORD_TYPES, titleFromFile, todayIn, UPLOAD_TYPES } from "@vitallink/api";
+// Upload Document (Figma 197:468) and Add a note (209:1575) — Dialog 560.
+import { checkNote, checkUpload, NOTE_MAX, RECORD_TYPES, titleFromFile, todayIn, UPLOAD_TYPES } from "@vitallink/api";
 import { useState } from "react";
-import { DropZone, FormDialog, must, Row, SelectField, TextField, useZone } from "../components/Form";
+import { DropZone, FormDialog, must, Row, SelectField, TextAreaField, TextField, useZone } from "../components/Form";
 import { useApi } from "../data";
 
 export function UploadDocumentDialog({ onClose }: { onClose: () => void }) {
@@ -42,6 +42,25 @@ function UploadDocument({ tz, onClose }: { tz: string; onClose: () => void }) {
         <TextField label="Date" type="date" icon="appointments-16" value={f.date} max={today} onChange={set("date")} />
       </Row>
       <TextField label="Source" value={f.source} onChange={set("source")} placeholder="Clinic or lab (optional)" />
+    </FormDialog>
+  );
+}
+
+export function AddNoteDialog({ recordId, recordTitle, current, onClose }: { recordId: string; recordTitle: string; current: string | null; onClose: () => void }) {
+  const api = useApi();
+  const [note, setNote] = useState(current ?? "");
+  return (
+    <FormDialog
+      overline={`Medical Records › ${recordTitle}`}
+      title={current ? "Edit note" : "Add a note"}
+      subtitle="Keep a reminder with this record, like what your doctor said about it."
+      action="Save Note"
+      onClose={onClose}
+      save={async () => {
+        await api.updateRecord(recordId, must(checkNote(note)));
+      }}
+    >
+      <TextAreaField label="Note" value={note} onChange={setNote} max={NOTE_MAX} helper="Only you see notes, unless you share this record." placeholder="e.g. Recheck in 3 months" />
     </FormDialog>
   );
 }

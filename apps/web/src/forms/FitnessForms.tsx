@@ -116,16 +116,17 @@ function LogFood({ tz, onClose }: { tz: string; onClose: () => void }) {
 
 // ---------------------------------------------------------------- Log Workout
 
-export function LogWorkoutDialog({ onClose }: { onClose: () => void }) {
+/** `preset` comes from Start Session on the next planned session. */
+export function LogWorkoutDialog({ onClose, preset }: { onClose: () => void; preset?: { title: string; type: string } }) {
   const tz = useZone();
-  return tz ? <LogWorkout tz={tz} onClose={onClose} /> : null;
+  return tz ? <LogWorkout tz={tz} onClose={onClose} preset={preset} /> : null;
 }
 
 const TITLES: Record<string, string> = { walk: "Walk", run: "Run", cycle: "Ride", strength: "Strength session", swim: "Swim", hiit: "HIIT", yoga: "Yoga", other: "Workout" };
 
-function LogWorkout({ tz, onClose }: { tz: string; onClose: () => void }) {
+function LogWorkout({ tz, onClose, preset }: { tz: string; onClose: () => void; preset?: { title: string; type: string } }) {
   const api = useApi();
-  const [f, setF] = useState({ type: "run", title: "", date: todayIn(tz), time: timeIn(tz), minutes: "", km: "", effort: "", avgHr: "" });
+  const [f, setF] = useState({ type: preset?.type ?? "run", title: preset?.title ?? "", date: todayIn(tz), time: timeIn(tz), minutes: "", km: "", effort: "", avgHr: "" });
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const hasDistance = ["walk", "run", "cycle", "swim"].includes(f.type);
 

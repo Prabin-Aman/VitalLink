@@ -176,6 +176,27 @@ export function TextField({ label, value, onChange, helper, icon, type = "text",
   );
 }
 
+/** A multi-line Form / Field (Add a note) with a character count. */
+export function TextAreaField({ label, value, onChange, helper, max, placeholder }: { label: string; value: string; onChange: (v: string) => void; helper?: ReactNode; max: number; placeholder?: string }) {
+  const id = useId();
+  return (
+    <div className={s.field}>
+      <label htmlFor={id} className="vl-label-l">
+        {label}
+      </label>
+      <div className={cx(s.input, s.area)}>
+        <textarea id={id} className={cx("vl-body-m", s.control)} rows={4} value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} />
+      </div>
+      <span className={s.helperRow}>
+        <span className={cx("vl-caption", s.helper)}>{helper}</span>
+        <span className={cx("vl-caption", value.length > max ? s.error : s.helper)}>
+          {value.length} / {max}
+        </span>
+      </span>
+    </div>
+  );
+}
+
 /** Form / Field, Kind=Select (the chevron is Icon / chevron-right turned down; the set has no chevron-down). */
 export function SelectField({ label, value, onChange, options, helper }: { label: string; value: string; onChange: (v: string) => void; options: Option[]; helper?: ReactNode }) {
   const id = useId();

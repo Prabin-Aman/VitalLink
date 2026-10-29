@@ -176,6 +176,10 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   Health Library article reader `/library/:slug` (Figma 208:3270; `parseArticle` renders the Markdown
   subset as text-only elements), Lab Results Export (CSV with BOM), Emergency Download PDF / Print Card
   (browser print; `@media print` hides the shell and buttons).
+- Records › Revoke (records overview shares carry the share `id`), Family › Manage Access / + Add Family
+  Member (share dialogs preset to family; the note explains they see you, not the reverse), Workouts › Start
+  Session (Log Workout prefilled from the next planned session), Document Viewer › Add a note (Figma
+  209:1575; PATCH /me/records/{id} note ≤200; the record's note wins over the lab panel's).
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

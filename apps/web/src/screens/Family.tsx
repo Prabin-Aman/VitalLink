@@ -3,12 +3,15 @@ import { loadFamily } from "@vitallink/api";
 import { Link } from "react-router-dom";
 import { AccentDot, Avatar } from "../components/ui";
 import { cx, Panel, StatusPill, TintCard, Txt } from "../components/kit";
+import { useState } from "react";
 import { useScreen } from "../data";
+import { ManageAccessDialog, ShareDialog } from "../forms/ShareForms";
 import { ScreenState } from "./ScreenState";
 import k from "./Lists.module.css";
 import s from "./Family.module.css";
 
 export function Family() {
+  const [dialog, setDialog] = useState<"manage" | "add" | null>(null);
   const state = useScreen(loadFamily);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
@@ -23,7 +26,7 @@ export function Family() {
             <Txt s="h4" c="textBrand" as="h1">{view.title}</Txt>
             <Txt s="bodyS" c="textSecondary">{view.detail}</Txt>
           </div>
-          <button type="button" className={cx("vl-label-l", s.manage)}>Manage Access</button>
+          <button type="button" className={cx("vl-label-l", s.manage)} onClick={() => setDialog("manage")}>Manage Access</button>
         </section>
       )}
       <div className={s.split}>
@@ -48,7 +51,9 @@ export function Family() {
               </div>
             );
           })}
-          <button type="button" className={cx("vl-label-m", s.add)}>+ Add Family Member</button>
+          <button type="button" className={cx("vl-label-m", s.add)} onClick={() => setDialog("add")}>+ Add Family Member</button>
+          {dialog === "add" && <ShareDialog preset={{ kind: "family", scopes: ["vitals", "activity"], overline: "Family › Add Family Member", note: "You'll appear on their Family page. To see their data here, they share with you from their own account." }} onClose={() => setDialog(null)} />}
+          {dialog === "manage" && <ManageAccessDialog kind="family" onClose={() => setDialog(null)} onShare={() => setDialog("add")} />}
         </nav>
 
         {view && (

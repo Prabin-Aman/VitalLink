@@ -455,6 +455,8 @@ export interface HealthRecord {
 }
 
 export interface RecordShare {
+  /** The share's id (Revoke). Absent in the older sample data. */
+  id?: string;
   grantee: string;
   records: number | null;
   scope: string | null;

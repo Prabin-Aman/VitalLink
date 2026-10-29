@@ -5,7 +5,7 @@ import { Choices, FormDialog, ItemList, must, Note, Row, TextField, useZone } fr
 import { Button } from "../components/ui";
 import { notifyChanged, useApi, useScreen } from "../data";
 
-export type SharePreset = { kind?: "doctor" | "family" | "other"; scopes?: string[]; overline?: string };
+export type SharePreset = { kind?: "doctor" | "family" | "other"; scopes?: string[]; overline?: string; note?: string };
 
 export function ShareDialog({ preset, onClose }: { preset?: SharePreset; onClose: () => void }) {
   const tz = useZone();
@@ -45,6 +45,7 @@ function Share({ tz, preset, onClose }: { tz: string; preset?: SharePreset; onCl
       <Choices label="Access ends" options={SHARE_ENDS} selected={[f.ends]} onChange={([ends]) => setF((x) => ({ ...x, ends }))} />
       {f.ends === "date" && <TextField label="Last day they can see it" type="date" icon="appointments-16" value={f.until} min={todayIn(tz)} onChange={set("until")} />}
       <TextField label="Why (optional)" value={f.purpose} onChange={set("purpose")} placeholder="e.g. Cardiology follow-up" />
+      {preset?.note && <Note>{preset.note}</Note>}
       <Note>
         They see only what you pick, read-only, once they sign in to VitalLink with this email. Every time they look shows in your access history, and you can stop sharing any time.
       </Note>

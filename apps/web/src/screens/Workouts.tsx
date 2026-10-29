@@ -14,7 +14,7 @@ import { ExerciseLibraryTab, HistoryTab, PlansTab, RecordsTab } from "./WorkoutT
 const TABS = ["Overview", "History", "Training Plans", "Exercise Library", "Personal Records"];
 
 export function Workouts() {
-  const [form, setForm] = useState(false);
+  const [form, setForm] = useState<false | true | { title: string; type: string }>(false);
   const state = useScreen(loadWorkouts);
   const [tab, setTab] = useState(TABS[0]);
   const [range, setRange] = useState("Week");
@@ -30,7 +30,7 @@ export function Workouts() {
           <>
             <Action onClick={() => setTab("Exercise Library")}>Browse Exercises</Action>
             <Action primary onClick={() => setForm(true)}>Log Workout</Action>
-            {form && <LogWorkoutDialog onClose={() => setForm(false)} />}
+            {form && <LogWorkoutDialog preset={form === true ? undefined : form} onClose={() => setForm(false)} />}
           </>
         }
       />
@@ -71,7 +71,7 @@ export function Workouts() {
                   <Panel title="Next planned session" level="h5" gap={10}>
                     <Txt s="bodyMStrong">{w.next.title}</Txt>
                     <Txt s="caption" c="textTertiary">{w.next.detail}</Txt>
-                    <Button className={s.wide}>Start Session</Button>
+                    <Button className={s.wide} onClick={() => setForm(w.next!.start)}>Start Session</Button>
                   </Panel>
                 )}
               </>

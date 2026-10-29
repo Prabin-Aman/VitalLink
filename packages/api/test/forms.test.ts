@@ -5,6 +5,7 @@ import {
   checkFood,
   checkGoal,
   checkMedication,
+  checkNote,
   checkReading,
   checkUpload,
   checkWorkout,
@@ -156,6 +157,14 @@ describe("Upload Document", () => {
   });
   it("suggests a title from the file name", () => {
     expect(titleFromFile("chest_xray-report.pdf")).toBe("Chest xray report");
+  });
+});
+
+describe("Add a note", () => {
+  it("trims, clears when blank and caps at 200", () => {
+    expect(body(checkNote("  Recheck in 3 months  "))).toEqual({ note: "Recheck in 3 months" });
+    expect(body(checkNote("   "))).toEqual({ note: null });
+    expect(error(checkNote("x".repeat(201)))).toMatch(/under 200/);
   });
 });
 

@@ -4,13 +4,14 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Icon } from "../components/Icon";
 import { Action, cx, PageHeader, Panel, Txt } from "../components/kit";
-import { useScreen } from "../data";
+import { notifyChanged, useApi, useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import t from "../components/Table.module.css";
 import s from "./Records.module.css";
 import { UploadDocumentDialog } from "../forms/RecordForms";
 
 export function Records() {
+  const api = useApi();
   const [form, setForm] = useState(false);
   const state = useScreen(loadRecords);
   const [type, setType] = useState<RecordType | null>(null);
@@ -105,7 +106,21 @@ export function Records() {
                   <Txt s="bodySStrong" as="div">{x.name}</Txt>
                   <Txt s="caption" c="textTertiary" as="div">{x.caption}</Txt>
                 </span>
-                <button type="button" className={cx("vl-label-m", s.revoke)}>Revoke</button>
+                {x.id && (
+                  <button
+                    type="button"
+                    className={cx("vl-label-m", s.revoke)}
+                    onClick={() => {
+                      if (!confirm(`Stop sharing with ${x.name}? They lose access straight away.`)) return;
+                      api.revokeShare(x.id!).then(
+                        () => (api.isMock ? alert("This is demo data, so nothing changed.") : notifyChanged()),
+                        (e: Error) => alert(e.message),
+                      );
+                    }}
+                  >
+                    Revoke
+                  </button>
+                )}
               </div>
             ))}
           </Panel>

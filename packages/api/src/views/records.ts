@@ -42,7 +42,7 @@ export interface RecordsVM {
   total: number;
   types: { key: RecordType; label: string; count: number }[];
   rows: RecordRowVM[];
-  shares: { name: string; caption: string }[];
+  shares: { id: string | null; name: string; caption: string }[];
 }
 
 export async function loadRecords(api: VitalLinkClient): Promise<RecordsVM> {
@@ -74,7 +74,7 @@ export async function loadRecords(api: VitalLinkClient): Promise<RecordsVM> {
     shares: r.shares.map((s) => {
       const days = s.expires_at ? daysFrom(s.expires_at, now, tz) : null;
       const parts = [s.records !== null ? `${s.records} records` : s.scope, days !== null ? `expires in ${days} days` : null];
-      return { name: s.grantee, caption: parts.filter(Boolean).join(" · ") };
+      return { id: s.id ?? null, name: s.grantee, caption: parts.filter(Boolean).join(" · ") };
     }),
   };
 }
@@ -169,6 +169,8 @@ export interface DocumentVM {
   details: { label: string; value: string }[];
   sharing: { name: string; caption: string; color: ColorToken }[];
   note: string | null;
+  /** "Add a note" or "Edit note" (Figma 209:1575). */
+  noteAction: string;
   /** The record has an uploaded file, so Download can fetch it (GET /me/records/{id}/download). */
   canDownload: boolean;
 }
@@ -207,7 +209,9 @@ export async function loadDocument(api: VitalLinkClient, recordId: string): Prom
     sharing: share
       ? [{ name: share.grantee, caption: `Shared${share.expires_at ? ` · expires in ${daysFrom(share.expires_at, now, tz)} days` : ""}`, color: "goalOnTrack" }]
       : [{ name: "Not shared", caption: "Only you can see this record", color: "textTertiary" }],
-    note: p.note,
+    // Your own note on the record wins over the lab's note on the panel.
+    note: rec.note ?? p.note,
+    noteAction: rec.note ? "Edit note" : "Add a note",
     canDownload: rec.file?.status === "attached",
   };
 }

@@ -2341,6 +2341,8 @@ export interface components {
             expires_at?: string;
         };
         RecordShare: {
+            /** Format: uuid */
+            id?: string;
             grantee?: string;
             /** Format: int32 */
             records?: number;

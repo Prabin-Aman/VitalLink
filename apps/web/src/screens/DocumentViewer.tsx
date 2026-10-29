@@ -7,10 +7,12 @@ import { Button } from "../components/ui";
 import { useApi, useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
 import { ShareDialog } from "../forms/ShareForms";
+import { AddNoteDialog } from "../forms/RecordForms";
 import s from "./DocumentViewer.module.css";
 
 export function DocumentViewer() {
   const [sharing, setSharing] = useState(false);
+  const [noting, setNoting] = useState(false);
   const { id = "" } = useParams();
   const api = useApi();
   const state = useScreen(useCallback((api) => loadDocument(api, id), [id]));
@@ -76,7 +78,8 @@ export function DocumentViewer() {
           </Panel>
           <Panel title="Your notes" level="h5" gap={12}>
             {v.note && <Txt s="bodyS" c="textSecondary" as="p">“{v.note}”</Txt>}
-            <Button variant="secondary" size="block">Add a note</Button>
+            <Button variant="secondary" size="block" onClick={() => setNoting(true)}>{v.noteAction}</Button>
+            {noting && <AddNoteDialog recordId={id} recordTitle={v.title} current={v.noteAction === "Edit note" ? v.note : null} onClose={() => setNoting(false)} />}
           </Panel>
         </aside>
       </div>

@@ -207,3 +207,17 @@ select.control {
   justify-content: flex-end;
   gap: 12px;
 }
+
+/* Add a note (Figma 209:1575): a 112px textarea, helper left and count right. */
+.area {
+  align-items: stretch;
+}
+.area textarea {
+  resize: vertical;
+  min-height: 88px;
+}
+.helperRow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}

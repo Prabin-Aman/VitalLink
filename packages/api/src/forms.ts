@@ -379,3 +379,13 @@ export function checkShare(f: ShareForm, tz: string, now = Date.now()): Checked<
     },
   };
 }
+
+// ---------------------------------------------------------------- Add a note (Figma 209:1575)
+
+export const NOTE_MAX = 200;
+/** A blank note clears it (null). */
+export function checkNote(note: string): Checked<{ note: string | null }> {
+  const t = note.trim();
+  if (t.length > NOTE_MAX) return fail(`Keep the note under ${NOTE_MAX} characters.`);
+  return { ok: true, body: { note: t || null } };
+}

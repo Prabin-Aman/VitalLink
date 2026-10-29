@@ -180,6 +180,8 @@ export class VitalLinkClient {
   createShare = (body: object) => this.send<Share>("POST", "/me/shares", body);
   /** Stops a share at once (what they already viewed stays in the access log). */
   revokeShare = (id: string) => this.send("DELETE", `/me/shares/${id}`);
+  /** PATCH /me/records/{id}: only the fields given change (e.g. { note }). */
+  updateRecord = (id: string, patch: object) => this.send("PATCH", `/me/records/${id}`, patch);
   deleteMeal = (id: string) => this.send("DELETE", `/me/meals/${id}`);
   addWater = (ml: number) => this.send("POST", "/me/hydration", { ml });
   /** DELETE /me: needs a sign-in within the last 10 minutes (403 reauth_required otherwise). */
