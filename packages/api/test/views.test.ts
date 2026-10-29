@@ -65,6 +65,23 @@ describe("tab view-models", () => {
   });
 });
 
+describe("top-bar search", () => {
+  it("finds pages, labs by the tests in them, and medications", async () => {
+    const index = await api.buildSearchIndex(client);
+    const titles = (q: string) => api.searchIndex(index, q).flatMap((g) => g.hits.map((h) => `${g.group}: ${h.title}`));
+    expect(titles("sleep")).toContain("PAGES: My Health › Sleep");
+    expect(titles("hemoglobin").some((t) => t.startsWith("RECORDS & LABS"))).toBe(true);
+    expect(titles("atorvastatin")).toContain("MEDICATIONS: Atorvastatin 10 mg");
+    expect(titles("blood pressure vitals")).toEqual(["PAGES: My Health › Vitals"]);
+    expect(titles("   ")).toEqual([]);
+    expect(titles("zzzz")).toEqual([]);
+  });
+
+  it("names the signed-in person for the top bar", async () => {
+    expect(await api.loadShell(client)).toMatchObject({ name: "Alex Carter", initials: "AC" });
+  });
+});
+
 describe("mock mode writes", () => {
   it("change nothing and resolve with null", async () => {
     expect(client.isMock).toBe(true);

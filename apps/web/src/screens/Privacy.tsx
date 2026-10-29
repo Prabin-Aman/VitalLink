@@ -2,7 +2,10 @@ import { loadPrivacy, type AccessCardVM } from "@vitallink/api";
 import type { ColorToken } from "@vitallink/tokens";
 import { tokenVar } from "../components/Icon";
 import { Button, Chip } from "../components/ui";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useScreen } from "../data";
+import { ManageAccessDialog, ShareDialog } from "../forms/ShareForms";
 import { ScreenState } from "./ScreenState";
 import s from "./Privacy.module.css";
 
@@ -13,7 +16,19 @@ export const TONE: Record<AccessCardVM["tone"], { bg: ColorToken; value: ColorTo
   warning: { bg: "rangeBorderlineBg", value: "rangeBorderline" },
 };
 
+// Where each card's Manage goes: the people cards open Manage access (Figma 206:1516); the rest link to their page.
+const MANAGE: Record<string, { kind: "doctor" | "family" | null } | { to: string }> = {
+  doctors: { kind: "doctor" },
+  hospitals: { kind: null },
+  family: { kind: "family" },
+  apps: { kind: null },
+  emergency: { to: "/emergency" },
+  devices: { to: "/devices" },
+};
+
 export function Privacy() {
+  const nav = useNavigate();
+  const [dialog, setDialog] = useState<{ manage: "doctor" | "family" | null } | "share" | null>(null);
   const state = useScreen(loadPrivacy);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const p = state.data;
@@ -39,12 +54,25 @@ export function Privacy() {
             <span className="vl-caption" style={{ color: tokenVar("textTertiary") }}>
               {c.caption}
             </span>
-            <Button variant="secondary" size="sm" className={s.manage}>
+            <Button
+              variant="secondary"
+              size="sm"
+              className={s.manage}
+              onClick={() => {
+                const m = MANAGE[c.key];
+                if (!m) return;
+                if ("to" in m) nav(m.to);
+                else setDialog({ manage: m.kind });
+              }}
+            >
               Manage
             </Button>
           </section>
         ))}
       </div>
+
+      {dialog === "share" && <ShareDialog onClose={() => setDialog(null)} />}
+      {dialog && dialog !== "share" && <ManageAccessDialog kind={dialog.manage} onClose={() => setDialog(null)} onShare={() => setDialog("share")} />}
 
       <h2 className="vl-h3">Data access history</h2>
       <div className={s.tableWrap}>

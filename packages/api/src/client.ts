@@ -175,6 +175,10 @@ export class VitalLinkClient {
     return created.id;
   };
 
+  /** POST /me/shares: read-only access for someone who signs in with that email. */
+  createShare = (body: object) => this.send<Share>("POST", "/me/shares", body);
+  /** Stops a share at once (what they already viewed stays in the access log). */
+  revokeShare = (id: string) => this.send("DELETE", `/me/shares/${id}`);
   deleteMeal = (id: string) => this.send("DELETE", `/me/meals/${id}`);
   addWater = (ml: number) => this.send("POST", "/me/hydration", { ml });
   /** DELETE /me: needs a sign-in within the last 10 minutes (403 reauth_required otherwise). */

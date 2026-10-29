@@ -1,4 +1,4 @@
-import { loadDashboard } from "@vitallink/api";
+import { loadShell } from "@vitallink/api";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { tokenVar } from "./components/Icon";
@@ -34,11 +34,10 @@ import { Sleep } from "./screens/health/Sleep";
 import { Vitals } from "./screens/health/Vitals";
 
 function Shell() {
-  const me = useScreen(loadDashboard);
-  const name = me.status === "ready" ? me.data.fullName : "";
-  const initials = me.status === "ready" ? me.data.initials : "";
+  const me = useScreen(loadShell);
+  const who = me.status === "ready" ? me.data : { name: "", initials: "", email: "" };
   return (
-    <AppShell name={name} initials={initials}>
+    <AppShell name={who.name} initials={who.initials} email={who.email}>
       <Outlet />
     </AppShell>
   );

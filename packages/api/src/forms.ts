@@ -331,3 +331,51 @@ export function checkContact(f: ContactForm): Checked<{ name: string; relation: 
   if (!phone) return fail("Enter a phone number, e.g. (214) 555-0100.");
   return { ok: true, body: { name: f.name.trim(), relation: f.relation.trim(), phone } };
 }
+
+// ---------------------------------------------------------------- Share your data (Figma 206:1452)
+
+export const SHARE_KINDS: Option<"doctor" | "family" | "other">[] = [
+  { value: "doctor", label: "Doctor" },
+  { value: "family", label: "Family" },
+  { value: "other", label: "Other" },
+];
+export const SHARE_SCOPES: Option<"vitals" | "activity" | "sleep" | "nutrition" | "records">[] = [
+  { value: "vitals", label: "Vitals" },
+  { value: "activity", label: "Activity" },
+  { value: "sleep", label: "Sleep" },
+  { value: "nutrition", label: "Nutrition" },
+  { value: "records", label: "Records & labs" },
+];
+export const SHARE_ENDS: Option[] = [
+  { value: "7", label: "1 week" },
+  { value: "30", label: "1 month" },
+  { value: "90", label: "3 months" },
+  { value: "date", label: "Pick a date" },
+  { value: "none", label: "No end date" },
+];
+export interface ShareForm { label: string; email: string; kind: string; scopes: string[]; ends: string; until: string; purpose: string }
+/** Expiry: N days from now, or the end of the picked day in the account's zone, or none. */
+export function checkShare(f: ShareForm, tz: string, now = Date.now()): Checked<object> {
+  if (!f.label.trim()) return fail("Enter who you're sharing with.");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email.trim())) return fail("Enter their email address — they sign in with it to see what you share.");
+  if (f.scopes.length === 0) return fail("Pick at least one thing they can see.");
+  let expires: string | null = null;
+  if (f.ends === "date") {
+    if (!f.until) return fail("Pick the last day they can see it.");
+    expires = zonedIso(f.until, "23:59", tz);
+    if (Date.parse(expires) <= now) return fail("Pick a day after today.");
+  } else if (f.ends !== "none") {
+    expires = new Date(now + Number(f.ends) * 86400000).toISOString();
+  }
+  return {
+    ok: true,
+    body: {
+      label: f.label.trim(),
+      email: f.email.trim().toLowerCase(),
+      kind: f.kind,
+      scopes: SHARE_SCOPES.map((x) => x.value).filter((v) => f.scopes.includes(v)),
+      purpose: f.purpose.trim() || null,
+      ...(expires ? { expires_at: expires } : {}),
+    },
+  };
+}

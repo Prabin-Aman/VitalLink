@@ -29,9 +29,10 @@ export function FormDialog({
   overline: string;
   title: string;
   subtitle: ReactNode;
-  action: string;
+  /** Omit (with `save`) for a dialog whose rows act on their own (Manage access): one Done button. */
+  action?: string;
   onClose: () => void;
-  save: () => Promise<void>;
+  save?: () => Promise<void>;
   children: ReactNode;
 }) {
   const api = useApi();
@@ -49,6 +50,7 @@ export function FormDialog({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!save) return onClose();
     setBusy(true);
     setError(null);
     try {
@@ -96,11 +98,13 @@ export function FormDialog({
         )}
         <div className={s.actions}>
           <Button variant="secondary" onClick={onClose} disabled={busy}>
-            {demoDone ? "Close" : "Cancel"}
+            {!action ? "Done" : demoDone ? "Close" : "Cancel"}
           </Button>
-          <Button type="submit" disabled={busy || demoDone}>
-            {busy ? "Saving…" : action}
-          </Button>
+          {action && (
+            <Button type="submit" disabled={busy || demoDone}>
+              {busy ? "Saving…" : action}
+            </Button>
+          )}
         </div>
       </form>
     </dialog>
@@ -291,7 +295,7 @@ export function DropZone({ file, onFile, accept }: { file: File | null; onFile: 
 }
 
 /** Edit Emergency Info lists: rows with Remove, then an add action under the box. */
-export function ItemList({ label, items, empty, add }: { label: string; items: { key: string; title: string; caption: string; onRemove: () => void }[]; empty: string; add: ReactNode }) {
+export function ItemList({ label, items, empty, add }: { label: string; items: { key: string; title: string; caption: string; onRemove: () => void; removeLabel?: string }[]; empty: string; add: ReactNode }) {
   const id = useId();
   return (
     <div className={s.field} role="group" aria-labelledby={id}>
@@ -306,8 +310,8 @@ export function ItemList({ label, items, empty, add }: { label: string; items: {
               <span className="vl-body-m-strong">{it.title}</span>
               <span className={cx("vl-caption", s.helper)}>{it.caption}</span>
             </span>
-            <Button variant="tertiary" size="sm" onClick={it.onRemove} aria-label={`Remove ${it.title}`}>
-              Remove
+            <Button variant="tertiary" size="sm" onClick={it.onRemove} aria-label={`${it.removeLabel ?? "Remove"} ${it.title}`}>
+              {it.removeLabel ?? "Remove"}
             </Button>
           </div>
         ))}

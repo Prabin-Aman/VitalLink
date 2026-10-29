@@ -1,22 +1,23 @@
 // Lab Results — Desktop 1440 (Figma 61:53).
 import { loadLabResults } from "@vitallink/api";
 import { useCallback, useState } from "react";
-import { useParams } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import { tokenVar } from "../components/Icon";
-import { Action, NotDesigned, PageHeader, PillTabs, TintCard, Txt } from "../components/kit";
+import { Action, PageHeader, PillTabs, TintCard, Txt } from "../components/kit";
 import { Chip } from "../components/ui";
 import { useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
+import { ShareDialog } from "../forms/ShareForms";
 import t from "../components/Table.module.css";
 import k from "./Lists.module.css";
 
-const PANELS = ["CBC", "Lipid Profile", "Liver", "Kidney", "Glucose", "Thyroid", "Other"];
 const COLS = [426, 110, 90, 150, 130, 110, 100];
 
 export function LabResults() {
+  const [sharing, setSharing] = useState(false);
   const { panel } = useParams();
   const state = useScreen(useCallback((api) => loadLabResults(api, panel), [panel]));
-  const [tab, setTab] = useState(PANELS[0]);
+  const nav = useNavigate();
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
 
@@ -28,14 +29,22 @@ export function LabResults() {
         actions={
           <>
             <Action>Export</Action>
-            <Action primary>Share with Doctor</Action>
+            <Action primary onClick={() => setSharing(true)}>Share with Doctor</Action>
+            {sharing && <ShareDialog preset={{ kind: "doctor", scopes: ["records"], overline: "Lab Results › Share with Doctor" }} onClose={() => setSharing(false)} />}
           </>
         }
       />
-      <PillTabs label="Lab panels" tabs={PANELS} value={tab} onChange={setTab} />
-      {tab !== PANELS[0] ? (
-        <NotDesigned what={`The ${tab} panel`} />
-      ) : (
+      {/* Tabs are your own panels, newest first; each uses the panel layout of Figma 61:53. */}
+      <PillTabs
+        label="Lab panels"
+        tabs={v.panels.map((x) => x.label)}
+        value={v.panels.find((x) => x.id === v.panelId)?.label ?? ""}
+        onChange={(label) => {
+          const next = v.panels.find((x) => x.label === label);
+          if (next) nav(`/records/labs/${next.id}`);
+        }}
+      />
+      {(
         <>
           <div className={k.tints}>
             {v.tints.map((x) => (

@@ -166,6 +166,12 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   in `packages/api/src/views/tabs.ts`, screens in `WorkoutTabs.tsx`, `NutritionTabs.tsx`,
   `SettingsSections.tsx`. Still placeholders: Nutrition › Recipes (no backend), Lab Results other panels,
   Settings › Account/Security/Language (wait for Supabase sign-in). `npm test` = Vitest for packages/api.
+- Sharing UI (Figma 206:1452 Share your data, 206:1516 Manage access): Lab Results "Share with Doctor" and
+  Document Viewer "Share" (preset to records), Privacy cards "Manage" (doctors/family list with Stop
+  sharing; emergency/devices cards link to their pages). Lab Results tabs are the user's own panels.
+- Top bar (Figma 207:1493, 207:1541): search over pages, records + the tests in lab panels, medications,
+  appointments and library (`views/search.ts`, index built on first focus); profile menu with sign out
+  (drops the tab's dev token until Supabase). The shell loads only `/me` (`loadShell`).
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

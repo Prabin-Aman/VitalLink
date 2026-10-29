@@ -5,9 +5,9 @@
 import type { ColorToken } from "@vitallink/tokens";
 import type { VitalLinkClient } from "../client";
 import { clock, dayMonth, hoursMinutes, kg, km, longDate, monthYear, thousands, timeOfDay, weekday } from "../format";
-import { todayIn, type Option } from "../forms";
+import { SHARE_SCOPES, todayIn, type Option } from "../forms";
 import type { StatVM } from "../screens";
-import type { ExerciseItem, NutritionDay, PersonalRecord, Workout, WorkoutType } from "../types";
+import type { ExerciseItem, NutritionDay, PersonalRecord, Share, Workout, WorkoutType } from "../types";
 
 const stat = (key: string, label: string, value: string, unit: string, caption: string, accent: ColorToken): StatVM => ({ key, label, value, unit, caption, accent });
 const dayLabel = (iso: string, tz: string) => `${weekday(iso, tz)} ${dayMonth(iso, tz)}`;
@@ -319,5 +319,31 @@ export async function loadHydration(api: VitalLinkClient): Promise<HydrationVM> 
       { ml: 750, label: "+ Large · 750 ml" },
     ],
     note: `Your water goal is ${litres(goal)} L a day. Water from food and drinks you don't log isn't counted.`,
+  };
+}
+
+// ---------------------------------------------------------------- Privacy › Manage access (Figma 206:1516)
+
+const KIND_LABEL: Record<Share["grantee_kind"], string> = { doctor: "Doctor", family: "Family", other: "Other", app: "App", hospital: "Hospital" };
+export interface ManageAccessVM {
+  title: string;
+  rows: { id: string; who: string; line: string; until: string }[];
+  empty: string | null;
+}
+/** Active shares, optionally only doctors or family (the Privacy Centre card that opened it). */
+export async function loadManageAccess(api: VitalLinkClient, kind: "doctor" | "family" | null): Promise<ManageAccessVM> {
+  const [me, shares] = await Promise.all([api.me(), api.shares()]);
+  const tz = me.timezone;
+  const list = shares.filter((s) => s.active && (kind === null || s.grantee_kind === kind)).sort((a, b) => a.grantee_label.localeCompare(b.grantee_label));
+  const scopes = (s: Share) => SHARE_SCOPES.filter((x) => s.scopes.includes(x.value)).map((x) => x.label).join(", ");
+  return {
+    title: kind === "doctor" ? "Doctors with access" : kind === "family" ? "Family access" : "Everyone with access",
+    rows: list.map((s) => ({
+      id: s.id,
+      who: s.grantee_label,
+      line: `${KIND_LABEL[s.grantee_kind]} · ${scopes(s)}`,
+      until: s.expires_at ? `Until ${dayMonth(s.expires_at, tz).replace(/^0/, "")} ${todayIn(tz, Date.parse(s.expires_at)).slice(0, 4)}` : "No end date",
+    })),
+    empty: list.length ? null : "No one has access right now.",
   };
 }

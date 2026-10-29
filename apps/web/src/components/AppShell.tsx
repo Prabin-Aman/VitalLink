@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { Link, NavLink } from "react-router-dom";
 import { Icon, type IconName } from "./Icon";
-import { Avatar, Logo } from "./ui";
+import { Logo } from "./ui";
+import { ProfileMenu, TopSearch } from "./TopBar";
 import s from "./AppShell.module.css";
 
 // Sidebar items in Figma order (desktop Dashboard 12:2, sidebar). Below 1280px the shell follows the
@@ -25,7 +26,7 @@ const NAV: { label: string; icon: IconName; to: string }[] = [
   { label: "Settings", icon: "settings-18", to: "/settings" },
 ];
 
-export function AppShell({ children, name, initials }: { children: ReactNode; name: string; initials: string }) {
+export function AppShell({ children, name, initials, email }: { children: ReactNode; name: string; initials: string; email: string }) {
   return (
     <div className={s.shell}>
       <aside className={s.sidebar}>
@@ -51,15 +52,8 @@ export function AppShell({ children, name, initials }: { children: ReactNode; na
       </aside>
       <div className={s.main}>
         <header className={s.topbar}>
-          <label className={s.search}>
-            <Icon name="search-16" color="iconSubtle" />
-            <span className="sr-only">Search</span>
-            <input placeholder="Search workouts, health data, records…" />
-          </label>
-          <button type="button" className={s.profile} aria-label={`Profile: ${name}`}>
-            <Avatar initials={initials} size={26} fontSize={10} />
-            <span className={s.label}>{name}</span>
-          </button>
+          <TopSearch className={s.search} />
+          <ProfileMenu name={name} initials={initials} email={email} className={s.profile} labelClass={s.label} />
         </header>
         <main className={s.content}>{children}</main>
       </div>

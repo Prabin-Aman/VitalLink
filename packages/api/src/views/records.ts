@@ -2,7 +2,7 @@
 // Document Viewer (143:1955) and mobile Records (145:343).
 import type { ColorToken } from "@vitallink/tokens";
 import { need, NotAvailableError, type VitalLinkClient } from "../client";
-import { calendarDate, dayMonthYear, daysFrom, longDayMonthYear } from "../format";
+import { calendarDate, dayMonth, dayMonthYear, daysFrom, longDayMonthYear } from "../format";
 import type { ChipVM } from "../screens";
 import type { LabPanel, LabResult, RecordType } from "../types";
 
@@ -96,6 +96,8 @@ export interface LabRowVM {
 
 export interface LabResultsVM {
   panelId: string;
+  /** Every panel, newest first, for the tabs ("Lipid", or "Lipid · 12 Sep" when two share a name). */
+  panels: { id: string; label: string }[];
   subtitle: string;
   tints: { key: string; label: string; value: string; bg: ColorToken; fg: ColorToken }[];
   rows: LabRowVM[];
@@ -131,10 +133,17 @@ async function panel(api: VitalLinkClient, id?: string): Promise<LabPanel> {
 }
 
 export async function loadLabResults(api: VitalLinkClient, panelId?: string): Promise<LabResultsVM> {
-  const [me, p] = await Promise.all([api.me(), panel(api, panelId)]);
+  const [me, p, all] = await Promise.all([api.me(), panel(api, panelId), api.labPanels()]);
+  const list = [...need(all, "Lab results")].sort((a, b) => b.collected_at.localeCompare(a.collected_at));
+  const named = (x: LabPanel) => x.short_name || x.name;
+  const panels = list.map((x) => ({
+    id: x.id,
+    label: list.filter((y) => named(y) === named(x)).length > 1 ? `${named(x)} · ${dayMonth(x.collected_at, me.timezone).replace(/^0/, "")}` : named(x),
+  }));
   const count = (i: LabResult["interpretation"]) => p.results.filter((r) => r.interpretation === i).length;
   return {
     panelId: p.id,
+    panels,
     subtitle: `${p.name} · ${p.facility} · ordered by ${p.ordered_by} · collected ${date(p.collected_at, me.timezone).replace(/^0/, "")}`,
     tints: [
       { key: "tests", label: "Tests in panel", value: String(p.results.length), bg: "bgSurface", fg: "textPrimary" },

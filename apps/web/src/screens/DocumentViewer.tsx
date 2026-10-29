@@ -1,14 +1,16 @@
 // Document Viewer — Desktop 1440 (Figma 143:1955).
 import { loadDocument } from "@vitallink/api";
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 import { useParams } from "react-router-dom";
 import { Action, KeyValues, PageHeader, Panel, Txt } from "../components/kit";
 import { Button } from "../components/ui";
 import { useApi, useScreen } from "../data";
 import { ScreenState } from "./ScreenState";
+import { ShareDialog } from "../forms/ShareForms";
 import s from "./DocumentViewer.module.css";
 
 export function DocumentViewer() {
+  const [sharing, setSharing] = useState(false);
   const { id = "" } = useParams();
   const api = useApi();
   const state = useScreen(useCallback((api) => loadDocument(api, id), [id]));
@@ -23,7 +25,8 @@ export function DocumentViewer() {
         actions={
           <>
             <Action onClick={() => window.print()}>Print</Action>
-            <Action>Share</Action>
+            <Action onClick={() => setSharing(true)}>Share</Action>
+            {sharing && <ShareDialog preset={{ scopes: ["records"], overline: "Medical Records › Share" }} onClose={() => setSharing(false)} />}
             <Action
               primary
               onClick={() =>
