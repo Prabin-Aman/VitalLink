@@ -72,7 +72,10 @@ Pages: 4:3 mobile auth · 4:4 mobile health · 4:5 mobile fitness · 4:6 mobile 
 4:8 mobile profile · 4:10 public site · 4:11 web auth · 4:12 portal (care + My Health tabs) · 4:13 dashboard ·
 4:14 web fitness · 4:15 web records · 195:2 proposed entry forms. Icon components live on 2:298.
 
-Web shell: sidebar 260, top bar 64, content px32 pt28 gap24. Mobile: header px16 py14, tab bar 72
+Web shell: sidebar 260, top bar 64, content px32 pt28 gap24. Below 1280px it follows the Tablet 1024 frames
+(19 — Responsive Variants, 147:5476): 72px icon sidebar, content px24, Split/Dashboard rails drop under the
+main column as 282px cards (`@media (max-width: 1279px)` in each module). Layout checks: `web-mock` launch
+config (sample data on :5174), so a sweep of every route doesn't hit the API's rate limit. Mobile: header px16 py14, tab bar 72
 (Home, Health, Train, Records, Profile). Health and Train are stacks (chips switch screens); care screens
 (Medications … Settings, Privacy) live under Profile with a back button; Nutrition/Goals live under Train.
 
@@ -147,7 +150,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Decisions applied by default (owner hasn't decided): D2 (QR on the phone), D4 (doctor/family/other),
   D5 (user confirms appointments), D6 (labs typed in), D9 (no push), D14 (no reviewer names). Messages (D1)
   and dependents (D3) are not built. Compliance: FTC Health Breach Notification Rule (not HIPAA).
-- Rate limits: `core/web/RateLimiter` (60 ingest / 600 other per user per hour → 429). `LoadCheck <url>`
+- Rate limits: `core/web/RateLimiter` (60 ingest / 3,000 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
 - Frontend writes: Mark Taken (web + mobile), Settings Save/theme, notifications read, appointment Cancel

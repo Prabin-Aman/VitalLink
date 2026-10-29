@@ -1,7 +1,7 @@
 /* Devices: wrap of 352px cards, 16 apart. */
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, 352px);
+  grid-template-columns: repeat(3, minmax(0, 352px)); /* 352 at 1440; narrower laptops shrink them */
   gap: 16px;
   align-items: start;
 }
@@ -38,6 +38,7 @@
 }
 .actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
 }
 .add {
@@ -53,4 +54,11 @@
 }
 .add:hover {
   background: var(--vl-bg-surface);
+}
+
+/* Tablet: cards reflow to fit (three across at 1024). */
+@media (max-width: 1279px) {
+  .grid {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
 }

@@ -127,3 +127,23 @@
   align-items: center;
   justify-content: space-between;
 }
+
+/* Tablet (Figma "Patient Dashboard — Tablet 1024", 147:5476): the rail drops under the charts as a strip of
+   282px cards, so the metric grid reflows to three across and the two charts get 440px each. */
+@media (max-width: 1279px) {
+  .grid {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 20px;
+  }
+  .rail {
+    width: auto;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: flex-start;
+  }
+  .rail > * {
+    flex: 0 1 282px;
+    min-width: 0;
+  }
+}

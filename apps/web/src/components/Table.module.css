@@ -1,6 +1,7 @@
 /* Data tables (Medication table 62:685, Lab table 61:53): header row on bg/subtle,
    Data/Table Header caps, 13/20 cells, subtle rules between rows. */
 .wrap {
+  position: relative; /* contains the cells' absolutely positioned sr-only labels when the table scrolls */
   border: 1px solid var(--vl-border-subtle);
   border-radius: var(--vl-radius-lg);
   box-shadow: var(--vl-elevation-card);
@@ -52,4 +53,11 @@
   padding: 12px 20px;
   background: var(--vl-bg-subtle);
   border-top: 1px solid var(--vl-border-subtle);
+}
+
+/* Tablet: wide tables scroll inside their card rather than widening the page. */
+@media (max-width: 1279px) {
+  .wrap {
+    overflow-x: auto;
+  }
 }

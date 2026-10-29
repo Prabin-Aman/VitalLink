@@ -5,7 +5,7 @@
 }
 .cards {
   display: grid;
-  grid-template-columns: repeat(3, 352px);
+  grid-template-columns: repeat(3, minmax(0, 352px)); /* 352 at 1440; narrower laptops shrink them */
   gap: 16px;
 }
 .card {
@@ -86,4 +86,11 @@
 }
 .table tbody th {
   padding-left: 20px;
+}
+
+/* Tablet: cards reflow to fit (three across at 1024). */
+@media (max-width: 1279px) {
+  .cards {
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  }
 }

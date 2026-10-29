@@ -4,7 +4,8 @@ import { Icon, type IconName } from "./Icon";
 import { Avatar, Logo } from "./ui";
 import s from "./AppShell.module.css";
 
-// Sidebar items in Figma order (desktop Dashboard 12:2, sidebar).
+// Sidebar items in Figma order (desktop Dashboard 12:2, sidebar). Below 1280px the shell follows the
+// Tablet 1024 frames (147:5476): a 72px icon sidebar, avatar-only profile, 24px content gutters.
 const NAV: { label: string; icon: IconName; to: string }[] = [
   { label: "Dashboard", icon: "dashboard-18", to: "/" },
   { label: "My Health", icon: "health-18", to: "/health" },
@@ -33,19 +34,19 @@ export function AppShell({ children, name, initials }: { children: ReactNode; na
         </div>
         <nav className={s.nav} aria-label="Main">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === "/"} className={({ isActive }) => (isActive ? `${s.item} ${s.active}` : s.item)}>
+            <NavLink key={n.to} to={n.to} end={n.to === "/"} title={n.label} className={({ isActive }) => (isActive ? `${s.item} ${s.active}` : s.item)}>
               {({ isActive }) => (
                 <>
                   <Icon name={n.icon} color={isActive ? "iconBrand" : "iconSubtle"} />
-                  <span>{n.label}</span>
+                  <span className={s.label}>{n.label}</span>
                 </>
               )}
             </NavLink>
           ))}
         </nav>
-        <Link className={s.emergency} to="/emergency">
+        <Link className={s.emergency} to="/emergency" title="Emergency Medical ID">
           <Icon name="emergency-16" color="textEnergy" />
-          <span>Emergency Medical ID</span>
+          <span className={s.label}>Emergency Medical ID</span>
         </Link>
       </aside>
       <div className={s.main}>
@@ -57,7 +58,7 @@ export function AppShell({ children, name, initials }: { children: ReactNode; na
           </label>
           <button type="button" className={s.profile} aria-label={`Profile: ${name}`}>
             <Avatar initials={initials} size={26} fontSize={10} />
-            <span>{name}</span>
+            <span className={s.label}>{name}</span>
           </button>
         </header>
         <main className={s.content}>{children}</main>

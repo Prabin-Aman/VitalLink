@@ -125,3 +125,45 @@
   flex-direction: column;
   gap: 24px;
 }
+
+/* ---------- Tablet (Figma "Patient Dashboard — Tablet 1024", 147:5476) ---------- */
+@media (max-width: 1279px) {
+  .sidebar {
+    width: var(--vl-layout-sidebar-collapsed);
+    padding: 20px 14px;
+  }
+  .brand {
+    padding: 4px 7px 0;
+  }
+  .brand :global(.vl-h4) {
+    display: none;
+  }
+  .nav {
+    scrollbar-width: none;
+  }
+  .item {
+    justify-content: center;
+    padding: 11px 13px;
+  }
+  .emergency {
+    justify-content: center;
+    padding: 11px 14px;
+  }
+  .label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+  .search {
+    width: 300px;
+  }
+  .profile {
+    padding: 6px;
+  }
+  .content {
+    padding: 28px 24px 32px;
+  }
+}
