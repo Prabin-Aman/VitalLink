@@ -82,6 +82,32 @@ describe("top-bar search", () => {
   });
 });
 
+describe("article reader", () => {
+  it("parses the library's Markdown subset into safe blocks", () => {
+    const blocks = api.parseArticle("Intro with **60 and 100** bpm.\nsame paragraph\n\n## Why it moves\n\n- **Fitness:** lower\n- Sleep\n\nLast <b>raw</b> line.");
+    expect(blocks).toEqual([
+      { kind: "paragraph", parts: [{ text: "Intro with ", bold: false }, { text: "60 and 100", bold: true }, { text: " bpm. same paragraph", bold: false }] },
+      { kind: "heading", text: "Why it moves" },
+      { kind: "list", items: [[{ text: "Fitness:", bold: true }, { text: " lower", bold: false }], [{ text: "Sleep", bold: false }]] },
+      { kind: "paragraph", parts: [{ text: "Last <b>raw</b> line.", bold: false }] },
+    ]);
+  });
+
+  it("reads *italic* runs", () => {
+    expect(api.parseArticle("*Not advice.* Ask a clinician.")).toEqual([
+      { kind: "paragraph", parts: [{ text: "Not advice.", bold: false, italic: true }, { text: " Ask a clinician.", bold: false }] },
+    ]);
+  });
+
+  it("loads an article with related ones", async () => {
+    const lib = await client.library();
+    const vm = await api.loadArticle(client, lib.featured.slug ?? lib.featured.id);
+    expect(vm.title).toBe(lib.featured.title);
+    expect(vm.related.length).toBeGreaterThan(0);
+    expect(vm.related.every((r) => r.slug !== (lib.featured.slug ?? lib.featured.id))).toBe(true);
+  });
+});
+
 describe("mock mode writes", () => {
   it("change nothing and resolve with null", async () => {
     expect(client.isMock).toBe(true);

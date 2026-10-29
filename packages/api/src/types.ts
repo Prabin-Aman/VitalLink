@@ -649,3 +649,10 @@ export interface TrainingPlan {
   weekly_target_sessions: number;
   sessions: PlannedSession[];
 }
+
+/** GET /library/articles/{slug}: an article with its Markdown body. */
+export interface ArticleDetail extends Article {
+  slug: string;
+  body_md: string;
+  published_on: string | null;
+}

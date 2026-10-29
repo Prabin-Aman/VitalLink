@@ -1,0 +1,86 @@
+/* Article reader (Figma 208:3270): heading with back link, a reading-width card, 320 rail. */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.back {
+  color: var(--vl-text-link);
+  align-self: flex-start;
+}
+.back:hover {
+  text-decoration: underline;
+}
+.split {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.body {
+  flex: 1;
+  min-width: 0;
+  max-width: 760px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  padding: 32px 40px;
+  border: 1px solid var(--vl-border-subtle);
+  border-radius: var(--vl-radius-lg);
+  background: var(--vl-bg-surface);
+  box-shadow: var(--vl-elevation-card);
+  color: var(--vl-text-primary);
+}
+.body p,
+.body h2,
+.body ul {
+  margin: 0;
+}
+.body strong {
+  font-weight: 600;
+}
+.summary {
+  color: var(--vl-text-secondary);
+}
+.rule {
+  width: 100%;
+  margin: 0;
+  border: 0;
+  border-top: 1px solid var(--vl-border-subtle);
+}
+.list {
+  padding-left: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.list li::marker {
+  color: var(--vl-text-tertiary);
+}
+.rail {
+  width: 320px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.note {
+  margin: 0;
+  padding: 14px 16px;
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-subtle);
+  color: var(--vl-text-secondary);
+}
+
+/* Tablet: the rail drops under the article. */
+@media (max-width: 1279px) {
+  .split {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .body {
+    max-width: none;
+  }
+  .rail {
+    width: auto;
+  }
+}

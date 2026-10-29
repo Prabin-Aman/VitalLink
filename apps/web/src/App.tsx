@@ -11,6 +11,7 @@ import { DocumentViewer } from "./screens/DocumentViewer";
 import { Emergency } from "./screens/Emergency";
 import { Family } from "./screens/Family";
 import { LabResults } from "./screens/LabResults";
+import { Article } from "./screens/Article";
 import { Library } from "./screens/Library";
 import { Medications } from "./screens/Medications";
 import { Messages } from "./screens/Messages";
@@ -79,6 +80,7 @@ export function App() {
         <Route path="medications" element={<Medications />} />
         <Route path="appointments" element={<Appointments />} />
         <Route path="library" element={<Library />} />
+        <Route path="library/:slug" element={<Article />} />
         <Route path="family" element={<Family />} />
         <Route path="messages" element={<Messages />} />
         <Route path="notifications" element={<Notifications />} />

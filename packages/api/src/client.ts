@@ -40,6 +40,7 @@ import type {
   ExerciseItem,
   PersonalRecord,
   TrainingPlan,
+  ArticleDetail,
 } from "./types";
 import { mock } from "./mock";
 
@@ -267,6 +268,13 @@ export class VitalLinkClient {
   notifications = () => this.get<AppNotification[]>("/me/notifications", () => mock.notifications);
   family = () => this.get<FamilyMember[]>("/me/family", () => mock.family);
   library = () => this.get<Library>("/library", () => mock.library);
+  /** One article with its Markdown body; mock mode builds it from the sample article's summary. */
+  article = (slug: string) =>
+    this.get<ArticleDetail>(`/library/articles/${encodeURIComponent(slug)}`, () => {
+      const all = [mock.library.featured, ...mock.library.trending];
+      const a = all.find((x) => (x.slug ?? x.id) === slug) ?? mock.library.featured;
+      return { ...a, slug: a.slug ?? a.id, body_md: a.summary ?? "", published_on: null };
+    });
   healthOverview = () => this.get<HealthOverview>("/me/health/overview", () => mock.health.overview);
   vitals = () => this.get<VitalsTab>("/me/health/tabs/vitals", () => mock.health.vitals);
   sleep = () => this.get<SleepTab>("/me/health/tabs/sleep", () => mock.health.sleep);

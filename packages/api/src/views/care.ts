@@ -509,6 +509,8 @@ export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
 
 export interface ArticleVM {
   id: string;
+  /** Route param for the reader (/library/:slug); mock articles without a slug use their id. */
+  slug: string;
   tag: ChipVM;
   title: string;
   meta: string;
@@ -517,7 +519,7 @@ export interface ArticleVM {
 
 export interface LibraryVM {
   categories: string[];
-  featured: { overline: string; title: string; summary: string; meta: string };
+  featured: { slug: string; overline: string; title: string; summary: string; meta: string };
   featuredMobile: { overline: string; title: string; meta: string };
   trending: ArticleVM[];
   trendingMobile: ArticleVM[];
@@ -532,6 +534,8 @@ const CATEGORY_TONE: Record<string, [ColorToken, ColorToken]> = {
   Sleep: ["textBrand", "bgBrandSubtle"],
   Medication: ["textBrand", "bgBrandSubtle"],
 };
+/** Tag colours [fg, bg] for a library category (Library cards and the article reader). */
+export const categoryTone = (category: string): [ColorToken, ColorToken] => CATEGORY_TONE[category] ?? ["textSecondary", "bgSubtle"];
 
 export async function loadLibrary(api: VitalLinkClient): Promise<LibraryVM> {
   const l = need(await api.library(), "Health Library");
@@ -539,6 +543,7 @@ export async function loadLibrary(api: VitalLinkClient): Promise<LibraryVM> {
     const [fg, bg] = CATEGORY_TONE[a.category] ?? ["textSecondary", "bgSubtle"];
     return {
       id: a.id,
+      slug: a.slug ?? a.id,
       tag: { label: a.category.toUpperCase(), fg, bg },
       title: a.title,
       meta: `Medically reviewed · ${a.minutes} min read`,
@@ -550,6 +555,7 @@ export async function loadLibrary(api: VitalLinkClient): Promise<LibraryVM> {
   return {
     categories: l.categories,
     featured: {
+      slug: f.slug ?? f.id,
       overline: `FEATURED · ${f.category.toUpperCase()}`,
       title: f.title,
       summary: f.summary ?? "",

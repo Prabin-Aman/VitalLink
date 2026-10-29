@@ -1,6 +1,7 @@
 // Health Library — Desktop 1440 (Figma 71:104).
 import { loadLibrary } from "@vitallink/api";
 import { useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import { tokenVar } from "../components/Icon";
 import { cx, PageHeader, Txt } from "../components/kit";
 import { useScreen } from "../data";
@@ -8,6 +9,7 @@ import { ScreenState } from "./ScreenState";
 import s from "./Library.module.css";
 
 export function Library() {
+  const nav = useNavigate();
   const state = useScreen(loadLibrary);
   const [category, setCategory] = useState<string | null>(null);
   const [query, setQuery] = useState("");
@@ -41,18 +43,20 @@ export function Library() {
               <Txt s="bodyM" c="textSecondary" as="p">{v.featured.summary}</Txt>
               <Txt s="caption" c="textTertiary">{v.featured.meta}</Txt>
             </div>
-            <button type="button" className={cx("vl-label-l", s.read)}>Read Article</button>
+            <button type="button" className={cx("vl-label-l", s.read)} onClick={() => nav(`/library/${v.featured.slug}`)}>
+              Read Article
+            </button>
           </section>
           <Txt s="h3" as="h2">Trending health topics</Txt>
           <div className={s.articles}>
             {trending.map((a) => (
-              <a key={a.id} href="#" className={s.article}>
+              <Link key={a.id} to={`/library/${a.slug}`} className={s.article}>
                 <span className={cx("vl-label-s", s.tag)} style={{ color: tokenVar(a.tag.fg), background: tokenVar(a.tag.bg) }}>
                   {a.tag.label}
                 </span>
                 <Txt s="h5">{a.title}</Txt>
                 <Txt s="caption" c="textTertiary">{a.meta}</Txt>
-              </a>
+              </Link>
             ))}
             {trending.length === 0 && <Txt s="bodyM" c="textTertiary" as="p">No topics match “{query}”.</Txt>}
           </div>
