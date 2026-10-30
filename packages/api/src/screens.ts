@@ -16,6 +16,8 @@ import {
   weekday,
   weekdayTime,
 } from "./format";
+import { todayIn } from "./forms";
+import { shareRow } from "./views/tabs";
 import type { AccessLogEntry, LabResult, RangeStatus, Series, Share, Workout, WorkoutType } from "./types";
 
 // ---------------------------------------------------------------- shared
@@ -407,6 +409,13 @@ export interface AccessRowVM {
   when: string;
   status: ChipVM;
   shortStatus: string;
+  /** Access details dialog (Figma 211:1577). */
+  details: {
+    subtitle: string;
+    rows: { label: string; value: string }[];
+    /** The share it went through; `active` false once stopped or expired. */
+    share: { id: string; who: string; line: string; until: string; active: boolean } | null;
+  };
 }
 
 export interface PrivacyVM {
@@ -418,6 +427,39 @@ export interface PrivacyVM {
 }
 
 const surname = (label: string) => label.replace(/^Dr\.\s+/, "").split(" ").slice(-1)[0];
+
+const RESULT: Record<AccessLogEntry["status"], string> = {
+  authorised: "Authorised",
+  limited: "Limited scope",
+  blocked: "Blocked",
+};
+
+/** "Sunday 13 Sep 2026 · 9:12 AM" */
+const fullWhen = (iso: string, tz: string) => {
+  const [weekday, dm] = longDate(iso, tz).split(", ");
+  return `${weekday} ${dm.replace(/(\d+) (\w{3})\w*/, "$1 $2")} ${todayIn(tz, Date.parse(iso)).slice(0, 4)} · ${timeOfDay(iso, tz)}`;
+};
+
+function accessDetails(e: AccessLogEntry, shares: Share[], tz: string): AccessRowVM["details"] {
+  const share = e.share_id ? shares.find((s) => s.id === e.share_id) : undefined;
+  const looked = e.status === "blocked" ? "tried to look at" : "looked at";
+  const result =
+    e.status === "blocked"
+      ? `Blocked${e.purpose ? ` — ${e.purpose.toLowerCase()}` : ""}`
+      : `${RESULT[e.status]}${share ? " — allowed by the share below" : ""}`;
+  return {
+    subtitle: `${e.actor} ${looked} your record on ${dayMonth(e.at, tz).replace(/^0/, "")} at ${timeOfDay(e.at, tz)}.`,
+    rows: [
+      { label: "Who", value: e.actor },
+      { label: "Signed in as", value: e.actor_detail },
+      { label: "Opened", value: e.accessed },
+      ...(e.status !== "blocked" && e.purpose ? [{ label: "Reason", value: e.purpose }] : []),
+      { label: "When", value: fullWhen(e.at, tz) },
+      { label: "Result", value: result },
+    ],
+    share: share ? { ...shareRow(share, tz), active: e.share_active && share.active } : null,
+  };
+}
 
 const statusChip = (s: AccessLogEntry["status"]): [ChipVM, string] => {
   switch (s) {
@@ -490,6 +532,7 @@ export async function loadPrivacy(api: VitalLinkClient): Promise<PrivacyVM> {
         when: shortDateTime(e.at, me.timezone),
         status: chip,
         shortStatus: short,
+        details: accessDetails(e, shares, me.timezone),
       };
     }),
   };

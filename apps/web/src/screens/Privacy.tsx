@@ -1,11 +1,11 @@
-import { loadPrivacy, type AccessCardVM } from "@vitallink/api";
+import { loadPrivacy, type AccessCardVM, type AccessRowVM } from "@vitallink/api";
 import type { ColorToken } from "@vitallink/tokens";
 import { tokenVar } from "../components/Icon";
 import { Button, Chip } from "../components/ui";
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useScreen } from "../data";
-import { ManageAccessDialog, ShareDialog } from "../forms/ShareForms";
+import { AccessDetailsDialog, ManageAccessDialog, ShareDialog } from "../forms/ShareForms";
 import { ScreenState } from "./ScreenState";
 import s from "./Privacy.module.css";
 
@@ -28,7 +28,7 @@ const MANAGE: Record<string, { kind: "doctor" | "family" | null } | { to: string
 
 export function Privacy() {
   const nav = useNavigate();
-  const [dialog, setDialog] = useState<{ manage: "doctor" | "family" | null } | "share" | null>(null);
+  const [dialog, setDialog] = useState<{ manage: "doctor" | "family" | null } | { row: AccessRowVM } | "share" | null>(null);
   const state = useScreen(loadPrivacy);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const p = state.data;
@@ -72,7 +72,8 @@ export function Privacy() {
       </div>
 
       {dialog === "share" && <ShareDialog onClose={() => setDialog(null)} />}
-      {dialog && dialog !== "share" && <ManageAccessDialog kind={dialog.manage} onClose={() => setDialog(null)} onShare={() => setDialog("share")} />}
+      {dialog && dialog !== "share" && "row" in dialog && <AccessDetailsDialog row={dialog.row} onClose={() => setDialog(null)} />}
+      {dialog && dialog !== "share" && "manage" in dialog && <ManageAccessDialog kind={dialog.manage} onClose={() => setDialog(null)} onShare={() => setDialog("share")} />}
 
       <h2 className="vl-h3">Data access history</h2>
       <div className={s.tableWrap}>
@@ -107,7 +108,7 @@ export function Privacy() {
                   <Chip chip={r.status} dot />
                 </td>
                 <td className={s.cAction}>
-                  <Button variant="secondary" size="sm">
+                  <Button variant="secondary" size="sm" onClick={() => setDialog({ row: r })} aria-label={`Details: ${r.who}, ${r.when}`}>
                     Details
                   </Button>
                 </td>

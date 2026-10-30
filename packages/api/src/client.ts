@@ -1,5 +1,8 @@
 import type {
   AccessLogEntry,
+  ImportResult,
+  IngestResult,
+  SyncStatus,
   AccountProfile,
   AppNotification,
   BodyTab,
@@ -113,10 +116,15 @@ export class VitalLinkClient {
   private async send<T>(method: "POST" | "PATCH" | "PUT" | "DELETE", path: string, body?: unknown): Promise<T | null> {
     if (this.isMock) return null;
     const token = await this.opts.getToken?.();
+    // A Blob (an import file) goes as the raw body; anything else as JSON.
+    const raw = body instanceof Blob;
     const res = await fetch(`${this.opts.baseUrl}/v1${path}`, {
       method,
-      headers: { ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(body === undefined ? {} : { "Content-Type": "application/json" }) },
-      body: body === undefined ? undefined : JSON.stringify(body),
+      headers: {
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...(body === undefined ? {} : { "Content-Type": raw ? "application/octet-stream" : "application/json" }),
+      },
+      body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({}));
@@ -142,6 +150,10 @@ export class VitalLinkClient {
   // ---- Entry forms (Figma page "15 — Proposed · Entry forms"); bodies are built in forms.ts.
   /** One manual reading (POST /me/health/manual); blood pressure is two calls, systolic and diastolic. */
   addReading = (metric: string, value: number, at: string) => this.send("POST", "/me/health/manual", { metric, value, at });
+  /** POST /me/health/import: an Apple Health export or a CSV, readings from the last `days`. Null in mock mode. */
+  importHealthFile = (file: Blob, days: number) => this.send<ImportResult>("POST", `/me/health/import?days=${days}`, file);
+  /** POST /me/health/ingest: 5-minute buckets (phone sync, or a Bluetooth device paired in the browser). */
+  ingest = (body: object) => this.send<IngestResult>("POST", "/me/health/ingest", body);
   /** Seeded and own foods matching `q` (2+ letters); empty in mock mode. */
   searchFoods = (q: string) => (this.isMock ? Promise.resolve([] as FoodHit[]) : this.get<FoodHit[]>(`/foods/search?q=${encodeURIComponent(q)}`, () => []));
   logMeal = (body: object) => this.send("POST", "/me/meals", body);
@@ -162,13 +174,13 @@ export class VitalLinkClient {
    * A record with a file: create it, PUT the file to the signed URL the API hands out, then confirm so the
    * API checks what was stored. Resolves with the record id, or null in mock mode.
    */
-  uploadRecord = async (record: object, file: File): Promise<string | null> => {
+  uploadRecord = async (record: object, file: Blob, name = (file as File).name): Promise<string | null> => {
     const created = await this.send<{ id: string }>("POST", "/me/records", record);
     if (!created) return null;
     const target = await this.send<{ upload_url: string; method: string; headers: Record<string, string> }>(
       "POST",
       `/me/records/${created.id}/upload`,
-      { file_name: file.name, content_type: file.type, size: file.size },
+      { file_name: name, content_type: file.type, size: file.size },
     );
     const put = await fetch(target!.upload_url, { method: target!.method, headers: target!.headers, body: file });
     if (!put.ok) throw new ApiError(put.status, "upload_failed", "The file didn't upload. Try again.");
@@ -230,6 +242,8 @@ export class VitalLinkClient {
     return bp && bp.value2 != null ? { systolic: bp.value, diastolic: bp.value2 } : null;
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
+  /** GET /me/sync: the phone app's uploads (phone sync status on Connected Devices). */
+  sync = () => this.get<SyncStatus>("/me/sync", () => mock.sync);
   workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
   /** Every personal record (heaviest set per exercise, fastest 5 km and 10 km). */
   personalRecords = () => this.get<PersonalRecord[]>("/me/training/records", () => mock.training.records);

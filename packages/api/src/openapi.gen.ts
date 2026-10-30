@@ -271,6 +271,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/health/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Import a health data file: an Apple Health export (zip or export.xml, up to 300 MB) or a CSV with start,metric,value. The request body is the file; readings from the last `days` are stored. */
+        post: operations["importFile"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/goals": {
         parameters: {
             query?: never;
@@ -840,6 +857,23 @@ export interface paths {
         };
         /** Every personal record: heaviest set per exercise, then the fastest 5 km and 10 km. */
         get: operations["records_1"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Phone sync status: last upload per platform and the 10 most recent uploads (30 days). */
+        get: operations["sync"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1839,6 +1873,26 @@ export interface components {
             unchanged?: number;
             replayed?: boolean;
         };
+        ImportOut: {
+            format?: string;
+            /** Format: int32 */
+            records?: number;
+            /** Format: int32 */
+            readings?: number;
+            /** Format: int32 */
+            inserted?: number;
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            unchanged?: number;
+            /** Format: int32 */
+            skipped?: number;
+            problems?: string[];
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+        };
         GoalIn: {
             title: string;
             short_title?: string;
@@ -2325,6 +2379,38 @@ export interface components {
             display_name?: string;
             timezone?: string;
         };
+        SyncPlatform: {
+            platform?: string;
+            /** Format: date-time */
+            last_upload_at?: string;
+            /** Format: int32 */
+            uploads_week?: number;
+            /** Format: int64 */
+            readings_week?: number;
+            /** Format: int64 */
+            changed_week?: number;
+            /** Format: int32 */
+            devices?: number;
+        };
+        SyncStatus: {
+            platforms?: components["schemas"]["SyncPlatform"][];
+            recent?: components["schemas"]["SyncUpload"][];
+        };
+        SyncUpload: {
+            /** Format: int64 */
+            id?: number;
+            /** Format: date-time */
+            at?: string;
+            platform?: string;
+            /** Format: int32 */
+            submitted?: number;
+            /** Format: int32 */
+            inserted?: number;
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            unchanged?: number;
+        };
         StreakOut: {
             label?: string;
             /** Format: int32 */
@@ -2526,6 +2612,9 @@ export interface components {
             purpose?: string;
             /** @enum {string} */
             status?: "authorised" | "limited" | "blocked";
+            /** Format: uuid */
+            share_id?: string;
+            share_active?: boolean;
         };
         Article: {
             /** Format: uuid */
@@ -3172,6 +3261,32 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["IngestOut"];
+                };
+            };
+        };
+    };
+    importFile: {
+        parameters: {
+            query?: {
+                days?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: {
+            content: {
+                "application/octet-stream": string;
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
                 };
             };
         };
@@ -4415,6 +4530,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["PersonalRecord"][];
+                };
+            };
+        };
+    };
+    sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncStatus"];
                 };
             };
         };

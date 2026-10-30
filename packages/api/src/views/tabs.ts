@@ -332,19 +332,24 @@ export interface ManageAccessVM {
   empty: string | null;
 }
 /** Active shares, optionally only doctors or family (the Privacy Centre card that opened it). */
+/** "Doctor · Vitals, Records & labs" and "Until 27 Jan 2027" for a share row. */
+export function shareRow(s: Share, tz: string) {
+  const scopes = SHARE_SCOPES.filter((x) => s.scopes.includes(x.value)).map((x) => x.label).join(", ");
+  return {
+    id: s.id,
+    who: s.grantee_label,
+    line: `${KIND_LABEL[s.grantee_kind]} · ${scopes}`,
+    until: s.expires_at ? `Until ${dayMonth(s.expires_at, tz).replace(/^0/, "")} ${todayIn(tz, Date.parse(s.expires_at)).slice(0, 4)}` : "No end date",
+  };
+}
+
 export async function loadManageAccess(api: VitalLinkClient, kind: "doctor" | "family" | null): Promise<ManageAccessVM> {
   const [me, shares] = await Promise.all([api.me(), api.shares()]);
   const tz = me.timezone;
   const list = shares.filter((s) => s.active && (kind === null || s.grantee_kind === kind)).sort((a, b) => a.grantee_label.localeCompare(b.grantee_label));
-  const scopes = (s: Share) => SHARE_SCOPES.filter((x) => s.scopes.includes(x.value)).map((x) => x.label).join(", ");
   return {
     title: kind === "doctor" ? "Doctors with access" : kind === "family" ? "Family access" : "Everyone with access",
-    rows: list.map((s) => ({
-      id: s.id,
-      who: s.grantee_label,
-      line: `${KIND_LABEL[s.grantee_kind]} · ${scopes(s)}`,
-      until: s.expires_at ? `Until ${dayMonth(s.expires_at, tz).replace(/^0/, "")} ${todayIn(tz, Date.parse(s.expires_at)).slice(0, 4)}` : "No end date",
-    })),
+    rows: list.map((s) => shareRow(s, tz)),
     empty: list.length ? null : "No one has access right now.",
   };
 }

@@ -67,7 +67,8 @@ public class WebConfig implements WebMvcConfigurer {
         CurrentUser cached = (CurrentUser) request.getAttribute(CALLER);
         if (cached == null) {
             var claims = tokens.verify(request.getHeader("Authorization"));
-            limits.check(claims.subject(), request.getRequestURI().equals("/v1/me/health/ingest"));
+            String uri = request.getRequestURI();
+            limits.check(claims.subject(), uri.equals("/v1/me/health/ingest") || uri.equals("/v1/me/health/import"));
             cached = new CurrentUser(accounts.getOrCreate(claims), claims);
             request.setAttribute(CALLER, cached);
         }

@@ -131,7 +131,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Packages: `core` (settings, db, security, audit, consent, storage, userdata, web), `account`, `health`
   (incl. My Health overview + 7 tabs), `training`, `nutrition`, `sharing` (shares, access log, privacy,
   family, all `/users/{id}` views), `care`, `goals`, `records`, `notifications`, `library`, `jobs`, `ops`, `tools`.
-- Plain SQL with Spring `JdbcClient` + HikariCP; Flyway `V1–V10` in `src/main/resources/db/migration`
+- Plain SQL with Spring `JdbcClient` + HikariCP; Flyway `V1–V13` in `src/main/resources/db/migration`
   (V1–V6 = the old Alembic 0001–0006); 33 tables in the private `vitallink` schema; RLS on everywhere.
 - One transaction per `/v1` request (`RequestTransactionFilter`, rolls back on any error status).
   `AuditLog` writes in its own transaction. Consent: pure `Consent.decide()` + `ConsentGate`; every
@@ -142,7 +142,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Tests: 241 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
   (44-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
-  `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
+  `PhoneSim <url> [--hours N]` (uploads like the phone app through ingest), `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
 - Local: Postgres via `docker compose up` in WSL; `.env` `DATABASE_URL` may be `postgresql://…` or JDBC
   (use 127.0.0.1, not localhost). Live web: `VITE_API_URL=http://localhost:8000` + dev token in
   `sessionStorage["vl.token"]` or `VITE_DEV_TOKEN` in `apps/web/.env.local` (any tab). Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
@@ -180,6 +180,19 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   Member (share dialogs preset to family; the note explains they see you, not the reverse), Workouts › Start
   Session (Log Workout prefilled from the next planned session), Document Viewer › Add a note (Figma
   209:1575; PATCH /me/records/{id} note ≤200; the record's note wins over the lab panel's).
+  Privacy › access history Details (Figma 211:1577 Access details: the row's facts and the share it went
+  through, with Stop sharing while live; access-log rows carry `share_id`/`share_active`) and Connected
+  Devices › Permissions (211:1647: what the device sends, Disconnect). Phone connectivity on Connected
+  Devices (proposed 212:3117 phone sync panel, 212:3400 Add a device): `GET /me/sync` (from `ingest_batches`)
+  shows each phone platform's last upload, weekly counts and recent uploads; Sync now / Check again fetch
+  again (the web can't reach the phone). Add a device (213:1667) offers three ways: Phone app (212:3400 steps),
+  Import health data (213:1701: `POST /me/health/import`, Apple export.zip/xml or CSV `start,metric,value`,
+  `backend …/health/HealthImport.java`; Apple data stored as `healthkit` so it merges with sync) and Pair a
+  Bluetooth device (213:1754: Web Bluetooth in Chrome/Edge, standard GATT profiles decoded in
+  `packages/api/src/bluetooth.ts`, saved through ingest with `platform: "bluetooth"`). Dialogs in
+  `apps/web/src/forms/DeviceForms.tsx`. Bluetooth was checked with a stand-in `navigator.bluetooth`, not a real
+  device. Still inert:
+  Settings Change photo, Appointments Search Doctors, Nutrition Scan Barcode, Records Import.
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

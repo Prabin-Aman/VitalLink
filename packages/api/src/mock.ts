@@ -16,7 +16,7 @@ import type {
   Share,
   Workout,
 } from "./types";
-import { account, appointments, conversations, devices, emergency, family, library, medicationsOverview, notifications } from "./mock-data/care";
+import { account, appointments, conversations, devices, emergency, family, library, medicationsOverview, notifications, sync } from "./mock-data/care";
 import { goalsOverview, nutrition, training } from "./mock-data/fitness";
 import { bodyTab, digitalTab, healthOverview, heartTab, mentalTab, respiratoryTab, sleepTab, vitalsTab } from "./mock-data/health";
 import { labPanels, recordsOverview } from "./mock-data/records";
@@ -103,11 +103,11 @@ const shares: Share[] = [
 ];
 
 const accessLog: AccessLogEntry[] = [
-  { at: "2026-09-13T09:12:00-05:00", actor: "Dr. Laura Bennett", actor_detail: "Cardiology · Trinity Valley", accessed: "Lab results, medications", purpose: "Treatment", status: "authorised" },
-  { at: "2026-09-11T14:41:00-05:00", actor: "Trinity Valley Medical Center", actor_detail: "Hospital", accessed: "Full record", purpose: "Admission check-in", status: "authorised" },
-  { at: "2026-09-09T11:05:00-05:00", actor: "Dr. Marcus Hale", actor_detail: "Internal Medicine", accessed: "Medication list", purpose: "Refill approval", status: "authorised" },
-  { at: "2026-09-08T06:30:00-05:00", actor: "MyFitness", actor_detail: "Third-party app", accessed: "Activity, steps", purpose: "App sync", status: "limited" },
-  { at: "2026-09-02T01:17:00-05:00", actor: "Unknown device", actor_detail: "Sign-in attempt · Fort Worth, TX", accessed: "None — blocked", purpose: "Failed authentication", status: "blocked" },
+  { at: "2026-09-13T09:12:00-05:00", actor: "Dr. Laura Bennett", actor_detail: "Cardiology · Trinity Valley", accessed: "Lab results, medications", purpose: "Treatment", status: "authorised", share_id: "s1", share_active: true },
+  { at: "2026-09-11T14:41:00-05:00", actor: "Trinity Valley Medical Center", actor_detail: "Hospital", accessed: "Full record", purpose: "Admission check-in", status: "authorised", share_id: "s5", share_active: true },
+  { at: "2026-09-09T11:05:00-05:00", actor: "Dr. Marcus Hale", actor_detail: "Internal Medicine", accessed: "Medication list", purpose: "Refill approval", status: "authorised", share_id: "s2", share_active: true },
+  { at: "2026-09-08T06:30:00-05:00", actor: "MyFitness", actor_detail: "Third-party app", accessed: "Activity, steps", purpose: "App sync", status: "limited", share_id: "s10", share_active: true },
+  { at: "2026-09-02T01:17:00-05:00", actor: "Unknown device", actor_detail: "Sign-in attempt · Fort Worth, TX", accessed: "None — blocked", purpose: "Failed authentication", status: "blocked", share_id: null, share_active: false },
 ];
 
 export const mock = {
@@ -227,6 +227,7 @@ export const mock = {
   ] as ConditionItem[],
   emergency,
   devices,
+  sync,
   library,
   account,
   recordsOverview,

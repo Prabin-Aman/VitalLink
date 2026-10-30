@@ -135,3 +135,43 @@ describe("mock mode writes", () => {
     expect((await client.conditions()).length).toBeGreaterThan(0);
   });
 });
+
+describe("Privacy › Access details and Devices › Permissions", () => {
+  it("explains one access-history row and links the share it went through", async () => {
+    const v = await api.loadPrivacy(client);
+    const d = v.log[0].details;
+    expect(d.subtitle).toBe("Dr. Laura Bennett looked at your record on 13 Sep at 9:12 AM.");
+    expect(d.rows.map((r) => r.label)).toEqual(["Who", "Signed in as", "Opened", "Reason", "When", "Result"]);
+    expect(d.rows.find((r) => r.label === "When")!.value).toBe("Sunday 13 Sep 2026 · 9:12 AM");
+    expect(d.share).toMatchObject({ id: "s1", who: "Dr. Laura Bennett", active: true });
+    const blocked = v.log[4].details;
+    expect(blocked.subtitle).toMatch(/tried to look at/);
+    expect(blocked.rows.find((r) => r.label === "Result")!.value).toBe("Blocked — failed authentication");
+    expect(blocked.share).toBeNull();
+  });
+
+  it("lists each kind of data a device sends", async () => {
+    const v = await api.loadDevices(client);
+    expect(v.devices[0].dataTypes.length).toBeGreaterThan(0);
+    expect(v.devices[0].data).toBe(v.devices[0].dataTypes.join(" · "));
+  });
+});
+
+describe("Connected Devices › phone sync", () => {
+  it("summarises the phone's uploads", async () => {
+    const v = await api.loadDevices(client);
+    expect(v.phones).toHaveLength(1);
+    const p = v.phones[0];
+    expect(p.title).toBe("iPhone · Apple Health");
+    expect(p.caption).toBe("VitalLink app · last upload 4 min ago");
+    expect(p.status.label).toBe("Connected");
+    expect(p.summary).toBe("6 uploads this week · 1,296 readings · 412 new or updated");
+    expect(p.uploads.map((u) => u.when)).toEqual(["Today · 8:41 AM", "Today · 7:02 AM", "Yesterday · 9:15 PM"]);
+    expect(p.uploads[1].detail).toBe("180 readings · 36 new · 144 unchanged");
+  });
+
+  it("says when an upload changed nothing", () => {
+    expect(api.uploadDetail({ id: 1, at: "", platform: "healthkit", submitted: 3, inserted: 0, updated: 0, unchanged: 3 })).toBe("3 readings · nothing new");
+    expect(api.uploadDetail({ id: 1, at: "", platform: "healthkit", submitted: 1, inserted: 0, updated: 1, unchanged: 0 })).toBe("1 reading · 1 updated");
+  });
+});

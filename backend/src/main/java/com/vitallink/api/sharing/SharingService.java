@@ -254,6 +254,7 @@ public class SharingService {
                         .collect(Collectors.toMap(ConsentRow::id, Function.identity()));
         Map<UUID, PersonInfo> viewers =
                 accounts.people(rows.stream().map(LogRow::actor).collect(Collectors.toSet()));
+        OffsetDateTime now = OffsetDateTime.now();
         return rows.stream()
                 .map(r -> {
                     ConsentRow consent = r.consentId() == null ? null : consents.get(r.consentId());
@@ -273,7 +274,9 @@ public class SharingService {
                             reason == null
                                     ? (consent != null && consent.purpose() != null ? consent.purpose() : "")
                                     : REFUSAL_PURPOSE.get(reason),
-                            Outcome.valueOf(r.outcome()));
+                            Outcome.valueOf(r.outcome()),
+                            consent != null ? consent.id() : null,
+                            consent != null && consent.isLive(now));
                 })
                 .toList();
     }

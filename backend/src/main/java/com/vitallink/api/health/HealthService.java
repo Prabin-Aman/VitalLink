@@ -12,6 +12,7 @@ import com.vitallink.api.health.HealthDtos.Dashboard;
 import com.vitallink.api.health.HealthDtos.DeviceIn;
 import com.vitallink.api.health.HealthDtos.DeviceKind;
 import com.vitallink.api.health.HealthDtos.DeviceOut;
+import com.vitallink.api.health.HealthDtos.ImportOut;
 import com.vitallink.api.health.HealthDtos.IngestIn;
 import com.vitallink.api.health.HealthDtos.IngestOut;
 import com.vitallink.api.health.HealthDtos.Interval;
@@ -21,6 +22,11 @@ import com.vitallink.api.health.HealthDtos.RangeStatus;
 import com.vitallink.api.health.HealthDtos.ReadingOut;
 import com.vitallink.api.health.HealthDtos.Series;
 import com.vitallink.api.health.HealthDtos.SeriesPoint;
+import com.vitallink.api.health.HealthDtos.SyncPlatform;
+import com.vitallink.api.health.HealthDtos.SyncStatus;
+import com.vitallink.api.health.HealthDtos.SyncUpload;
+import java.io.IOException;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -289,6 +295,43 @@ public class HealthService {
                 .query(Long.class)
                 .single();
         return new IngestOut(batchId, rows.size(), counts[0], counts[1], unchanged, false);
+    }
+
+    /**
+     * Stores a health data file (see {@link HealthImport}): an Apple export as {@code healthkit} readings, so it
+     * merges with phone sync instead of doubling it, and a CSV as {@code file_import}.
+     */
+    public ImportOut importFile(CurrentUser me, InputStream file, int days) throws IOException {
+        Instant until = now().toInstant().plus(FUTURE_SLACK);
+        Instant since = until.minus(Duration.ofDays(days));
+        HealthImport.Parsed p =
+                HealthImport.parse(file, since, until, ZoneId.of(me.user().timezone()));
+        if (p.records() == 0 && p.skipped() == 0) {
+            throw new ApiError(
+                    422,
+                    "nothing_to_import",
+                    "The file has no readings VitalLink tracks in the last " + days + " days.");
+        }
+        String source = p.kind() == HealthImport.Kind.apple ? "healthkit" : "file_import";
+        int inserted = 0;
+        int updated = 0;
+        for (int i = 0; i < p.rows().size(); i += MAX_BUCKETS) {
+            int[] c = upsert(
+                    me.id(), source, p.rows().subList(i, Math.min(p.rows().size(), i + MAX_BUCKETS)));
+            inserted += c[0];
+            updated += c[1];
+        }
+        return new ImportOut(
+                p.kind().name(),
+                p.records(),
+                p.rows().size(),
+                inserted,
+                updated,
+                p.rows().size() - inserted - updated,
+                p.skipped(),
+                p.problems(),
+                p.from() == null ? null : p.from().atOffset(ZoneOffset.UTC),
+                p.to() == null ? null : p.to().atOffset(ZoneOffset.UTC));
     }
 
     public ReadingOut addManual(CurrentUser me, ManualIn body) {
@@ -634,6 +677,48 @@ public class HealthService {
         OffsetDateTime now = now();
         ZoneId tz = ZoneId.of(tzName);
         return deviceRows(userId).stream().map(d -> deviceOut(d, now, tz)).toList();
+    }
+
+    /** What the phone app has uploaded: per platform over 7 days, and the latest batches. */
+    public SyncStatus syncStatus(UUID userId) {
+        List<SyncPlatform> platforms = jdbc.sql("""
+                        SELECT b.platform::text AS platform, max(b.received_at) AS last_at,
+                               count(*) FILTER (WHERE b.received_at > now() - interval '7 days') AS uploads,
+                               coalesce(sum(b.submitted) FILTER (WHERE b.received_at > now() - interval '7 days'), 0)
+                                 AS readings,
+                               coalesce(sum(b.inserted + b.updated)
+                                 FILTER (WHERE b.received_at > now() - interval '7 days'), 0) AS changed,
+                               (SELECT count(*) FROM vitallink.devices d
+                                WHERE d.user_id = :u AND d.platform = b.platform) AS devices
+                        FROM vitallink.ingest_batches b
+                        WHERE b.user_id = :u
+                        GROUP BY b.platform ORDER BY last_at DESC
+                        """)
+                .param("u", userId)
+                .query((rs, i) -> new SyncPlatform(
+                        rs.getString("platform"),
+                        rs.getObject("last_at", OffsetDateTime.class),
+                        rs.getInt("uploads"),
+                        rs.getLong("readings"),
+                        rs.getLong("changed"),
+                        rs.getInt("devices")))
+                .list();
+        List<SyncUpload> recent = jdbc.sql("""
+                        SELECT id, received_at, platform::text AS platform, submitted, inserted, updated, unchanged
+                        FROM vitallink.ingest_batches WHERE user_id = :u
+                        ORDER BY received_at DESC, id DESC LIMIT 10
+                        """)
+                .param("u", userId)
+                .query((rs, i) -> new SyncUpload(
+                        rs.getLong("id"),
+                        rs.getObject("received_at", OffsetDateTime.class),
+                        rs.getString("platform"),
+                        rs.getInt("submitted"),
+                        rs.getInt("inserted"),
+                        rs.getInt("updated"),
+                        rs.getInt("unchanged")))
+                .list();
+        return new SyncStatus(platforms, recent);
     }
 
     /** Forget the device. Its readings stay: they're the user's data, not the device's. */

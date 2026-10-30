@@ -5,22 +5,29 @@ import com.vitallink.api.account.CurrentUser;
 import com.vitallink.api.health.HealthDtos.BloodPressureSeries;
 import com.vitallink.api.health.HealthDtos.Dashboard;
 import com.vitallink.api.health.HealthDtos.DeviceOut;
+import com.vitallink.api.health.HealthDtos.ImportOut;
 import com.vitallink.api.health.HealthDtos.IngestIn;
 import com.vitallink.api.health.HealthDtos.IngestOut;
 import com.vitallink.api.health.HealthDtos.Interval;
 import com.vitallink.api.health.HealthDtos.ManualIn;
 import com.vitallink.api.health.HealthDtos.ReadingOut;
 import com.vitallink.api.health.HealthDtos.Series;
+import com.vitallink.api.health.HealthDtos.SyncStatus;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
+import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -59,6 +66,23 @@ public class HealthController {
     @Operation(summary = "Batch of 5-minute aggregates from HealthKit or Health Connect (≤ 5,000), upserted.")
     public IngestOut ingest(CurrentUser me, @Valid @RequestBody IngestIn body) {
         return service.ingest(me, body);
+    }
+
+    @PostMapping(value = "/health/import", consumes = MediaType.ALL_VALUE)
+    @Operation(
+            summary =
+                    "Import a health data file: an Apple Health export (zip or export.xml, up to 300 MB) or a CSV "
+                            + "with start,metric,value. The request body is the file; readings from the last `days` are stored.",
+            requestBody =
+                    @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                            content =
+                                    @Content(
+                                            mediaType = "application/octet-stream",
+                                            schema = @Schema(type = "string", format = "binary"))))
+    public ImportOut importFile(
+            CurrentUser me, HttpServletRequest request, @RequestParam(defaultValue = "90") @Min(1) @Max(400) int days)
+            throws IOException {
+        return service.importFile(me, request.getInputStream(), days);
     }
 
     @PostMapping("/health/manual")
@@ -100,6 +124,12 @@ public class HealthController {
     @GetMapping("/devices")
     public List<DeviceOut> devices(CurrentUser me) {
         return service.devices(me.id(), me.user().timezone());
+    }
+
+    @GetMapping("/sync")
+    @Operation(summary = "Phone sync status: last upload per platform and the 10 most recent uploads (30 days).")
+    public SyncStatus sync(CurrentUser me) {
+        return service.syncStatus(me.id());
     }
 
     @DeleteMapping("/devices/{id}")

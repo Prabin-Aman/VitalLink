@@ -24,6 +24,7 @@ export function FormDialog({
   action,
   onClose,
   save,
+  extra,
   children,
 }: {
   overline: string;
@@ -33,6 +34,8 @@ export function FormDialog({
   action?: string;
   onClose: () => void;
   save?: () => Promise<void>;
+  /** Buttons before the main one (Permissions' Disconnect); with no `action`, Done becomes primary. */
+  extra?: ReactNode;
   children: ReactNode;
 }) {
   const api = useApi();
@@ -97,7 +100,8 @@ export function FormDialog({
           </p>
         )}
         <div className={s.actions}>
-          <Button variant="secondary" onClick={onClose} disabled={busy}>
+          {extra}
+          <Button variant={!action && extra ? "primary" : "secondary"} onClick={onClose} disabled={busy}>
             {!action ? "Done" : demoDone ? "Close" : "Cancel"}
           </Button>
           {action && (
@@ -276,7 +280,8 @@ export function Note({ children }: { children: ReactNode }) {
 }
 
 /** Upload Document drop zone: drag a file in, or Choose File. */
-export function DropZone({ file, onFile, accept }: { file: File | null; onFile: (f: File) => void; accept: string }) {
+/** `prompt`/`hint` default to Upload Document's wording. */
+export function DropZone({ file, onFile, accept, prompt = "Drop a PDF or image here", hint = "PDF, JPG or PNG · up to 25 MB" }: { file: File | null; onFile: (f: File) => void; accept: string; prompt?: string; hint?: string }) {
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   return (
@@ -295,8 +300,8 @@ export function DropZone({ file, onFile, accept }: { file: File | null; onFile: 
       }}
     >
       <Icon name="file-text-24" color="iconSubtle" />
-      <span className="vl-body-m-strong">{file ? file.name : "Drop a PDF or image here"}</span>
-      <span className={cx("vl-caption", s.helper)}>{file ? `${Math.max(1, Math.round(file.size / 1024)).toLocaleString("en-US")} KB` : "PDF, JPG or PNG · up to 25 MB"}</span>
+      <span className="vl-body-m-strong">{file ? file.name : prompt}</span>
+      <span className={cx("vl-caption", s.helper)}>{file ? `${Math.max(1, Math.round(file.size / 1024)).toLocaleString("en-US")} KB` : hint}</span>
       <Button variant="secondary" size="sm" onClick={() => input.current?.click()}>
         {file ? "Choose Another" : "Choose File"}
       </Button>
@@ -315,8 +320,8 @@ export function DropZone({ file, onFile, accept }: { file: File | null; onFile: 
   );
 }
 
-/** Edit Emergency Info lists: rows with Remove, then an add action under the box. */
-export function ItemList({ label, items, empty, add }: { label: string; items: { key: string; title: string; caption: string; onRemove: () => void; removeLabel?: string }[]; empty: string; add: ReactNode }) {
+/** Rows with a Remove-style action; a row without `onRemove` shows no button. */
+export function ItemList({ label, items, empty, add }: { label: string; items: { key: string; title: string; caption: string; onRemove?: () => void; removeLabel?: string }[]; empty: string; add: ReactNode }) {
   const id = useId();
   return (
     <div className={s.field} role="group" aria-labelledby={id}>
@@ -331,14 +336,30 @@ export function ItemList({ label, items, empty, add }: { label: string; items: {
               <span className="vl-body-m-strong">{it.title}</span>
               <span className={cx("vl-caption", s.helper)}>{it.caption}</span>
             </span>
-            <Button variant="tertiary" size="sm" onClick={it.onRemove} aria-label={`${it.removeLabel ?? "Remove"} ${it.title}`}>
-              {it.removeLabel ?? "Remove"}
-            </Button>
+            {it.onRemove && (
+              <Button variant="tertiary" size="sm" onClick={it.onRemove} aria-label={`${it.removeLabel ?? "Remove"} ${it.title}`}>
+                {it.removeLabel ?? "Remove"}
+              </Button>
+            )}
           </div>
         ))}
       </div>
       {add}
     </div>
+  );
+}
+
+/** Label / value rows in a bordered list (Access details, Permissions). */
+export function KeyValueList({ rows, label, labelWidth = 120 }: { rows: { label: string; value: ReactNode }[]; label: string; labelWidth?: number }) {
+  return (
+    <dl className={s.items} aria-label={label}>
+      {rows.map((r) => (
+        <div key={r.label} className={s.kv} style={{ gridTemplateColumns: `${labelWidth}px minmax(0, 1fr)` }}>
+          <dt className={cx("vl-body-s", s.kvLabel)}>{r.label}</dt>
+          <dd className="vl-body-s-strong">{r.value}</dd>
+        </div>
+      ))}
+    </dl>
   );
 }
 

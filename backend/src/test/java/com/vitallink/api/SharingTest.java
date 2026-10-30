@@ -137,6 +137,10 @@ class SharingTest extends ApiTest {
         assertThat(log.at("/1/actor").asString())
                 .isEqualTo("Dr. Laura Bennett"); // a refused scope still names the share
         assertThat(log.at("/2/actor_detail").asString()).isEqualTo("Doctor · " + viewer.email());
+        // Each row names the share it went through, and says it has since been stopped.
+        assertThat(log.at("/2/share_id").asString()).isEqualTo(s.at("/id").asString());
+        assertThat(log.at("/2/share_active").asBoolean()).isFalse();
+        assertThat(log.at("/3/share_id").isNull()).isTrue();
     }
 
     @Test

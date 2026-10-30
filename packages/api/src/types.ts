@@ -120,6 +120,9 @@ export interface AccessLogEntry {
   accessed: string;
   purpose: string;
   status: "authorised" | "limited" | "blocked";
+  /** The share the look went through (null when there was none), and whether it is still live. */
+  share_id: string | null;
+  share_active: boolean;
 }
 
 // ---------------------------------------------------------------- training
@@ -376,6 +379,53 @@ export interface PrivacySettings {
 }
 
 // ---------------------------------------------------------------- devices
+
+/** GET /me/sync: what the phone app uploaded (batches are kept 30 days). */
+export interface SyncPlatform {
+  platform: "healthkit" | "health_connect" | "bluetooth";
+  last_upload_at: ISODate;
+  uploads_week: number;
+  readings_week: number;
+  changed_week: number;
+  devices: number;
+}
+export interface SyncUpload {
+  id: number;
+  at: ISODate;
+  platform: SyncPlatform["platform"];
+  submitted: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+}
+export interface SyncStatus {
+  platforms: SyncPlatform[];
+  recent: SyncUpload[];
+}
+
+/** POST /me/health/import: what a file added (see backend HealthImport). */
+export interface ImportResult {
+  format: "apple" | "csv";
+  records: number;
+  readings: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  skipped: number;
+  problems: string[];
+  from: ISODate | null;
+  to: ISODate | null;
+}
+
+/** POST /me/health/ingest response. */
+export interface IngestResult {
+  batch_id: number;
+  submitted: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  replayed: boolean;
+}
 
 export interface Device {
   id: string;

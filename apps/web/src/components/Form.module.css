@@ -221,3 +221,25 @@ select.control {
   justify-content: space-between;
   gap: 12px;
 }
+
+/* Access details / Permissions (Figma 211:1577, 211:1647): 120px label column, 10/14 rows. */
+.kv {
+  display: grid;
+  grid-template-columns: 120px minmax(0, 1fr);
+  gap: 16px;
+  margin: 0;
+  padding: 10px 14px;
+}
+.kv + .kv {
+  border-top: 1px solid var(--vl-border-subtle);
+}
+.kv dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.kvLabel {
+  color: var(--vl-text-secondary);
+}
+dl.items {
+  margin: 0;
+}

@@ -63,6 +63,14 @@ public final class SharingDtos {
 
     public record SharedWithMe(UUID id, UUID ownerId, String ownerName, List<Scope> scopes, OffsetDateTime expiresAt) {}
 
+    /** `shareId` is the share the read went through (null when there was none); `shareActive` if it still is. */
     public record AccessLogEntry(
-            OffsetDateTime at, String actor, String actorDetail, String accessed, String purpose, Outcome status) {}
+            OffsetDateTime at,
+            String actor,
+            String actorDetail,
+            String accessed,
+            String purpose,
+            Outcome status,
+            UUID shareId,
+            boolean shareActive) {}
 }

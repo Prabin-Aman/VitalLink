@@ -4,7 +4,7 @@ import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
 import { ago, dayMonth, dayMonthYear, daysFrom, height, languageName, monthYear, phone, relativeDay, timeOfDay, weekday } from "../format";
 import type { ChipVM, StatVM } from "../screens";
-import type { AppNotification, Article, AvatarTone, Device, NotificationKind, Prescription } from "../types";
+import type { AppNotification, Article, AvatarTone, Device, NotificationKind, Prescription, SyncPlatform, SyncUpload } from "../types";
 
 export const initials = (name: string) =>
   name
@@ -463,20 +463,57 @@ export interface DeviceVM {
   icon: Device["icon"];
   caption: string;
   data: string;
+  /** Each kind of data it sends (Permissions, Figma 211:1647). */
+  dataTypes: string[];
   shortData: string;
   status: ChipVM;
+}
+
+/** Phone sync panel (proposed, Figma 212:3117): one per phone platform that has uploaded. */
+export interface PhoneSyncVM {
+  title: string;
+  caption: string;
+  status: ChipVM;
+  summary: string;
+  uploads: { key: string; when: string; detail: string }[];
 }
 
 export interface DevicesVM {
   subtitle: string;
   shortSubtitle: string;
   devices: DeviceVM[];
+  /** Empty until the phone app has uploaded (batches are kept 30 days). */
+  phones: PhoneSyncVM[];
+}
+
+const PLATFORM: Record<SyncPlatform["platform"], string> = { healthkit: "iPhone · Apple Health", health_connect: "Android · Health Connect", bluetooth: "Bluetooth" };
+const plural = (n: number, one: string) => `${n.toLocaleString("en-US")} ${one}${n === 1 ? "" : "s"}`;
+
+/** "216 readings · 36 new · 144 unchanged" */
+export const uploadDetail = (u: SyncUpload) =>
+  [plural(u.submitted, "reading"), u.inserted && `${u.inserted.toLocaleString("en-US")} new`, u.updated && `${u.updated.toLocaleString("en-US")} updated`, u.unchanged && u.unchanged !== u.submitted && `${u.unchanged.toLocaleString("en-US")} unchanged`]
+    .filter(Boolean)
+    .join(" · ") + (u.unchanged === u.submitted ? " · nothing new" : "");
+
+function phoneSync(p: SyncPlatform, recent: SyncUpload[], now: string, tz: string): PhoneSyncVM {
+  // A phone that hasn't uploaded for a day has probably not opened the app (or lost permission).
+  const fresh = Date.parse(now) - Date.parse(p.last_upload_at) < 24 * 3600_000;
+  return {
+    title: PLATFORM[p.platform],
+    caption: `VitalLink app · last upload ${ago(p.last_upload_at, now)}`,
+    status: fresh ? { label: "Connected", fg: "rangeNormal", bg: "rangeNormalBg" } : { label: "No recent upload", fg: "rangeBorderline", bg: "rangeBorderlineBg" },
+    summary: `${plural(p.uploads_week, "upload")} this week · ${plural(p.readings_week, "reading")} · ${p.changed_week.toLocaleString("en-US")} new or updated`,
+    uploads: recent
+      .filter((u) => u.platform === p.platform)
+      .slice(0, 5)
+      .map((u) => ({ key: String(u.id), when: `${relativeDay(u.at, now, tz)} · ${timeOfDay(u.at, tz)}`, detail: uploadDetail(u) })),
+  };
 }
 
 const KIND_LABEL: Record<Device["kind"], string> = { wearable: "Wearable", home_monitor: "Home monitor", continuous: "Continuous", phone: "Phone" };
 
 export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
-  const [me, data] = await Promise.all([api.me(), api.devices()]);
+  const [me, data, sync] = await Promise.all([api.me(), api.devices(), api.sync()]);
   const list = need(data, "Connected Devices");
   const tz = me.timezone;
   const now = api.now();
@@ -491,11 +528,14 @@ export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
   };
   const mins = Math.round((Date.parse(now) - Date.parse(latest)) / 60000);
   return {
+    // Bluetooth devices paired in the browser upload too, but they show as device cards, not as a phone.
+    phones: sync.platforms.filter((p) => p.platform !== "bluetooth").map((p) => phoneSync(p, sync.recent, now, tz)),
     subtitle: `${connected} devices connected · last sync ${mins} minute${mins === 1 ? "" : "s"} ago`,
     shortSubtitle: `${connected} syncing · ${overdue} overdue`,
     devices: list.map((d) => ({
       id: d.id,
       name: d.name,
+      dataTypes: d.data,
       icon: d.icon,
       caption: `${KIND_LABEL[d.kind]} · ${synced(d)}`,
       data: d.data.join(" · "),

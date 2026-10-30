@@ -1,5 +1,6 @@
 // Entry forms (Figma page "15 — Proposed · Entry forms"): option lists, validation and request bodies.
 // Screens only bind inputs; every rule about what the API accepts lives here, shared by web and mobile.
+import { dayMonth } from "./format";
 import type { GoalMetricOption } from "./types";
 
 export type Option<T extends string = string> = { value: T; label: string };
@@ -52,6 +53,34 @@ export const dateTimeIn = (iso: string, tz: string) => {
   const w = wall(Date.parse(iso), tz);
   return { date: `${w.y}-${two(w.mo)}-${two(w.d)}`, time: `${two(w.h)}:${two(w.mi)}` };
 };
+
+// Mobile has no native date/time inputs in this app (no picker library), so its sheets offer these lists.
+const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const utcDay = (date: string) => {
+  const [y, mo, d] = date.split("-").map(Number);
+  return new Date(Date.UTC(y, mo - 1, d));
+};
+/** "2026-11-03" → "3 Nov", or "Tue 3 Nov" with the weekday. */
+export const dateLabel = (date: string, withWeekday = false) => {
+  const d = utcDay(date);
+  const s = `${d.getUTCDate()} ${MON[d.getUTCMonth()]}`;
+  return withWeekday ? `${DOW[d.getUTCDay()]} ${s}` : s;
+};
+/** "YYYY-MM-DD" n days after `date` (negative goes back). */
+export const addDays = (date: string, n: number) => new Date(utcDay(date).getTime() + n * 86400000).toISOString().slice(0, 10);
+/** Every date from `from` to `to`, both included; labelled with the weekday, and "Today" for `today`. */
+export function dateOptions(from: string, to: string, today: string): Option[] {
+  const out: Option[] = [];
+  for (let d = from; d <= to && out.length < 400; d = addDays(d, 1)) out.push({ value: d, label: d === today ? `Today · ${dateLabel(d)}` : dateLabel(d, true) });
+  return out;
+}
+/** Times through the day every `step` minutes, plus `keep` (a prefilled value off the step) in order. */
+export function timeOptions(step = 15, keep?: string): Option[] {
+  const values = Array.from({ length: (24 * 60) / step }, (_, i) => `${two(Math.floor((i * step) / 60))}:${two((i * step) % 60)}`);
+  if (keep && !values.includes(keep)) values.push(keep);
+  return values.sort().map((v) => ({ value: v, label: timeLabel(v) }));
+}
 
 const num = (s: string) => {
   const t = s.replace(/,/g, "").trim();
@@ -209,6 +238,44 @@ export const timeLabel = (hhmm: string) => {
   const [h, m] = hhmm.split(":").map(Number);
   return `${((h + 11) % 12) + 1}:${two(m)} ${h < 12 ? "AM" : "PM"}`;
 };
+
+// ---------------------------------------------------------------- Import health data (Figma 213:1701)
+
+export const IMPORT_PERIODS: Option[] = [
+  { value: "30", label: "Last 30 days" },
+  { value: "90", label: "Last 90 days" },
+  { value: "365", label: "Last year" },
+];
+export const IMPORT_TYPES = ".zip,.xml,.csv,application/zip,text/xml,text/csv";
+export const IMPORT_MAX_BYTES = 300 * 1024 * 1024;
+
+export function checkImport(file: { name: string; size: number } | null): Checked<true> {
+  if (!file) return fail("Choose a file to import.");
+  if (!/\.(zip|xml|csv)$/i.test(file.name)) return fail("Choose an Apple Health export (export.zip or export.xml) or a .csv file.");
+  if (file.size > IMPORT_MAX_BYTES) return fail("That file is over 300 MB.");
+  if (file.size === 0) return fail("That file is empty.");
+  return { ok: true, body: true };
+}
+
+/** The CSV the import reads: start (ISO with offset, or local "YYYY-MM-DD HH:MM"), catalogue metric, value. */
+export const IMPORT_CSV_TEMPLATE = [
+  "start,metric,value",
+  "2026-10-28 08:40,bp_systolic,121",
+  "2026-10-28 08:40,bp_diastolic,79",
+  "2026-10-28 08:40,heart_rate,68",
+  "2026-10-28 07:15,weight,72.4",
+  "2026-10-28T07:15:00-05:00,glucose,104",
+  "",
+].join("\r\n");
+
+/** "Imported 1,284 readings · 12 Sep – 30 Oct · 1,200 new, 84 unchanged · 3 skipped" */
+export function importSummary(r: { readings: number; inserted: number; updated: number; unchanged: number; skipped: number; from: string | null; to: string | null }, tz: string): string {
+  const n = (x: number) => x.toLocaleString("en-US");
+  const day = (iso: string) => dayMonth(iso, tz).replace(/^0/, "");
+  const range = r.from && r.to ? ` · ${day(r.from)}${day(r.from) === day(r.to) ? "" : ` – ${day(r.to)}`}` : "";
+  const parts = [r.inserted && `${n(r.inserted)} new`, r.updated && `${n(r.updated)} updated`, r.unchanged && `${n(r.unchanged)} unchanged`].filter(Boolean).join(", ");
+  return `Imported ${n(r.readings)} reading${r.readings === 1 ? "" : "s"}${range}${parts ? ` · ${parts}` : ""}${r.skipped ? ` · ${n(r.skipped)} skipped` : ""}`;
+}
 
 // ---------------------------------------------------------------- Book Appointment / Reschedule
 

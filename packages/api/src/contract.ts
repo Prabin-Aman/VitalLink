@@ -24,6 +24,11 @@ export type Contract = [
   Fits<Missing<T.Targets, S["Targets"]>>,
   Fits<Missing<T.Reading, S["TabReading"]>>, // /me/health/latest sends the same minus the optional period wording
   Fits<Missing<T.Device, S["DeviceOut"]>>,
+  Fits<Missing<T.SyncPlatform, S["SyncPlatform"]>>,
+  Fits<Missing<T.SyncUpload, S["SyncUpload"]>>,
+  Fits<Missing<T.SyncStatus, S["SyncStatus"]>>,
+  Fits<Missing<T.ImportResult, S["ImportOut"]>>,
+  Fits<Missing<T.IngestResult, S["IngestOut"]>>,
   Fits<Missing<T.Workout, S["WorkoutOut"]>>,
   Fits<Missing<T.Training, S["Training"]>>,
   Fits<Missing<T.TrainingSession, S["TrainingSession"]>>,

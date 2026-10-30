@@ -37,6 +37,9 @@ the calls built first; 5.3 lists the rest with their paths.
 | `targets()` | `GET /me/targets` | `Targets` (daily goals) |
 | `latest(metrics)`, `bloodPressureLatest()` | `GET /me/health/latest?metrics=` | `Reading[]` |
 | `devices()` | `GET /me/devices` | `Device[]` |
+| `sync()` | `POST /me/health/import?days=` | The body is the file (raw, up to 300 MB): an Apple Health export (`export.zip` or `export.xml`, streamed with StAX, DTD and external entities off) or a CSV `start,metric,value` (start ISO with offset or local `YYYY-MM-DD HH:MM` in the account's zone). Readings in the last `days` (≤ 400) become 5-minute buckets: totals spread over the buckets a sample covers and take the largest source per bucket (the Watch and iPhone both count steps); averages pool sources. Apple data is stored as `healthkit` (so it merges with phone sync), CSV as `file_import`. Returns `ImportOut` (records, readings, inserted/updated/unchanged, skipped + first 10 problems, from/to). 422 `unreadable_file` / `nothing_to_import`, 413 `file_too_large`. Counts against the ingest rate limit |
+| `POST /me/health/ingest` with `platform: "bluetooth"` | Readings from a Bluetooth device paired in the web portal (Web Bluetooth): heart-rate strap, blood pressure cuff, scale, pulse oximeter, glucose meter; the device registers like a phone's |
+| `GET /me/sync` | `SyncStatus` (phone uploads) |
 | `shares()` | `GET /me/shares` | `Share[]` |
 | `sharedWithMe()` | `GET /me/shared-with-me` | `SharedWithMe[]` |
 | `accessLog()` | `GET /me/access-log?limit` | `AccessLogEntry[]` |
@@ -107,6 +110,7 @@ send `null` for blocks without data; the view-models show "—" for those.
 | `GET /me/health/overview` | `HealthOverview` (rings, sections, readings, sources, insights) |
 | `GET /me/health/tabs/{tab}` | The seven tab payloads; activity uses series + workouts |
 | `GET /me/devices`, `DELETE /me/devices/{id}` | Registry; delete only forgets the device, readings stay |
+| `GET /me/sync` | Phone sync status from `ingest_batches` (kept 30 days): per platform the last upload, uploads/readings/new-or-updated in 7 days (`*_week`) and its device count; plus the 10 newest uploads with their inserted/updated/unchanged counts |
 
 ### Training
 

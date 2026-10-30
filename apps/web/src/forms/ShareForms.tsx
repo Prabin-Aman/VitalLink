@@ -1,7 +1,7 @@
-// Share your data (Figma 206:1452) and Manage access (206:1516) — Dialog 560.
-import { checkShare, loadManageAccess, SHARE_ENDS, SHARE_KINDS, SHARE_SCOPES, todayIn } from "@vitallink/api";
+// Share your data (Figma 206:1452), Manage access (206:1516) and Access details (211:1577) — Dialog 560.
+import { checkShare, loadManageAccess, SHARE_ENDS, SHARE_KINDS, SHARE_SCOPES, todayIn, type AccessRowVM } from "@vitallink/api";
 import { useCallback, useState } from "react";
-import { Choices, FormDialog, ItemList, must, Note, Row, TextField, useZone } from "../components/Form";
+import { Choices, FormDialog, ItemList, KeyValueList, must, Note, Row, TextField, useZone } from "../components/Form";
 import { Button } from "../components/ui";
 import { notifyChanged, useApi, useScreen } from "../data";
 
@@ -83,6 +83,37 @@ export function ManageAccessDialog({ kind, onClose, onShare }: { kind: "doctor" 
       />
       {error && <Note>{error}</Note>}
       <Note>Stopping a share takes effect immediately. What they already viewed stays in your access history.</Note>
+    </FormDialog>
+  );
+}
+
+/** One row of the Privacy Centre access history, and the share it went through (with Stop sharing while live). */
+export function AccessDetailsDialog({ row, onClose }: { row: AccessRowVM; onClose: () => void }) {
+  const api = useApi();
+  const [error, setError] = useState<string | null>(null);
+  const d = row.details;
+  const share = d.share;
+  const stop = () => {
+    if (!share || !confirm(`Stop sharing with ${share.who}? They lose access straight away.`)) return;
+    setError(null);
+    api.revokeShare(share.id).then(
+      () => (api.isMock ? setError("This is demo data, so nothing changed.") : (notifyChanged(), onClose())),
+      (e: Error) => setError(e.message),
+    );
+  };
+  return (
+    <FormDialog overline="Privacy Centre › Access history" title="Access details" subtitle={d.subtitle} onClose={onClose}>
+      <KeyValueList label="Access details" rows={d.rows} />
+      {share && (
+        <ItemList
+          label="Shared through"
+          empty=""
+          items={[{ key: share.id, title: share.who, caption: `${share.line} · ${share.active ? share.until : "No longer shared"}`, onRemove: share.active ? stop : undefined, removeLabel: "Stop sharing" }]}
+          add={null}
+        />
+      )}
+      {error && <Note>{error}</Note>}
+      <Note>Your access history can't be edited or deleted. Stopping the share blocks any further looks straight away.</Note>
     </FormDialog>
   );
 }

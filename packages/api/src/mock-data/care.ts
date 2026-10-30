@@ -11,6 +11,7 @@ import type {
   FamilyMember,
   Library,
   MedicationsOverview,
+  SyncStatus,
 } from "../types";
 
 export const medicationsOverview: MedicationsOverview = {
@@ -122,6 +123,16 @@ export const devices: Device[] = [
   { id: "d4", name: "Withings Scale", kind: "home_monitor", icon: "scale", last_sync_at: "2026-09-12T07:30:00-05:00", status: "connected", data: ["Weight", "BMI", "Body composition"], short_data: ["Weight", "BMI", "Body fat"] },
   { id: "d5", name: "Pulse Oximeter", kind: "home_monitor", icon: "health", last_sync_at: "2026-09-07T08:45:00-05:00", status: "overdue", data: ["Blood oxygen", "Pulse"] },
 ];
+
+// Phone sync (proposed, Figma 212:3117): the iPhone uploaded 4 minutes before "now".
+export const sync: SyncStatus = {
+  platforms: [{ platform: "healthkit", last_upload_at: "2026-09-13T08:41:00-05:00", uploads_week: 6, readings_week: 1296, changed_week: 412, devices: 5 }],
+  recent: [
+    { id: 6, at: "2026-09-13T08:41:00-05:00", platform: "healthkit", submitted: 216, inserted: 216, updated: 0, unchanged: 0 },
+    { id: 5, at: "2026-09-13T07:02:00-05:00", platform: "healthkit", submitted: 180, inserted: 36, updated: 0, unchanged: 144 },
+    { id: 4, at: "2026-09-12T21:15:00-05:00", platform: "healthkit", submitted: 412, inserted: 140, updated: 20, unchanged: 252 },
+  ],
+};
 
 export const library: Library = {
   categories: ["Heart", "Train", "Nutrition", "Sleep", "Fitness", "Medication", "Diabetes", "Mental Wellbeing", "First Aid", "Disease Prevention", "Emergency Care"],

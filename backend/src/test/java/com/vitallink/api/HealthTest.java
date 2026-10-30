@@ -406,6 +406,49 @@ class HealthTest extends ApiTest {
         assertThat(delete(u, "/v1/me/devices/" + gone).status()).isEqualTo(404);
     }
 
+    @Test
+    void syncStatusSummarisesThePhonesUploads() {
+        String u = user();
+        Res none = get(u, "/v1/me/sync");
+        assertThat(none.at("/platforms").size()).isZero();
+        assertThat(none.at("/recent").size()).isZero();
+
+        Map<String, Object> watch = Map.of(
+                "external_id", "watch-1", "name", "Apple Watch S9", "kind", "wearable", "metrics", List.of("steps"));
+        ingest(u, List.of(b("steps", todayAt(1, 0, 0), 10), b("steps", todayAt(1, 5, 0), 20)), null, List.of(watch));
+        ingest(u, List.of(b("steps", todayAt(1, 0, 0), 10), b("steps", todayAt(1, 10, 0), 5)));
+
+        Res s = get(u, "/v1/me/sync");
+        assertThat(s.status()).isEqualTo(200);
+        assertThat(s.at("/platforms").size()).isEqualTo(1);
+        assertThat(s.at("/platforms/0/platform").asString()).isEqualTo("healthkit");
+        assertThat(s.at("/platforms/0/uploads_week").asInt()).isEqualTo(2);
+        assertThat(s.at("/platforms/0/readings_week").asLong()).isEqualTo(4);
+        assertThat(s.at("/platforms/0/changed_week").asLong()).isEqualTo(3); // the repeated bucket is unchanged
+        assertThat(s.at("/platforms/0/devices").asInt()).isEqualTo(1);
+        assertThat(s.at("/platforms/0/last_upload_at").isNull()).isFalse();
+        // Newest first.
+        assertThat(s.at("/recent/0/inserted").asInt()).isEqualTo(1);
+        assertThat(s.at("/recent/0/unchanged").asInt()).isEqualTo(1);
+        assertThat(s.at("/recent/1/inserted").asInt()).isEqualTo(2);
+        assertThat(get(user(), "/v1/me/sync").at("/recent").size()).isZero();
+    }
+
+    @Test
+    void phoneSimUploadsAreAcceptedAndRepeatAsUnchanged() {
+        String u = user();
+        java.time.Instant now = java.time.Instant.now();
+        var buckets = com.vitallink.api.tools.PhoneSim.buckets(now, 3);
+        assertThat(buckets).hasSize(3 * 12 * 3);
+        assertThat(buckets).isEqualTo(com.vitallink.api.tools.PhoneSim.buckets(now, 3)); // same time, same values
+        Res first = ingest(u, buckets, null, com.vitallink.api.tools.PhoneSim.devices("healthkit"));
+        assertThat(first.status()).as(first.text()).isEqualTo(202);
+        assertThat(first.at("/inserted").asInt()).isEqualTo(buckets.size());
+        Res again = ingest(u, buckets);
+        assertThat(again.at("/unchanged").asInt()).isEqualTo(buckets.size());
+        assertThat(get(u, "/v1/me/devices").body().size()).isEqualTo(2);
+    }
+
     // ---------------------------------------------------------------- isolation
 
     @Test

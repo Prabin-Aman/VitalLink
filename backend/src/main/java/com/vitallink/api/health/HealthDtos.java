@@ -78,7 +78,7 @@ public final class HealthDtos {
     public record IngestIn(
             @NotNull UUID idempotencyKey,
 
-            @NotNull @Pattern(regexp = "healthkit|health_connect")
+            @NotNull @Pattern(regexp = "healthkit|health_connect|bluetooth")
             String platform,
 
             @Size(max = 20) List<@Valid DeviceIn> devices,
@@ -88,6 +88,23 @@ public final class HealthDtos {
             devices = devices == null ? List.of() : devices;
         }
     }
+
+    /**
+     * POST /me/health/import: what a file added. {@code format} is apple or csv; {@code records} are the samples
+     * in the chosen period, {@code readings} the 5-minute buckets they made; {@code problems} lists the first
+     * few things that were skipped.
+     */
+    public record ImportOut(
+            String format,
+            int records,
+            int readings,
+            int inserted,
+            int updated,
+            int unchanged,
+            int skipped,
+            List<String> problems,
+            OffsetDateTime from,
+            OffsetDateTime to) {}
 
     public record IngestOut(long batchId, int submitted, int inserted, int updated, int unchanged, boolean replayed) {}
 
@@ -121,6 +138,22 @@ public final class HealthDtos {
 
     public record ReadingOut(
             String metric, double value, Double value2, String unit, OffsetDateTime at, String assessment) {}
+
+    /** One phone platform's uploads: the latest, and what arrived in the last 7 days (`*_week`). */
+    public record SyncPlatform(
+            String platform,
+            OffsetDateTime lastUploadAt,
+            int uploadsWeek,
+            long readingsWeek,
+            long changedWeek,
+            int devices) {}
+
+    /** One upload (an ingest batch). Batches are kept 30 days. */
+    public record SyncUpload(
+            long id, OffsetDateTime at, String platform, int submitted, int inserted, int updated, int unchanged) {}
+
+    /** GET /me/sync: how the phone app is getting data in. Platforms with no upload yet are left out. */
+    public record SyncStatus(List<SyncPlatform> platforms, List<SyncUpload> recent) {}
 
     public record DeviceOut(
             UUID id,
