@@ -111,6 +111,15 @@ export function CardGrid({ width, children }: { width: number; children: ReactNo
   );
 }
 
+/** A row's title that opens its Edit dialog (medications, goals, records): text until hovered. */
+export function EditTitle({ children, onClick, label }: { children: ReactNode; onClick: () => void; label: string }) {
+  return (
+    <button type="button" className={cx("vl-body-m-strong", s.editTitle)} onClick={onClick} aria-label={label}>
+      {children}
+    </button>
+  );
+}
+
 /** Shown under a tab whose screen isn't in the Figma file yet. */
 export function NotDesigned({ what }: { what: string }) {
   return (

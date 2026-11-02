@@ -40,6 +40,6 @@ export const labPanels: LabPanel[] = [
       { name: "Neutrophils", value: 78, unit: "%", low: 40, high: 75, previous: 71, decimals: 0, interpretation: "abnormal" },
     ],
     report_results: ["Hemoglobin", "White Blood Cells", "Platelets", "Ferritin", "Neutrophils"],
-    note: "Ferritin low — Dr. Bennett wants a recheck in 8 weeks. Started ferrous sulfate 12 Sep.",
+    note: "Ferritin low. Dr. Bennett wants a recheck in 8 weeks. Started ferrous sulfate 12 Sep.",
   },
 ];

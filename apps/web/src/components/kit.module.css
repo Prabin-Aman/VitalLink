@@ -288,3 +288,18 @@
   background: none;
   cursor: pointer;
 }
+
+/* EditTitle: looks like the row's title; underlines and shows the pointer on hover. */
+.editTitle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--vl-text-primary);
+  text-align: left;
+  cursor: pointer;
+}
+.editTitle:hover,
+.editTitle:focus-visible {
+  color: var(--vl-text-link);
+  text-decoration: underline;
+}

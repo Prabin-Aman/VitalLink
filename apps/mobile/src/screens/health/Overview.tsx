@@ -1,24 +1,28 @@
 // My Health · Overview — Mobile 390 (Figma 86:56).
 import { loadHealthOverview } from "@vitallink/api";
 import { useRouter } from "expo-router";
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { Rings } from "../../components/Charts";
 import { HealthChips } from "../../components/HealthChips";
 import { Screen, Section } from "../../components/kit";
 import { Dot, MetricCard, ScreenState } from "../../components/ui";
 import { useScreen } from "../../data";
+import { AddReadingSheet } from "../../sheets/HealthSheets";
 import { c, t } from "../../theme";
 
 export function HealthOverviewScreen() {
   const state = useScreen(loadHealthOverview);
   const router = useRouter();
+  const [adding, setAdding] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
   // Mobile lists the watch, the phone and anything needing attention.
   const sources = v.sources.filter((s, i) => i < 2 || s.color !== "rangeNormal");
 
   return (
-    <Screen title="My Health" subtitle={v.shortSubtitle} add chips={<HealthChips active="Overview" />}>
+    <Screen title="My Health" subtitle={v.shortSubtitle} add={() => setAdding(true)} chips={<HealthChips active="Overview" />}>
+      {adding && <AddReadingSheet onClose={() => setAdding(false)} />}
       <View style={st.today} accessibilityLabel="Today's movement">
         <Rings rings={v.rings.map((r) => ({ fraction: r.fraction, color: r.color, label: r.label }))} />
         <View style={st.ringRows}>

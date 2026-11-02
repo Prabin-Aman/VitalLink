@@ -6,6 +6,7 @@ import { Icon } from "../components/Icon";
 import { ChipRow, Row, Screen, Section, Tile } from "../components/kit";
 import { Button, ScreenState } from "../components/ui";
 import { useScreen } from "../data";
+import { UploadDocumentSheet } from "../sheets/RecordSheets";
 import { t } from "../theme";
 
 const CHIPS: { label: string; type: RecordType | null }[] = [
@@ -18,6 +19,7 @@ const CHIPS: { label: string; type: RecordType | null }[] = [
 export function RecordsScreen() {
   const state = useScreen(loadRecords);
   const [chip, setChip] = useState(CHIPS[0].label);
+  const [uploading, setUploading] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
   const type = CHIPS.find((c) => c.label === chip)?.type ?? null;
@@ -25,8 +27,9 @@ export function RecordsScreen() {
   const rows = (type ? v.rows.filter((r) => r.type === type) : v.rows).slice(0, 5);
 
   return (
-    <Screen title="Records" subtitle={v.shortSubtitle} add chips={<ChipRow label="Record types" options={CHIPS.map((c) => c.label)} value={chip} onChange={setChip} />}>
-      <Button label="Upload a document" icon="plus-18" />
+    <Screen title="Records" subtitle={v.shortSubtitle} add={() => setUploading(true)} chips={<ChipRow label="Record types" options={CHIPS.map((c) => c.label)} value={chip} onChange={setChip} />}>
+      {uploading && <UploadDocumentSheet onClose={() => setUploading(false)} />}
+      <Button label="Upload a document" icon="plus-18" onPress={() => setUploading(true)} />
       <Section title="Recent records" gap={8}>
         {rows.length === 0 && <Text style={t("bodyS", "textTertiary")}>No recent records of this type.</Text>}
         {rows.map((r) => (

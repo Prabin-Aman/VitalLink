@@ -18,7 +18,8 @@ The plan builds on the reviewed design doc
 
 ## Run locally
 
-Needs **Java 25** and Docker. On this machine Docker runs inside WSL Ubuntu. Maven is not needed: the
+Needs **Java 25** and Docker (PostgreSQL and the Mailpit mail catcher run in it; see the repo's
+`REQUIREMENTS.md` for every tool and package). On this machine Docker runs inside WSL Ubuntu. Maven is not needed: the
 wrapper (`./mvnw`, or `mvnw.cmd` in PowerShell) downloads it. From `backend/`:
 
 ```bash

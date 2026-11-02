@@ -152,6 +152,48 @@ public class ErrorHandler {
         return envelope(request, 415, "unsupported_media_type", "Send JSON (Content-Type: application/json).", null);
     }
 
+    /** A query string that isn't valid UTF-8 once decoded (e.g. {@code ?days=%FF}). */
+    @ExceptionHandler(org.apache.tomcat.util.http.InvalidParameterException.class)
+    ResponseEntity<Map<String, Object>> badQuery(HttpServletRequest request) {
+        return envelope(
+                request, 422, "invalid_request", INVALID, List.of(field(List.of("query"), "malformed query string")));
+    }
+
+    /**
+     * Two concurrent writes that race past a service's own check into a unique index. Services check first
+     * (or lock the user row), so this is the safety net: the caller retries or reloads instead of seeing a 500.
+     */
+    @ExceptionHandler(org.springframework.dao.DuplicateKeyException.class)
+    ResponseEntity<Map<String, Object>> duplicate(
+            HttpServletRequest request, org.springframework.dao.DuplicateKeyException e) {
+        // Not the driver's message: its key detail can hold health data (a condition's label).
+        log.warn("unique conflict on {} {}", request.getMethod(), request.getRequestURI());
+        return envelope(
+                request, 409, "conflict", "That changed at the same time somewhere else. Reload and try again.", null);
+    }
+
+    /**
+     * Input the database refuses that request validation let through: a NUL character in text (Postgres
+     * can't store it), a number past a column's range, a CHECK constraint. That's the caller's input, so
+     * 422; anything else the database refuses is still a 500.
+     */
+    @ExceptionHandler(org.springframework.dao.DataIntegrityViolationException.class)
+    ResponseEntity<Map<String, Object>> refused(
+            HttpServletRequest request, org.springframework.dao.DataIntegrityViolationException e) {
+        String state = e.getMostSpecificCause() instanceof java.sql.SQLException sql ? sql.getSQLState() : null;
+        if (state != null
+                && java.util.Set.of("22021", "22001", "22003", "22007", "22008", "23514")
+                        .contains(state)) {
+            log.warn(
+                    "database refused input on {} {} (SQLSTATE {})",
+                    request.getMethod(),
+                    request.getRequestURI(),
+                    state);
+            return envelope(request, 422, "invalid_request", INVALID, List.of(field(List.of("body"), "invalid value")));
+        }
+        return unexpected(request, e);
+    }
+
     @ExceptionHandler(com.vitallink.api.core.storage.SupabaseStorage.StorageUnavailable.class)
     ResponseEntity<Map<String, Object>> storage(HttpServletRequest request, RuntimeException e) {
         log.error("file storage failed on {} {}", request.getMethod(), request.getRequestURI(), e);

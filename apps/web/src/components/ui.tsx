@@ -92,7 +92,9 @@ export function MetricCard({ m, width }: { m: MetricCardVM; width?: number }) {
 }
 
 /** Avatar/Tone=* — neutral uses secondary text on a muted fill, the rest white on colour. */
-export function Avatar({ initials, size = 30, fontSize = 11, tone = "brand" }: { initials: string; size?: number; fontSize?: number; tone?: AvatarTone }) {
+/** Initials in a tinted circle, or the photo when there is one. */
+export function Avatar({ initials, size = 30, fontSize = 11, tone = "brand", photo }: { initials: string; size?: number; fontSize?: number; tone?: AvatarTone; photo?: string | null }) {
+  if (photo) return <img src={photo} alt="" className={s.avatar} style={{ width: size, height: size, objectFit: "cover" }} />;
   return (
     <span
       className={s.avatar}

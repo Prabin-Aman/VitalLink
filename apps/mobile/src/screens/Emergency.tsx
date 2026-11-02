@@ -8,11 +8,13 @@ import { Icon } from "../components/Icon";
 import { Avatar, Row, Screen, Section, SmallButton } from "../components/kit";
 import { ScreenState } from "../components/ui";
 import { useScreen } from "../data";
+import { EditEmergencySheet } from "../sheets/CareSheets";
 import { c, t } from "../theme";
 
 export function EmergencyScreen() {
   const state = useScreen(loadEmergency);
   const [showQr, setShowQr] = useState(false);
+  const [editing, setEditing] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
 
@@ -70,9 +72,10 @@ export function EmergencyScreen() {
         </Section>
       )}
 
+      {editing && <EditEmergencySheet onClose={() => setEditing(false)} />}
       <View style={st.actions}>
         <SmallButton label={showQr ? "Hide QR" : "Show QR"} large style={st.flex} onPress={() => setShowQr(!showQr)} />
-        <SmallButton label="Edit" large style={st.flex} />
+        <SmallButton label="Edit" large style={st.flex} onPress={() => setEditing(true)} />
       </View>
     </Screen>
   );

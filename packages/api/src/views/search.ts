@@ -112,6 +112,8 @@ export interface ShellVM {
   name: string;
   initials: string;
   email: string;
+  /** Profile photo link, or null (initials show instead). */
+  photo: string | null;
 }
 /** The signed-in person for the top bar and profile menu (GET /me only). */
 export async function loadShell(api: VitalLinkClient): Promise<ShellVM> {
@@ -121,5 +123,6 @@ export async function loadShell(api: VitalLinkClient): Promise<ShellVM> {
     name,
     initials: name.split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase(),
     email: me.email,
+    photo: me.avatar_url ?? null,
   };
 }

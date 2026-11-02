@@ -5,6 +5,9 @@
     "packages/*",
     "apps/*"
   ],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "tokens": "node packages/tokens/build.mjs",
     "icons": "python3 scripts/write-icons.py",

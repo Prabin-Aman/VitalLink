@@ -55,7 +55,7 @@ export const healthOverview: HealthOverview = {
   ],
   insights: [
     { text: "Deep sleep has fallen 18% over the last two weeks while screen time after 10 PM rose by 41 minutes.", tone: "watch" },
-    { text: "You have closed your Move ring 5 days running — your longest streak this year.", tone: "positive" },
+    { text: "You have closed your Move ring 5 days running, your longest streak this year.", tone: "positive" },
     { text: "Resting heart rate is 4 BPM lower than your 90-day average.", tone: "positive" },
   ],
 };

@@ -662,6 +662,11 @@ public class TrainingService {
 
     /** The new plan becomes active; the previous active plan is archived. */
     public PlanOut createPlan(CurrentUser me, PlanIn body) {
+        // Serialise plan writes for this user: two at once would both archive nothing and then both insert.
+        jdbc.sql("SELECT id FROM vitallink.users WHERE id = :u FOR UPDATE")
+                .param("u", me.id())
+                .query()
+                .listOfRows();
         jdbc.sql("UPDATE vitallink.training_plans SET status = 'archived' WHERE user_id = :u AND status = 'active'")
                 .param("u", me.id())
                 .update();

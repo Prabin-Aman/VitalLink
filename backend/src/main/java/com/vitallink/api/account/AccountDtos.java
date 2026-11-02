@@ -33,7 +33,8 @@ public final class AccountDtos {
         system
     }
 
-    public record Me(UUID id, String email, String displayName, String timezone) {}
+    /** {@code avatarUrl}: a short-lived link to the profile photo, or null. */
+    public record Me(UUID id, String email, String displayName, String timezone, String avatarUrl, Units units) {}
 
     public record Account(
             String firstName,
@@ -50,7 +51,8 @@ public final class AccountDtos {
             Theme theme,
             LocalDate dateOfBirth,
             Sex sex,
-            String timezone) {}
+            String timezone,
+            String avatarUrl) {}
 
     /** Daily targets (steps, move, exercise, stand, sleep): the one source for goals on every screen. */
     public record Targets(

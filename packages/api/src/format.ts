@@ -109,8 +109,19 @@ export const ago = (iso: string, now: string, style: "spaced" | "short" | "long"
 
 export const km = (m: number) => `${(m / 1000).toFixed(1)} km`;
 
-/** "5:41 /km" */
-export const pace = (sPerKm: number) => `${Math.floor(sPerKm / 60)}:${String(Math.round(sPerKm % 60)).padStart(2, "0")} /km`;
+/** Settings › Units: distances in km or miles (weights stay in kg). */
+export type Units = "metric" | "imperial";
+export const distanceUnit = (u: Units = "metric") => (u === "imperial" ? "mi" : "km");
+/** "6.2" in the user's unit, one decimal. */
+export const distanceValue = (m: number, u: Units = "metric") => (u === "imperial" ? m / 1609.344 : m / 1000).toFixed(1);
+/** "6.2 km" / "3.9 mi" */
+export const distance = (m: number, u: Units = "metric") => `${distanceValue(m, u)} ${distanceUnit(u)}`;
+
+/** "5:41 /km", or per mile with imperial units ("9:09 /mi"). */
+export const pace = (sPerKm: number, u: Units = "metric") => {
+  const s = Math.round(u === "imperial" ? sPerKm * 1.609344 : sPerKm);
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")} /${distanceUnit(u)}`;
+};
 
 /** "27:42" */
 export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, "0")}`;
@@ -133,7 +144,7 @@ export const phone = (e164: string) => {
 };
 
 /** BCP-47 tag → the name shown in Settings. */
-export const languageName = (tag: string) => ({ "en-US": "English (US)", "es-US": "Español (EE. UU.)" })[tag] ?? tag;
+export const languageName = (tag: string) => ({ "en-US": "English (US)" })[tag] ?? tag;
 
 /** Height for the user's units: "178 cm" or "5 ft 10 in". */
 export const height = (cm: number, units: "metric" | "imperial") => {

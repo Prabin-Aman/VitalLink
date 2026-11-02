@@ -74,6 +74,10 @@
   font: inherit;
   appearance: none;
 }
+/* The field's border and halo (.input:focus-within) show focus; the global :focus-visible ring would draw a second one inside it. */
+.control:focus-visible {
+  box-shadow: none;
+}
 .control::placeholder {
   color: var(--vl-text-placeholder);
 }
@@ -199,8 +203,12 @@ select.control {
 .error {
   color: var(--vl-text-critical);
 }
-.done {
-  color: var(--vl-text-secondary);
+.demo {
+  padding: 12px 14px;
+  border: 1px solid var(--vl-border-warning);
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-range-borderline-bg);
+  color: var(--vl-text-primary);
 }
 .actions {
   display: flex;
@@ -242,4 +250,25 @@ select.control {
 }
 dl.items {
   margin: 0;
+}
+
+/* Destructive or secondary actions (Delete, Stop Medication, Disconnect) sit left of Cancel (Figma 214:2165). */
+.extra {
+  display: flex;
+  gap: 8px;
+  margin-right: auto;
+}
+/* Delete / Delete Record: a tertiary button in text/critical (Figma 214:2165). */
+.extra .dangerText {
+  color: var(--vl-text-critical);
+}
+
+/* Scan a barcode (Figma 221:2145): the camera preview, bg/inverse with radius/lg. */
+.camera {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 7;
+  object-fit: cover;
+  border-radius: var(--vl-radius-lg);
+  background: var(--vl-bg-inverse);
 }

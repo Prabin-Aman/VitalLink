@@ -200,6 +200,45 @@ public final class SystemCheck {
                 "log a meal from the food catalogue",
                 meal.status() == 201 && meal.at("/kcal").asInt() == 105,
                 meal.body());
+        Res recipe = call(
+                "POST",
+                a,
+                "/v1/me/recipes",
+                Map.of(
+                        "name",
+                        "Banana bites",
+                        "servings",
+                        2,
+                        "items",
+                        List.of(Map.of("food_id", food.at("/0/id").asString(), "quantity_g", 236))));
+        check(
+                "a recipe works out its serving",
+                recipe.status() == 201 && recipe.at("/per_serving/kcal").asInt() == 105,
+                recipe.body());
+        Res fromRecipe = call(
+                "POST",
+                a,
+                "/v1/me/recipes/" + recipe.at("/id").asString() + "/log",
+                Map.of("slot", "snack", "servings", 1));
+        check(
+                "log a serving of the recipe as a meal",
+                fromRecipe.status() == 201 && fromRecipe.at("/kcal").asInt() == 105,
+                fromRecipe.body());
+        Res water = call("POST", a, "/v1/me/hydration", Map.of("ml", 250));
+        Res today = call("GET", a, "/v1/me/hydration", null);
+        check(
+                "today's water lists the entry, and Remove takes it off",
+                water.status() == 201
+                        && today.at("/0/id").asString().equals(water.at("/id").asString())
+                        && call(
+                                                "DELETE",
+                                                a,
+                                                "/v1/me/hydration/"
+                                                        + water.at("/id").asString(),
+                                                null)
+                                        .status()
+                                == 204,
+                today.body());
 
         // Care: a dose 30 minutes ago, marked taken.
         ZonedDateTime dose = ZonedDateTime.now(CHICAGO).minusMinutes(30).truncatedTo(ChronoUnit.MINUTES);

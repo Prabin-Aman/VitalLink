@@ -3,13 +3,13 @@
 One Supabase Postgres database with **35 tables** in a private schema, `vitallink`. The design doc
 had 18. The new ones serve the screens built since then.
 
-**Build status (27 Oct 2026):** 34 tables exist, created by Flyway migrations V1–V13
+**Build status (27 Oct 2026):** 34 tables exist, created by Flyway migrations V1–V16
 (`backend/src/main/resources/db/migration`). V1–V6 are the same SQL as the Python build's Alembic
 migrations 0001–0006. Two planned tables are not built: `goal_progress` (progress is computed on read)
 and `insights` (insights are computed when a screen asks). Section 4.10 lists where the build differs
 from the original plan.
 
-## 4.0 As built (migrations V1–V13)
+## 4.0 As built (migrations V1–V16)
 
 ```mermaid
 erDiagram
@@ -51,6 +51,9 @@ erDiagram
 | V8 goals | `goals` |
 | V9 records | `health_records`, `lab_panels`, `lab_results` |
 | V10 notifications_library | `notifications`, `article_categories`, `articles`, `library_features` |
+| V16 password_resets | `password_resets` (SHA-256 of a single-use reset token, 30-minute expiry) |
+| V15 password_credentials | `credentials` (BCrypt hash, failed attempts, lock) for local email/password accounts |
+| V14 profile_photo | `profiles.avatar_key` (Settings › Change photo; key shape checked) |
 | V13 import_and_bluetooth_sources | `reading_source` gains `file_import` (CSV imports) and `bluetooth` (devices paired in the browser) |
 | V12 ingest_batches_by_user | Index `(user_id, received_at DESC)` for `GET /me/sync` |
 | V11 review_hardening | `file_deletions`; `health_records.replacement_key`/`replacement_name`; same-owner key from `lab_panels` to `health_records`; length/shape checks the API already applied (see docs/13) |

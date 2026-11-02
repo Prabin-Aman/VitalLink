@@ -2,8 +2,8 @@
 // mobile 134:2, 134:216, 134:395). Everything here is a display string or a 0–1 fraction.
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
-import { ago, clock, dayMonth, daysFrom, hoursMinutes, kg, km, longDate, pace, relativeDay, thousands, timeOfDay, weekday } from "../format";
-import type { StatVM } from "../screens";
+import { ago, clock, dayMonth, daysFrom, distance, hoursMinutes, kg, longDate, pace, relativeDay, thousands, timeOfDay, weekday, type Units } from "../format";
+import type { StatVM } from "./shared";
 import type { GoalStatus, SessionKind, TrainingSession, WorkoutType } from "../types";
 
 export interface LegendVM {
@@ -70,18 +70,18 @@ export interface WorkoutsVM {
   next: { title: string; detail: string; start: { title: string; type: WorkoutType } } | null;
 }
 
-const sessionRow = (s: TrainingSession, tz: string): SessionRowVM => {
+const sessionRow = (s: TrainingSession, tz: string, units?: Units): SessionRowVM => {
   const day = weekday(s.started_at, tz);
   const mins = `${Math.round(s.duration_s / 60)} min`;
   const vol = s.volume_kg === null ? null : `${thousands(s.volume_kg)} kg`;
-  const dist = s.distance_m === null ? null : km(s.distance_m);
+  const dist = s.distance_m === null ? null : distance(s.distance_m, units);
   const kcal = s.kcal === null ? null : `${thousands(s.kcal)} kcal`;
   const detail =
     s.kind === "strength"
       ? [`${s.exercises} exercises`, `${s.sets} sets`, vol]
       : s.kind === "mobility"
         ? [s.focus]
-        : [dist, s.pace_s_per_km === null ? null : pace(s.pace_s_per_km), kcal];
+        : [dist, s.pace_s_per_km === null ? null : pace(s.pace_s_per_km, units), kcal];
   const short =
     s.kind === "strength" ? [`${s.sets} sets`, vol] : s.kind === "mobility" ? ["recovery"] : s.type === "run" ? [dist, kcal] : [dist];
   const metric = s.pr
@@ -149,7 +149,7 @@ export async function loadWorkouts(api: VitalLinkClient): Promise<WorkoutsVM> {
       ...(["cardio", "strength", "mobility"] as SessionKind[]).map((k) => ({ label: KIND_LABEL[k], color: KIND_COLOR[k] })),
       { label: "Rest day", color: "bgMuted" as ColorToken },
     ],
-    sessions: t.sessions.map((s) => sessionRow(s, tz)),
+    sessions: t.sessions.map((s) => sessionRow(s, tz, me.units)),
     muscles: {
       caption: `Sets logged over ${t.muscles.days} days`,
       groups: t.muscles.groups.map((g) => {
@@ -198,6 +198,8 @@ export interface NutritionVM {
   stats: StatVM[];
   ring: { fraction: number; value: string; goal: string; remaining: string };
   split: { label: string; fraction: number; color: ColorToken }[];
+  /** Shown instead of the split bar when nothing is logged today. */
+  splitEmpty: string | null;
   macros: BarRowVM[];
   meals: MealVM[];
   energy: { label: string; value: string; color: ColorToken }[];
@@ -254,11 +256,15 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
       { key: "water", label: "Water", value: litres(n.water_ml), unit: "L", caption: `goal ${litres(n.water_goal_ml)} L`, accent: "dataBloodOxygen" },
     ],
     ring: { fraction: Math.min(1, n.kcal / n.kcal_goal), value: kcal, goal: `/ ${goal}`, remaining: `${thousands(left)} kcal remaining` },
-    split: [
-      { label: `Protein ${pct(energy.protein)}%`, fraction: energy.protein / energyTotal, color: "macroProtein" },
-      { label: `Carbs ${pct(energy.carbs)}%`, fraction: energy.carbs / energyTotal, color: "macroCarbs" },
-      { label: `Fat ${pct(energy.fat)}%`, fraction: energy.fat / energyTotal, color: "macroFat" },
-    ],
+    // Nothing logged yet: no split to show (and no division by zero).
+    split: energyTotal
+      ? [
+          { label: `Protein ${pct(energy.protein)}%`, fraction: energy.protein / energyTotal, color: "macroProtein" },
+          { label: `Carbs ${pct(energy.carbs)}%`, fraction: energy.carbs / energyTotal, color: "macroCarbs" },
+          { label: `Fat ${pct(energy.fat)}%`, fraction: energy.fat / energyTotal, color: "macroFat" },
+        ]
+      : [],
+    splitEmpty: energyTotal ? null : "Log a meal to see how today's calories split between protein, carbs and fat.",
     macros: [
       bar("protein", "Protein", n.protein_g, n.goals.protein_g, "macroProtein"),
       { ...bar("carbs", "Carbohydrate", n.carbs_g, n.goals.carbs_g, "macroCarbs") },
@@ -278,7 +284,7 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
     }),
     energy: [
       { label: "Consumed", value: `${kcal} kcal`, color: "dataNutrition" },
-      { label: "Base burn", value: n.base_burn_kcal === null ? "—" : `${thousands(n.base_burn_kcal)} kcal`, color: "textSecondary" },
+      { label: "Base burn", value: n.base_burn_kcal === null ? "N/A" : `${thousands(n.base_burn_kcal)} kcal`, color: "textSecondary" },
       { label: "Active burn", value: `${thousands(n.active_burn_kcal)} kcal`, color: "dataActivity" },
       { label: "Net", value: `${net < 0 ? "−" : "+"}${thousands(Math.abs(net))} kcal`, color: onTarget ? "goalAchieved" : "goalAtRisk" },
     ],

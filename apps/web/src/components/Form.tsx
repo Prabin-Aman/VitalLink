@@ -53,6 +53,8 @@ export function FormDialog({
 
   const submit = async (e: FormEvent) => {
     e.preventDefault();
+    // A dialog opened from this one (in a portal) submits its own form; React would bubble it up to here.
+    e.stopPropagation();
     if (!save) return onClose();
     setBusy(true);
     setError(null);
@@ -95,12 +97,13 @@ export function FormDialog({
           </p>
         )}
         {demoDone && (
-          <p role="status" className={cx("vl-body-s", s.done)}>
-            Everything checks out, but this is demo data, so nothing was saved. Connect the portal to your account to save.
+          <p role="status" className={cx("vl-body-s", s.demo)}>
+            <strong>Not saved: the portal is showing demo data.</strong> Everything you entered checks out. To save, run the
+            API and start the portal with <code>VITE_API_URL</code> set (it is in <code>apps/web/.env.local</code>).
           </p>
         )}
         <div className={s.actions}>
-          {extra}
+          {extra && <span className={s.extra}>{extra}</span>}
           <Button variant={!action && extra ? "primary" : "secondary"} onClick={onClose} disabled={busy}>
             {!action ? "Done" : demoDone ? "Close" : "Cancel"}
           </Button>
@@ -117,19 +120,24 @@ export function FormDialog({
 
 /** The account's time zone (dates and times in forms are in it), or null until /me has loaded. */
 export function useZone(): string | null {
+  return useAccount()?.tz ?? null;
+}
+
+/** Time zone and Settings › Units (goal targets in miles or lb), or null until /me has loaded. */
+export function useAccount(): { tz: string; units: "metric" | "imperial" } | null {
   const api = useApi();
-  const [tz, setTz] = useState<string | null>(null);
+  const [v, setV] = useState<{ tz: string; units: "metric" | "imperial" } | null>(null);
   useEffect(() => {
     let live = true;
     api.me().then(
-      (m) => live && setTz(m.timezone),
-      () => live && setTz(Intl.DateTimeFormat().resolvedOptions().timeZone),
+      (m) => live && setV({ tz: m.timezone, units: m.units ?? "metric" }),
+      () => live && setV({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone, units: "metric" }),
     );
     return () => {
       live = false;
     };
   }, [api]);
-  return tz;
+  return v;
 }
 
 /** Runs a forms.ts check: returns the body, or stops the save with its message. */
@@ -320,8 +328,8 @@ export function DropZone({ file, onFile, accept, prompt = "Drop a PDF or image h
   );
 }
 
-/** Rows with a Remove-style action; a row without `onRemove` shows no button. */
-export function ItemList({ label, items, empty, add }: { label: string; items: { key: string; title: string; caption: string; onRemove?: () => void; removeLabel?: string }[]; empty: string; add: ReactNode }) {
+/** Rows with a Remove-style action (and Edit with `onEdit`); a row without `onRemove` shows no button. */
+export function ItemList({ label, items, empty, add }: { label: string; items: { key: string; title: string; caption: string; onRemove?: () => void; removeLabel?: string; onEdit?: () => void }[]; empty: string; add: ReactNode }) {
   const id = useId();
   return (
     <div className={s.field} role="group" aria-labelledby={id}>
@@ -336,6 +344,11 @@ export function ItemList({ label, items, empty, add }: { label: string; items: {
               <span className="vl-body-m-strong">{it.title}</span>
               <span className={cx("vl-caption", s.helper)}>{it.caption}</span>
             </span>
+            {it.onEdit && (
+              <Button variant="tertiary" size="sm" onClick={it.onEdit} aria-label={`Edit ${it.title}`}>
+                Edit
+              </Button>
+            )}
             {it.onRemove && (
               <Button variant="tertiary" size="sm" onClick={it.onRemove} aria-label={`${it.removeLabel ?? "Remove"} ${it.title}`}>
                 {it.removeLabel ?? "Remove"}

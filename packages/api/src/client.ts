@@ -1,5 +1,9 @@
 import type {
   AccessLogEntry,
+  NutritionTargets,
+  GoalDetail,
+  HealthRecord,
+  MedicationDetail,
   ImportResult,
   IngestResult,
   SyncStatus,
@@ -38,6 +42,8 @@ import type {
   Training,
   Workout,
   FoodHit,
+  WaterEntry,
+  Recipe,
   GoalMetricOption,
   ConditionItem,
   ExerciseItem,
@@ -98,10 +104,19 @@ export class VitalLinkClient {
     return this.isMock ? mock.dashboard.generated_at : new Date().toISOString();
   }
 
+  /** fetch, but a server that can't be reached is an ApiError with a message a person can act on. */
+  private async reach(url: string, init?: RequestInit): Promise<Response> {
+    try {
+      return await fetch(url, init);
+    } catch {
+      throw new ApiError(0, "unreachable", `Can't reach the VitalLink server at ${this.opts.baseUrl}. Check that the API is running, then try again.`);
+    }
+  }
+
   private async get<T>(path: string, fallback: () => T): Promise<T> {
     if (this.isMock) return structuredClone(fallback());
     const token = await this.opts.getToken?.();
-    const res = await fetch(`${this.opts.baseUrl}/v1${path}`, {
+    const res = await this.reach(`${this.opts.baseUrl}/v1${path}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) {
@@ -118,7 +133,7 @@ export class VitalLinkClient {
     const token = await this.opts.getToken?.();
     // A Blob (an import file) goes as the raw body; anything else as JSON.
     const raw = body instanceof Blob;
-    const res = await fetch(`${this.opts.baseUrl}/v1${path}`, {
+    const res = await this.reach(`${this.opts.baseUrl}/v1${path}`, {
       method,
       headers: {
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
@@ -131,7 +146,9 @@ export class VitalLinkClient {
       const e = err?.error ?? {};
       throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
     }
-    return res.status === 204 ? null : ((await res.json()) as T);
+    // 202/204 (and any empty reply) have no body.
+    const text = await res.text();
+    return text ? (JSON.parse(text) as T) : null;
   }
 
   // ---- Writes.
@@ -149,6 +166,18 @@ export class VitalLinkClient {
   cancelAppointment = (id: string) => this.send<Appointment>("PATCH", `/me/appointments/${id}`, { state: "cancelled" });
   // ---- Entry forms (Figma page "15 — Proposed · Entry forms"); bodies are built in forms.ts.
   /** One manual reading (POST /me/health/manual); blood pressure is two calls, systolic and diastolic. */
+  /** POST /v1/auth/sign-up and /sign-in (local email/password accounts): an access token, or null in mock mode. */
+  signUp = (body: object) => this.send<{ access_token: string; expires_at: string }>("POST", "/auth/sign-up", body);
+  /** GET /v1/auth/config: what Sign In can offer. Mock mode has no accounts. */
+  authConfig = () => this.get<{ password: boolean; google_client_id: string }>("/auth/config", () => ({ password: false, google_client_id: "" }));
+  /** Always 202 (it never says whether the email has an account); null in mock mode. */
+  forgotPassword = (email: string) => this.send("POST", "/auth/forgot-password", { email });
+  resetPassword = (token: string, password: string) => this.send<{ access_token: string; expires_at: string }>("POST", "/auth/reset-password", { token, password });
+  /** A Google ID token from Sign in with Google → a VitalLink session. */
+  signInWithGoogle = (credential: string) => this.send<{ access_token: string; expires_at: string }>("POST", "/auth/google", { credential });
+  /** Settings › Security (Figma 221:2114): 204; 422 wrong_password, 409 no_password (a Google-only account). */
+  changePassword = (current: string, next: string) => this.send("POST", "/auth/change-password", { current_password: current, new_password: next });
+  signIn = (email: string, password: string) => this.send<{ access_token: string; expires_at: string }>("POST", "/auth/sign-in", { email, password });
   addReading = (metric: string, value: number, at: string) => this.send("POST", "/me/health/manual", { metric, value, at });
   /** POST /me/health/import: an Apple Health export or a CSV, readings from the last `days`. Null in mock mode. */
   importHealthFile = (file: Blob, days: number) => this.send<ImportResult>("POST", `/me/health/import?days=${days}`, file);
@@ -168,8 +197,10 @@ export class VitalLinkClient {
   conditions = () => this.get<ConditionItem[]>("/me/conditions", () => mock.conditions);
   addCondition = (label: string, kind: "chronic" | "allergy") => this.send("POST", "/me/conditions", { label, kind });
   removeCondition = (id: string) => this.send("DELETE", `/me/conditions/${id}`);
-  addContact = (body: { name: string; relation: string; phone: string; primary?: boolean }) => this.send("POST", "/me/emergency-contacts", body);
+  addContact = (body: { name: string; relation: string; phone: string; primary?: boolean }) => this.send<{ id: string }>("POST", "/me/emergency-contacts", body);
   removeContact = (id: string) => this.send("DELETE", `/me/emergency-contacts/${id}`);
+  /** Edit an emergency contact in place (Figma 221:2168). */
+  updateContact = (id: string, patch: { name?: string; relation?: string; phone?: string }) => this.send("PATCH", `/me/emergency-contacts/${id}`, patch);
   /**
    * A record with a file: create it, PUT the file to the signed URL the API hands out, then confirm so the
    * API checks what was stored. Resolves with the record id, or null in mock mode.
@@ -194,8 +225,76 @@ export class VitalLinkClient {
   revokeShare = (id: string) => this.send("DELETE", `/me/shares/${id}`);
   /** PATCH /me/records/{id}: only the fields given change (e.g. { note }). */
   updateRecord = (id: string, patch: object) => this.send("PATCH", `/me/records/${id}`, patch);
+  /** GET /me/records/{id} (Edit details prefill). */
+  record = (id: string) => this.get<HealthRecord>(`/me/records/${id}`, () => {
+    const r = mock.recordsOverview.recent.find((x) => x.id === id);
+    if (!r) throw new ApiError(404, "not_found", "No such record.");
+    return r;
+  });
+  deleteRecord = (id: string) => this.send("DELETE", `/me/records/${id}`);
+  /**
+   * Settings › Change photo: ask for a signed upload, PUT the image, then confirm so the API checks it.
+   * Resolves with the new /me (its avatar_url), or null in mock mode.
+   */
+  uploadAvatar = async (file: Blob): Promise<Me | null> => {
+    const target = await this.send<{ key: string; upload_url: string; method: string; headers: Record<string, string> }>("POST", "/me/avatar/upload", {
+      content_type: file.type,
+      size: file.size,
+    });
+    if (!target) return null;
+    const put = await this.reach(target.upload_url, { method: target.method, headers: target.headers, body: file });
+    if (!put.ok) throw new ApiError(put.status, "upload_failed", "The photo didn't upload. Try again.");
+    return this.send<Me>("POST", "/me/avatar/confirm", { key: target.key });
+  };
+  removeAvatar = () => this.send("DELETE", "/me/avatar");
+  // ---- Edit and delete (Figma 214:2165 Edit Medication, 214:2210 Edit Appointment, 214:2245 Edit Goal,
+  // 214:2058 Daily targets). Mock mode serves a detail built from the sample rows so the dialogs open.
+  medication = (id: string) =>
+    this.get<MedicationDetail>(`/me/medications/${id}`, () => {
+      const p = mock.medicationsOverview.prescriptions.find((x) => x.id === id) ?? mock.medicationsOverview.prescriptions[0];
+      return { id: p.id, name: p.name, form: p.form.toLowerCase(), strength: p.strength, instructions: null, prescriber: p.prescriber, refills_left: p.refills_left, refill_due_on: null, status: "active", started_on: "2026-01-01", stopped_on: null, frequency: p.frequency, schedule: [{ time: "08:00:00", days: [1, 2, 3, 4, 5, 6, 7] }] };
+    });
+  updateMedication = (id: string, patch: object) => this.send<MedicationDetail>("PATCH", `/me/medications/${id}`, patch);
+  deleteMedication = (id: string) => this.send("DELETE", `/me/medications/${id}`);
+  /** Undo a logged dose (Dose history): it becomes due or missed again. `at` is the dose's scheduled time. */
+  undoDose = (medicationId: string, at: string) => this.send("DELETE", `/me/medications/${medicationId}/doses/${encodeURIComponent(at)}`);
+  nutritionTargets = () =>
+    this.get<NutritionTargets>("/me/nutrition/targets", () => ({ kcal: 2200, protein_g: 150, carbs_g: 250, fat_g: 70, fibre_g: 30, water_ml: 2500, glass_ml: 250, weekly_target_kg: -0.25 }));
+  updateNutritionTargets = (patch: Partial<NutritionTargets>) => this.send<NutritionTargets>("PATCH", "/me/nutrition/targets", patch);
+  /** POST /me/foods: a food of the user's own (Add a food), found by search afterwards. */
+  createFood = (body: object) => this.send<FoodHit>("POST", "/me/foods", body);
+  /** POST /me/labs: a typed-in lab report (Add lab results). */
+  addLabResults = (body: object) => this.send<{ id: string }>("POST", "/me/labs", body);
+  /** PATCH /me/emergency-profile: organ donor, preferred hospital, notes. */
+  updateEmergencyProfile = (patch: object) => this.send<EmergencyProfile>("PATCH", "/me/emergency-profile", patch);
+  updateAppointment = (id: string, patch: object) => this.send<Appointment>("PATCH", `/me/appointments/${id}`, patch);
+  deleteAppointment = (id: string) => this.send("DELETE", `/me/appointments/${id}`);
+  goal = (id: string) =>
+    this.get<GoalDetail>(`/me/goals/${id}`, () => {
+      const g = mock.goalsOverview.goals.find((x) => x.id === id) ?? mock.goalsOverview.goals[0];
+      return { id: g.id, title: g.title, short_title: g.short_title, area: g.area as GoalDetail["area"], kind: "daily_total", metric: "steps", comparator: "at_least", target: 10000, baseline: null, starts_on: "2026-09-01", ends_on: null, lifecycle: g.status === "paused" ? "paused" : "active", achieved_at: null };
+    });
+  updateGoal = (id: string, patch: object) => this.send<GoalDetail>("PATCH", `/me/goals/${id}`, patch);
+  deleteGoal = (id: string) => this.send("DELETE", `/me/goals/${id}`);
+  updateTargets = (patch: Partial<Targets>) => this.send<Targets>("PATCH", "/me/targets", patch);
+  deleteWorkout = (id: string) => this.send("DELETE", `/me/workouts/${id}`);
   deleteMeal = (id: string) => this.send("DELETE", `/me/meals/${id}`);
   addWater = (ml: number) => this.send("POST", "/me/hydration", { ml });
+  /** Today's water entries, newest first (Hydration › Today, Figma 221:2205). */
+  waterToday = () => this.get<WaterEntry[]>("/me/hydration", () => mock.waterToday);
+  removeWater = (id: string) => this.send("DELETE", `/me/hydration/${id}`);
+  /** Nutrition › Recipes (Figma 222:2104, 222:2330 New recipe, 222:2417 Log a recipe). */
+  recipes = () => this.get<Recipe[]>("/me/recipes", () => mock.recipes);
+  createRecipe = (body: object) => this.send<Recipe>("POST", "/me/recipes", body);
+  updateRecipe = (id: string, patch: object) => this.send<Recipe>("PATCH", `/me/recipes/${id}`, patch);
+  deleteRecipe = (id: string) => this.send("DELETE", `/me/recipes/${id}`);
+  /** Logs servings as a meal named after the recipe. */
+  logRecipe = (id: string, body: object) => this.send("POST", `/me/recipes/${id}/log`, body);
+  /**
+   * Nutrition › Scan Barcode (Figma 221:2145): a food you have with this barcode, else Open Food Facts' product
+   * saved as your food. 404 food_not_found, 503 lookup_unavailable. Null in mock mode (nothing to look up).
+   */
+  foodByBarcode = (code: string) => (this.isMock ? Promise.resolve(null) : this.get<FoodHit>(`/foods/barcode/${encodeURIComponent(code)}`, () => null as never));
   /** DELETE /me: needs a sign-in within the last 10 minutes (403 reauth_required otherwise). */
   deleteAccount = () => this.send("DELETE", "/me");
   /** Removes a connected device and its sync state (its past readings stay). */
@@ -207,7 +306,7 @@ export class VitalLinkClient {
   exportData = async (): Promise<{ blob: Blob; filename: string } | null> => {
     if (this.isMock) return null;
     const token = await this.opts.getToken?.();
-    const res = await fetch(`${this.opts.baseUrl}/v1/me/export`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const res = await this.reach(`${this.opts.baseUrl}/v1/me/export`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) {
       const e = (await res.json().catch(() => ({})))?.error ?? {};
       throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);

@@ -20,7 +20,7 @@ export function Body() {
           <>
             <Panel title="How this is measured" level="h5" gap={12}>
               <Txt s="bodyS" c="textSecondary" as="p">
-                Body fat and muscle mass come from bioelectrical impedance on your Withings scale. Impedance readings shift with hydration and time of day — weigh at the same time each morning and trust the trend, not any single number.
+                Body fat and muscle mass come from bioelectrical impedance on your Withings scale. Impedance readings shift with hydration and time of day, so weigh at the same time each morning and trust the trend, not any single number.
               </Txt>
             </Panel>
             <Panel title="Body fat goal" level="h5" gap={12}>

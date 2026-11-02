@@ -28,7 +28,11 @@ export function ScoreRing({ score, size = 112, stroke = 10 }: { score: number; s
 
 /** Dashboard "Activity This Week": 7 touching bars, 1px per 100 steps, baseline 126px down a 150px plot. */
 /** Dashboard steps bars. `perPx` steps per pixel: 100 for the designed week; other ranges fit the plot. */
+/** The plot is 126px tall (Charts.module.css): a busier week than the design's scale shrinks to fit. */
+const PLOT_H = 126;
+
 export function WeekBars({ bars, perPx = 100 }: { bars: BarVM[]; perPx?: number }) {
+  const scale = Math.max(perPx, ...bars.map((b) => b.value / PLOT_H));
   return (
     <div>
       <div className={s.weekPlot} style={bars.length > 7 ? { gap: 3 } : undefined} role="img" aria-label={bars.map((b) => `${b.label.replace(/-\d+$/, "")} ${b.valueLabel} steps`).join(", ")}>
@@ -36,7 +40,7 @@ export function WeekBars({ bars, perPx = 100 }: { bars: BarVM[]; perPx?: number 
           <div key={b.label} className={s.weekCol}>
             <div
               className={s.weekBar}
-              style={{ height: Math.max(2, b.value / perPx), background: tokenVar(b.metGoal ? "dataActivity" : "bgBrandMuted") }}
+              style={{ height: Math.max(2, b.value / scale), background: tokenVar(b.metGoal ? "dataActivity" : "bgBrandMuted") }}
             />
           </div>
         ))}

@@ -7,9 +7,9 @@ Ubuntu with a Postgres service container on every push that touches `backend/`.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit, API, database and guardrail tests | `./mvnw verify` | **241 passed, 0 failed, 0 skipped** |
+| Unit, API, database and guardrail tests | `./mvnw verify` | **273 passed, 0 failed, 0 skipped** (2 Nov 2026; coverage last measured at 80.5% on 1 Nov) |
 | Coverage (JaCoCo) | `target/site/jacoco/index.html` | **80.4% of lines** (the hand-run `tools` package, now with LoadCheck, counts as uncovered; see 12.4) |
-| System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **44 of 44 steps passed** (24 Oct, before V11; not re-run after the review because the local dev database is shared with the `backend-java` checkout) |
+| System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **47 of 47 steps passed** (1 Nov 2026, through V18: recipes and today's water added) |
 | Load test (packaged jar, demo account) | `LoadCheck http://localhost:8000` | **Pass**: 5,000-bucket ingest 1.1 s (target < 2 s); warm p95 dashboard 40 ms, overview 60 ms, training 25 ms, goals 25 ms (target < 300 ms) |
 | Container | `docker build` + run with a 512 MB limit | Ready in 6 s; 231 MiB in use; heaviest endpoint 0.43 s cold |
 | Formatting | `./mvnw spotless:check` | Clean |
@@ -45,6 +45,7 @@ through MockMvc, against a real Postgres. Each test makes its own accounts, so t
 | `CorsTest` | 4 | A preflight from each listed origin (comma-separated `CORS_ORIGIN`) is allowed; any other origin gets 403 and no allow header; responses expose `Content-Disposition`, `Retry-After` and `X-Request-ID` to the apps |
 | `OpenApiTest` | 2 | The OpenAPI document uses the names the API sends (no camelCase anywhere), and the caller and consent gate are not documented as parameters while shared routes declare `user_id` |
 | `ReviewFixesTest` | 7 | The phase 10 fixes (docs/13): replacing a file keeps the old one until the new one is confirmed; an abandoned replacement is dropped and the original kept; the upload cleanup never undoes a confirm committing meanwhile (two connections); deleted files stay queued until the nightly job deletes them; long sign-up names are cut to 60; a lab panel can't point at another user's record; the API's limits hold in the schema |
+| `StressFixesTest` | 5 | What the 1 Nov stress test broke (12.5): 12 parallel plans leave one active; 40 shares at once all succeed (each audit entry needs a second connection, which used to exhaust the pool); the same share 10 times at once is one 201 and nine 409s; a NUL character in text is 422, not 500; 12 parallel first requests for a new account all succeed |
 | `EmailConfirmationTest` | 2 | Production ignores the token's user-writable `email_verified` and asks Supabase; dev tokens' flag counts |
 | `IdentityAdminTest` | 2 | Against a fake Supabase: confirmed only when `email_confirmed_at` is set for the same address; errors, bad JSON and no configuration mean "not confirmed" |
 | `TokenClaimsTest` | 2 | Sign-up names stripped and cut to 60; emails over 254 characters refused |
@@ -80,7 +81,29 @@ so "today at 9:00" is never in the future, whatever time the suite runs.
 `tools` (DevToken, DemoSeed, SystemCheck, LoadCheck) is run by hand and in CI, not by the unit suites, so it reads
 0% there; the system test exercises the API end to end instead.
 
-## 12.5 Not covered yet
+## 12.5 Stress test (1 to 2 Nov 2026, local)
+
+- **Fuzz:** every `/v1` operation in the OpenAPI document, 3,768 requests: bad path ids, junk and
+  wrongly encoded query strings, empty, truncated, deeply nested and non-UTF-8 bodies, form bodies, and
+  each body field replaced by wrong types, huge numbers, 200,000-character strings, NUL, emoji, SQL and
+  HTML. After the fixes, nothing answers 5xx except `/v1/auth/google` (503 until `GOOGLE_CLIENT_ID` is set).
+- **Races:** 30 to 80 identical or different writes at once (plans, shares, conditions, contacts, ingest
+  with one idempotency key, water, goals): duplicates get 409, one active plan, at most 5 contacts with one
+  primary, ingest stays idempotent.
+- **Load:** 6,000 requests (one in five a write) from 6 new accounts, 64 at a time: about 1,000 requests a
+  second, p50 55 ms, p95 108 ms, p99 402 ms, no errors. `LoadCheck` targets pass (ingest 426 ms, read p95 under 41 ms).
+- **Fixed:** malformed percent-encoding in a query (`?days=%FF`) and NUL in text answered 500, now 422
+  (`ErrorHandler`); a unique-index race now answers 409, not 500; two plans created at once both went
+  active (now serialised on the user row); every connection held by a request waiting for its audit
+  connection stalled the API for 10 s (`RequestTransactionFilter` now runs at most pool size minus a fifth
+  at once, the rest queue for up to 15 s, then 503 `busy`); a new account's parallel first requests got
+  409 `email_in_use` (`AccountService` inserts with a bare `ON CONFLICT DO NOTHING`).
+- **Web, as an account with 81 shares, 30 goals, 30 plans and 40 water entries:** every route renders
+  without console errors or horizontal overflow. Fixed: duplicate React keys where user data repeats a
+  name (Records shares, Emergency contacts, Goals › Recently achieved); Lab Results with no labs said
+  "Couldn't load this page" and now shows an empty state with Add Results.
+
+## 12.6 Not covered yet
 
 - Real Supabase Auth and Storage (no project yet): the clients are tested against a fake; check the
   first deploy with the system test pointed at a staging project.

@@ -2,7 +2,7 @@
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
 import { ago, dayMonth, daysFrom, hoursMinutes, longDate, thousands, timeOfDay, weekday } from "../format";
-import type { ChipVM, MetricCardVM, StatVM } from "../screens";
+import type { ChipVM, MetricCardVM, StatVM } from "./shared";
 import type { Insight, Reading, SleepNight } from "../types";
 import type { LegendVM } from "./fitness";
 
@@ -94,7 +94,7 @@ const stat = (readings: Reading[], s: StatSpec, now: string, tz: string): StatVM
   const r = readings.find((x) => x.metric === s.metric);
   const m = META[s.metric] ?? { label: s.metric, accent: "dataComparison" as ColorToken };
   // Live accounts don't have every reading: show a dash rather than a made-up number.
-  if (!r) return { key: s.metric, label: s.label ?? m.label, value: "—", unit: "", caption: "No data yet", accent: s.accent ?? m.accent };
+  if (!r) return { key: s.metric, label: s.label ?? m.label, value: "N/A", unit: "", caption: "No data yet", accent: s.accent ?? m.accent };
   const v = show(r, tz);
   const w = when(r, now, tz);
   return {
@@ -207,7 +207,7 @@ export async function loadVitals(api: VitalLinkClient): Promise<VitalsVM> {
   const get = (k: string) => R.find((r) => r.metric === k);
   const line = (k: string, label: string) => {
     const r = get(k);
-    if (!r) return { label, value: "—" };
+    if (!r) return { label, value: "N/A" };
     const s = show(r, tz);
     const unit = s.unit === "%" ? "%" : s.unit ? ` ${s.unit}` : "";
     return { label, value: `${s.value}${unit} · ${when(r, now, tz).replace("Yesterday", "yesterday")}` };
@@ -233,8 +233,8 @@ export async function loadVitals(api: VitalLinkClient): Promise<VitalsVM> {
       ],
       band: [120, 80],
       legend: [
-        { label: `Systolic ${sys[sys.length - 1] ?? "—"}`, color: "dataBloodPressure" },
-        { label: `Diastolic ${dia[dia.length - 1] ?? "—"}`, color: "dataHeartRate" },
+        { label: `Systolic ${sys[sys.length - 1] ?? "N/A"}`, color: "dataBloodPressure" },
+        { label: `Diastolic ${dia[dia.length - 1] ?? "N/A"}`, color: "dataHeartRate" },
         { label: "Healthy range", color: "rangeNormal" },
       ],
     },
@@ -270,10 +270,10 @@ export async function loadSleep(api: VitalLinkClient): Promise<SleepVM> {
   const l = s.last ?? { asleep_min: 0, start: "", end: "", goal_min: 480, deep: 0, rem: 0, awake: 0, wakeups: 0, score: 0 };
   const recorded = s.last !== null;
   const short = l.goal_min - l.asleep_min;
-  const pct = (m: number) => (l.asleep_min ? `${Math.round((m / l.asleep_min) * 100)}% of night` : "—");
+  const pct = (m: number) => (l.asleep_min ? `${Math.round((m / l.asleep_min) * 100)}% of night` : "N/A");
   const st = (key: string, label: string, value: string, unit: string, caption: string, accent: ColorToken): StatVM => ({ key, label, value, unit, caption, accent });
   return {
-    headline: recorded ? hoursMinutes(l.asleep_min) : "—",
+    headline: recorded ? hoursMinutes(l.asleep_min) : "N/A",
     detail: recorded
       ? `asleep · ${timeOfDay(l.start, tz)} to ${timeOfDay(l.end, tz)}${short > 0 ? ` · ${short} min short of your ${l.goal_min / 60} hour goal` : " · goal met"}`
       : "No sleep recorded last night",
@@ -325,12 +325,12 @@ export async function loadHeart(api: VitalLinkClient): Promise<HeartVM> {
   const maxZone = Math.max(1, ...h.zones.map((z) => z.minutes));
   const d = h.resting?.delta_90d ?? 0;
   return {
-    value: h.resting ? String(h.resting.value) : "—",
+    value: h.resting ? String(h.resting.value) : "N/A",
     detail: !h.resting
       ? "No resting heart rate yet"
       : d === 0
         ? "level with your 90 day average"
-        : `${d < 0 ? "down" : "up"} ${Math.abs(d)} BPM from your 90 day average${d < 0 ? " — typical of improving aerobic fitness" : ""}`,
+        : `${d < 0 ? "down" : "up"} ${Math.abs(d)} BPM from your 90 day average${d < 0 ? ", typical of improving aerobic fitness" : ""}`,
     chart: {
       series: [{ values: h.resting?.trend ?? [], color: "dataHeartRate", domain: [75, 45] }],
       band: [68, 52],
@@ -398,7 +398,7 @@ export async function loadRespiratory(api: VitalLinkClient): Promise<Respiratory
           { label: "Change", value: `${change >= 0 ? "+" : "−"}${Math.abs(change).toFixed(1)}`, color: change >= 0 ? "goalAchieved" : "goalAtRisk" },
           { label: "Category", value: x.aerobic.category, color: "goalAchieved" },
         ]
-      : [{ label: "Current VO₂max", value: "—" }],
+      : [{ label: "Current VO₂max", value: "N/A" }],
     alerts: x.alerts.map((a) => ({ ...a, color: "goalAchieved" })),
   };
 }
@@ -452,7 +452,7 @@ export async function loadBody(api: VitalLinkClient): Promise<BodyVM> {
     chartCaption: !w.length
       ? "Weigh in to see your trend."
       : b.muscle_change_kg > 0 && lost > 0
-        ? `Weight down ${Math.abs(lost).toFixed(1)} kg while muscle mass rose ${b.muscle_change_kg} kg — the change is mostly fat.`
+        ? `Weight down ${Math.abs(lost).toFixed(1)} kg while muscle mass rose ${b.muscle_change_kg} kg, so the change is mostly fat.`
         : `Weight ${lost >= 0 ? "down" : "up"} ${Math.abs(lost).toFixed(1)} kg over ${w.length} weeks.`,
     measurements: b.measurements.map((m) => {
       const d = m.current - m.previous;
@@ -475,7 +475,7 @@ export async function loadBody(api: VitalLinkClient): Promise<BodyVM> {
               ? "Target reached."
               : `${toGo.toFixed(1)} points to go${g.weeks_to_go ? ` · at the current rate, about ${g.weeks_to_go} weeks.` : "."}`,
         }
-      : { now: "—", target: "No body fat goal", fraction: 0, caption: "Set a body fat goal in Goals to track it here." },
+      : { now: "N/A", target: "No body fat goal", fraction: 0, caption: "Set a body fat goal in Goals to track it here." },
   };
 }
 
@@ -502,7 +502,7 @@ export async function loadMental(api: VitalLinkClient): Promise<MentalVM> {
   const now = api.now();
   const logged = m.mood.filter((x): x is NonNullable<typeof x> => x !== null);
   const avg = logged.reduce((a, x) => a + MOOD[x][2], 0) / (logged.length || 1);
-  const overall = Object.values(MOOD).find((x) => x[2] === Math.round(avg))?.[0] ?? "—";
+  const overall = Object.values(MOOD).find((x) => x[2] === Math.round(avg))?.[0] ?? "N/A";
   const R = m.readings;
   return {
     stats: [
@@ -600,7 +600,7 @@ export async function loadDigital(api: VitalLinkClient): Promise<DigitalVM> {
           heavy: hoursMinutes(ds.heavy_min, true),
           light: hoursMinutes(ds.light_min, true),
         }
-      : { text: "Needs two weeks of sleep and screen-time data.", heavy: "—", light: "—" },
+      : { text: "Needs two weeks of sleep and screen-time data.", heavy: "N/A", light: "N/A" },
     limits: d.limits,
   };
 }

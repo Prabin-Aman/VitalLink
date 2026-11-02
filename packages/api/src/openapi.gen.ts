@@ -154,6 +154,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/recipes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The user's recipes by name, with per-serving macros computed from their foods. */
+        get: operations["list_1"];
+        put?: never;
+        post: operations["create_1"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/recipes/{id}/log": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Log servings as a meal named after the recipe; macros are copied as for any meal. */
+        post: operations["log"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/notifications/read": {
         parameters: {
             query?: never;
@@ -229,7 +263,8 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get?: never;
+        /** Water entries of one local day (default today), newest first. */
+        get: operations["water"];
         put?: never;
         post: operations["logWater"];
         delete?: never;
@@ -295,9 +330,9 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["list_1"];
+        get: operations["list_2"];
         put?: never;
-        post: operations["create_1"];
+        post: operations["create_2"];
         delete?: never;
         options?: never;
         head?: never;
@@ -353,6 +388,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/avatar/upload": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Start a profile photo upload (JPEG, PNG or WebP, at most 2 MB): PUT the image to the URL, then confirm. */
+        post: operations["startAvatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/avatar/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Check the uploaded image and make it the profile photo; the old one is deleted. */
+        post: operations["confirmAvatar"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/appointments": {
         parameters: {
             query?: never;
@@ -364,6 +433,108 @@ export interface paths {
         get: operations["appointments"];
         put?: never;
         post: operations["createAppointment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sign-up": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create an account with an email and password; returns an access token (12 hours). */
+        post: operations["signUp"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/sign-in": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in with an email and password; five wrong passwords lock sign-in for 15 minutes. */
+        post: operations["signIn"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/reset-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Choose a new password with a reset link's token; signs in. */
+        post: operations["resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/google": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Sign in (or up) with a Google ID token from Sign in with Google. */
+        post: operations["google"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/forgot-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Email a password reset link (30 minutes, single use). Answers the same whether or not the email has an account. */
+        post: operations["forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/change-password": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Settings › Security: change the password (the current one is required). */
+        post: operations["changePassword"];
         delete?: never;
         options?: never;
         head?: never;
@@ -420,6 +591,24 @@ export interface paths {
         patch: operations["update"];
         trace?: never;
     };
+    "/v1/me/recipes/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["get_1"];
+        put?: never;
+        post?: never;
+        /** Meals already logged from the recipe stay. */
+        delete: operations["delete_1"];
+        options?: never;
+        head?: never;
+        /** Rename, change servings or notes; `items` replaces the whole ingredient list. */
+        patch: operations["update_1"];
+        trace?: never;
+    };
     "/v1/me/privacy": {
         parameters: {
             query?: never;
@@ -434,7 +623,7 @@ export interface paths {
         options?: never;
         head?: never;
         /** Turn the lock-screen medical ID on or off. */
-        patch: operations["update_1"];
+        patch: operations["update_2"];
         trace?: never;
     };
     "/v1/me/nutrition/targets": {
@@ -477,14 +666,14 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        get: operations["get_1"];
+        get: operations["get_2"];
         put?: never;
         post?: never;
-        delete: operations["delete_1"];
+        delete: operations["delete_2"];
         options?: never;
         head?: never;
         /** Edit, or change the lifecycle: active, paused, achieved, abandoned. */
-        patch: operations["update_2"];
+        patch: operations["update_3"];
         trace?: never;
     };
     "/v1/me/emergency-profile": {
@@ -809,7 +998,7 @@ export interface paths {
         put?: never;
         post?: never;
         /** Delete the account and everything it owns. Needs a sign-in within the last 10 minutes. */
-        delete: operations["delete_2"];
+        delete: operations["delete_3"];
         options?: never;
         head?: never;
         patch?: never;
@@ -974,7 +1163,7 @@ export interface paths {
             cookie?: never;
         };
         /** The feed, newest first. */
-        get: operations["list_2"];
+        get: operations["list_3"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1316,6 +1505,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/foods/barcode/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A food by its barcode: one you have, else looked up in Open Food Facts and saved as yours. */
+        get: operations["foodByBarcode"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/exercises": {
         parameters: {
             query?: never;
@@ -1324,6 +1530,23 @@ export interface paths {
             cookie?: never;
         };
         get: operations["exercises"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/config": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** What the sign-in page can offer: email/password, and Google's client id when it's set up. */
+        get: operations["config"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1441,6 +1664,22 @@ export interface paths {
         put?: never;
         post?: never;
         delete: operations["deleteCondition"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/avatar": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete: operations["removeAvatar"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1717,6 +1956,94 @@ export interface components {
             /** Format: date-time */
             expires_at?: string;
         };
+        RecipeIn: {
+            name: string;
+            /** Format: int32 */
+            servings: number;
+            notes?: string;
+            items: components["schemas"]["RecipeItemIn"][];
+        };
+        RecipeItemIn: {
+            /** Format: uuid */
+            food_id: string;
+            /** Format: double */
+            quantity_g: number;
+        };
+        FoodOut: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            brand?: string;
+            /** Format: double */
+            serving_g?: number;
+            /** Format: double */
+            kcal?: number;
+            /** Format: double */
+            protein_g?: number;
+            /** Format: double */
+            carbs_g?: number;
+            /** Format: double */
+            fat_g?: number;
+            /** Format: double */
+            fibre_g?: number;
+        };
+        RecipeItemOut: {
+            food?: components["schemas"]["FoodOut"];
+            /** Format: double */
+            quantity_g?: number;
+            /** Format: int32 */
+            kcal?: number;
+        };
+        RecipeOut: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: int32 */
+            servings?: number;
+            notes?: string;
+            items?: components["schemas"]["RecipeItemOut"][];
+            per_serving?: components["schemas"]["Serving"];
+            /** Format: date-time */
+            updated_at?: string;
+        };
+        Serving: {
+            /** Format: double */
+            grams?: number;
+            /** Format: int32 */
+            kcal?: number;
+            /** Format: int32 */
+            protein_g?: number;
+            /** Format: int32 */
+            carbs_g?: number;
+            /** Format: int32 */
+            fat_g?: number;
+            /** Format: int32 */
+            fibre_g?: number;
+        };
+        RecipeLogIn: {
+            /** @enum {string} */
+            slot: "breakfast" | "lunch" | "dinner" | "snack";
+            /** Format: date-time */
+            eaten_at?: string;
+            /** Format: double */
+            servings: number;
+        };
+        Meal: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: date-time */
+            eaten_at?: string;
+            items?: string[];
+            /** Format: int32 */
+            kcal?: number;
+            /** Format: int32 */
+            protein_g?: number;
+            /** Format: int32 */
+            carbs_g?: number;
+            /** Format: int32 */
+            fat_g?: number;
+        };
         ReadIn: {
             ids?: string[];
             all?: boolean;
@@ -1788,22 +2115,6 @@ export interface components {
             /** Format: date-time */
             eaten_at: string;
             items: components["schemas"]["ItemIn"][];
-        };
-        Meal: {
-            /** Format: uuid */
-            id?: string;
-            name?: string;
-            /** Format: date-time */
-            eaten_at?: string;
-            items?: string[];
-            /** Format: int32 */
-            kcal?: number;
-            /** Format: int32 */
-            protein_g?: number;
-            /** Format: int32 */
-            carbs_g?: number;
-            /** Format: int32 */
-            fat_g?: number;
         };
         WaterIn: {
             /** Format: int32 */
@@ -1951,24 +2262,6 @@ export interface components {
             /** Format: double */
             fibre_g?: number;
         };
-        FoodOut: {
-            /** Format: uuid */
-            id?: string;
-            name?: string;
-            brand?: string;
-            /** Format: double */
-            serving_g?: number;
-            /** Format: double */
-            kcal?: number;
-            /** Format: double */
-            protein_g?: number;
-            /** Format: double */
-            carbs_g?: number;
-            /** Format: double */
-            fat_g?: number;
-            /** Format: double */
-            fibre_g?: number;
-        };
         ContactIn: {
             name: string;
             relation: string;
@@ -2001,6 +2294,16 @@ export interface components {
             /** Format: date */
             noted_on?: string;
         };
+        Me: {
+            /** Format: uuid */
+            id?: string;
+            email?: string;
+            display_name?: string;
+            timezone?: string;
+            avatar_url?: string;
+            /** @enum {string} */
+            units?: "metric" | "imperial";
+        };
         AppointmentIn: {
             clinician: string;
             specialty?: string;
@@ -2030,6 +2333,26 @@ export interface components {
             status?: string;
             notes?: string;
         };
+        SignUpIn: {
+            email?: string;
+            password?: string;
+            first_name?: string;
+            last_name?: string;
+            phone?: string;
+            zip?: string;
+            date_of_birth?: string;
+            /** Format: double */
+            height_cm?: number;
+        };
+        Session: {
+            access_token?: string;
+            /** Format: date-time */
+            expires_at?: string;
+        };
+        SignInIn: {
+            email?: string;
+            password?: string;
+        };
         TargetsPatch: {
             /** Format: int32 */
             daily_steps_goal?: number;
@@ -2053,6 +2376,13 @@ export interface components {
             stand_hours_goal?: number;
             /** Format: int32 */
             sleep_goal_min?: number;
+        };
+        RecipePatch: {
+            name?: string;
+            /** Format: int32 */
+            servings?: number;
+            notes?: string;
+            items?: components["schemas"]["RecipeItemIn"][];
         };
         DeviceCounts: {
             /** Format: int32 */
@@ -2139,6 +2469,7 @@ export interface components {
             /** @enum {string} */
             sex?: "female" | "male" | "other" | "undisclosed";
             timezone?: string;
+            avatar_url?: string;
         };
         WorkoutOut: {
             /** Format: uuid */
@@ -2371,13 +2702,6 @@ export interface components {
             avg_7d?: number;
             /** @enum {string} */
             range?: "normal" | "borderline" | "high" | "low" | "no-data";
-        };
-        Me: {
-            /** Format: uuid */
-            id?: string;
-            email?: string;
-            display_name?: string;
-            timezone?: string;
         };
         SyncPlatform: {
             platform?: string;
@@ -3055,6 +3379,76 @@ export interface operations {
             };
         };
     };
+    list_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"][];
+                };
+            };
+        };
+    };
+    create_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"];
+                };
+            };
+        };
+    };
+    log: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipeLogIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Meal"];
+                };
+            };
+        };
+    };
     markRead: {
         parameters: {
             query?: never;
@@ -3193,6 +3587,28 @@ export interface operations {
             };
         };
     };
+    water: {
+        parameters: {
+            query?: {
+                date?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["WaterOut"][];
+                };
+            };
+        };
+    };
     logWater: {
         parameters: {
             query?: never;
@@ -3291,7 +3707,7 @@ export interface operations {
             };
         };
     };
-    list_1: {
+    list_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3311,7 +3727,7 @@ export interface operations {
             };
         };
     };
-    create_1: {
+    create_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3447,6 +3863,56 @@ export interface operations {
             };
         };
     };
+    startAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UploadIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["UploadOut"];
+                };
+            };
+        };
+    };
+    confirmAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Me"];
+                };
+            };
+        };
+    };
     appointments: {
         parameters: {
             query?: {
@@ -3493,6 +3959,154 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Appointment"];
                 };
+            };
+        };
+    };
+    signUp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignUpIn"];
+            };
+        };
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+        };
+    };
+    signIn: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignInIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+        };
+    };
+    resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+        };
+    };
+    google: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Session"];
+                };
+            };
+        };
+    };
+    forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    [key: string]: string;
+                };
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -3634,6 +4248,74 @@ export interface operations {
             };
         };
     };
+    get_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"];
+                };
+            };
+        };
+    };
+    delete_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    update_1: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecipePatch"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RecipeOut"];
+                };
+            };
+        };
+    };
     privacy: {
         parameters: {
             query?: never;
@@ -3654,7 +4336,7 @@ export interface operations {
             };
         };
     };
-    update_1: {
+    update_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3794,7 +4476,7 @@ export interface operations {
             };
         };
     };
-    get_1: {
+    get_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3816,7 +4498,7 @@ export interface operations {
             };
         };
     };
-    delete_1: {
+    delete_2: {
         parameters: {
             query?: never;
             header?: never;
@@ -3836,7 +4518,7 @@ export interface operations {
             };
         };
     };
-    update_2: {
+    update_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -4434,7 +5116,7 @@ export interface operations {
             };
         };
     };
-    delete_2: {
+    delete_3: {
         parameters: {
             query?: never;
             header?: never;
@@ -4658,7 +5340,7 @@ export interface operations {
             };
         };
     };
-    list_2: {
+    list_3: {
         parameters: {
             query?: {
                 unread?: boolean;
@@ -5104,6 +5786,28 @@ export interface operations {
             };
         };
     };
+    foodByBarcode: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["FoodOut"];
+                };
+            };
+        };
+    };
     exercises: {
         parameters: {
             query?: never;
@@ -5120,6 +5824,28 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ExerciseOut"][];
+                };
+            };
+        };
+    };
+    config: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        [key: string]: unknown;
+                    };
                 };
             };
         };
@@ -5255,6 +5981,24 @@ export interface operations {
             path: {
                 id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    removeAvatar: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

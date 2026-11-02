@@ -17,7 +17,7 @@ export function Digital() {
   const v = state.data;
 
   return (
-    <HealthPage subtitle="Screen time, pickups and notifications from iPhone — and how they track against your sleep">
+    <HealthPage subtitle="Screen time, pickups and notifications from iPhone, and how they track against your sleep">
       <Split
         rail={
           <>

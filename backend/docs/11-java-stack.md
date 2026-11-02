@@ -27,6 +27,8 @@ dependency:list`).
 | `spring-boot-starter-jdbc` (Spring JDBC `JdbcClient`, HikariCP) | Spring 7.0.10, HikariCP 7.0.2 | All SQL, with named parameters; the connection pool | Plain SQL rather than an ORM: the schema leans on Postgres enums, arrays, `ON CONFLICT`, `generate_series` and `AT TIME ZONE`, which SQL states directly |
 | `org.postgresql:postgresql` | 42.7.14 | JDBC driver | |
 | `spring-boot-starter-flyway`, `flyway-database-postgresql` | Flyway 12.4.0 | Schema migrations `V1…V10` in `src/main/resources/db/migration`, applied at startup | Migrations are plain SQL; the history table lives in the private schema |
+| `org.springframework.boot:spring-boot-starter-mail` | managed by Spring Boot 4.1.2 | Password reset email over SMTP (`core/Mailer`): Mailpit locally, any SMTP provider in production | Plain SMTP keeps the provider swappable and free |
+| `org.springframework.security:spring-security-crypto` | managed by Spring Boot 4.1.2 | BCrypt hashes for local email/password accounts (`account/PasswordAuth`) | Only the crypto module: no Spring Security filter chain |
 | `com.nimbusds:nimbus-jose-jwt` | 10.10 | Verifying Supabase access tokens (JWKS, ES256/RS256) and local HS256 dev tokens | One small, well-known library instead of the whole Spring Security stack, because the API needs only "who is this bearer token" |
 | `springdoc-openapi-starter-webmvc-ui` | 3.1.1 | The OpenAPI document at `/openapi.json` and Swagger UI at `/docs` | |
 | SLF4J + Logback | 2.0.20 / 1.5.38 | Logging, with the request id on every line | Boot defaults |

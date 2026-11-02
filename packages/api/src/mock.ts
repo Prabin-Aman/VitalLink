@@ -3,6 +3,8 @@
 import type {
   AccessLogEntry,
   ConditionItem,
+  WaterEntry,
+  Recipe,
   ExerciseItem,
   GoalMetricOption,
   NutritionDay,
@@ -28,6 +30,7 @@ const me: Me = {
   id: "8f6c2e1a-0000-4000-8000-000000000001",
   email: "alex.carter@email.com",
   display_name: "Alex Carter",
+  units: "metric",
   timezone: "America/Chicago",
 };
 
@@ -107,7 +110,7 @@ const accessLog: AccessLogEntry[] = [
   { at: "2026-09-11T14:41:00-05:00", actor: "Trinity Valley Medical Center", actor_detail: "Hospital", accessed: "Full record", purpose: "Admission check-in", status: "authorised", share_id: "s5", share_active: true },
   { at: "2026-09-09T11:05:00-05:00", actor: "Dr. Marcus Hale", actor_detail: "Internal Medicine", accessed: "Medication list", purpose: "Refill approval", status: "authorised", share_id: "s2", share_active: true },
   { at: "2026-09-08T06:30:00-05:00", actor: "MyFitness", actor_detail: "Third-party app", accessed: "Activity, steps", purpose: "App sync", status: "limited", share_id: "s10", share_active: true },
-  { at: "2026-09-02T01:17:00-05:00", actor: "Unknown device", actor_detail: "Sign-in attempt · Fort Worth, TX", accessed: "None — blocked", purpose: "Failed authentication", status: "blocked", share_id: null, share_active: false },
+  { at: "2026-09-02T01:17:00-05:00", actor: "Unknown device", actor_detail: "Sign-in attempt · Fort Worth, TX", accessed: "None (blocked)", purpose: "Failed authentication", status: "blocked", share_id: null, share_active: false },
 ];
 
 export const mock = {
@@ -225,6 +228,41 @@ export const mock = {
     { id: "c3", label: "Penicillin", kind: "allergy", note: "severe", noted_on: null },
     { id: "c4", label: "Shellfish", kind: "allergy", note: null, noted_on: null },
   ] as ConditionItem[],
+  /** Today's water (2,100 ml, as in the sample day), newest first. */
+  waterToday: [
+    { id: "w4", ml: 500, at: "2026-09-13T14:40:00-05:00" },
+    { id: "w3", ml: 600, at: "2026-09-13T12:05:00-05:00" },
+    { id: "w2", ml: 500, at: "2026-09-13T09:30:00-05:00" },
+    { id: "w1", ml: 500, at: "2026-09-13T07:15:00-05:00" },
+  ] as WaterEntry[],
+  /** Built from the seeded foods (per 100 g), so the numbers match what the API would work out. */
+  recipes: [
+    {
+      id: "r1",
+      name: "Chicken & rice bowl",
+      servings: 2,
+      notes: "Cook the rice the night before.",
+      items: [
+        { food: { id: "f-chicken", name: "Chicken breast, cooked", brand: null, serving_g: 120, kcal: 165, protein_g: 31, carbs_g: 0, fat_g: 3.6, fibre_g: 0 }, quantity_g: 240, kcal: 396 },
+        { food: { id: "f-rice", name: "Brown rice, cooked", brand: null, serving_g: 160, kcal: 123, protein_g: 2.7, carbs_g: 25.6, fat_g: 1, fibre_g: 1.6 }, quantity_g: 320, kcal: 394 },
+        { food: { id: "f-broccoli", name: "Broccoli, cooked", brand: null, serving_g: 90, kcal: 35, protein_g: 2.4, carbs_g: 7.2, fat_g: 0.4, fibre_g: 3.3 }, quantity_g: 180, kcal: 63 },
+      ],
+      per_serving: { grams: 370, kcal: 426, protein_g: 44, carbs_g: 47, fat_g: 6, fibre_g: 6 },
+      updated_at: "2026-09-10T18:00:00-05:00",
+    },
+    {
+      id: "r2",
+      name: "Overnight oats",
+      servings: 2,
+      notes: null,
+      items: [
+        { food: { id: "f-oats", name: "Rolled oats", brand: null, serving_g: 40, kcal: 379, protein_g: 13.2, carbs_g: 67.7, fat_g: 6.5, fibre_g: 10.1 }, quantity_g: 100, kcal: 379 },
+        { food: { id: "f-yoghurt", name: "Greek yoghurt", brand: null, serving_g: 170, kcal: 73, protein_g: 9.9, carbs_g: 3.9, fat_g: 2, fibre_g: 0 }, quantity_g: 200, kcal: 146 },
+      ],
+      per_serving: { grams: 150, kcal: 262, protein_g: 16, carbs_g: 38, fat_g: 5, fibre_g: 5 },
+      updated_at: "2026-09-08T07:30:00-05:00",
+    },
+  ] as Recipe[],
   emergency,
   devices,
   sync,

@@ -48,7 +48,11 @@ public class NutritionService {
     private final AccountService accounts;
     private final HealthService health;
 
-    public NutritionService(JdbcClient jdbc, AccountService accounts, HealthService health) {
+    private final OpenFoodFacts openFoodFacts;
+
+    public NutritionService(
+            JdbcClient jdbc, AccountService accounts, HealthService health, OpenFoodFacts openFoodFacts) {
+        this.openFoodFacts = openFoodFacts;
         this.jdbc = jdbc;
         this.accounts = accounts;
         this.health = health;
@@ -78,6 +82,65 @@ public class NutritionService {
                 .param("p", pattern)
                 .param("u", me.id())
                 .query(NutritionService::foodOut)
+                .list();
+    }
+
+    /**
+     * Nutrition › Scan Barcode: a food the user (or the seeded list) already has with this barcode, else the
+     * product from Open Food Facts, saved as the user's own food with its barcode.
+     */
+    public FoodOut foodByBarcode(CurrentUser me, String code) {
+        if (code == null || !code.matches("\\d{8,14}")) {
+            throw ApiError.invalid("A barcode is 8 to 14 digits.");
+        }
+        var known = jdbc.sql("""
+                        SELECT * FROM vitallink.foods
+                        WHERE barcode = :b AND (source = 'seeded' OR owner_user_id = :u)
+                        ORDER BY source LIMIT 1
+                        """)
+                .param("b", code)
+                .param("u", me.id())
+                .query(NutritionService::foodOut)
+                .optional();
+        if (known.isPresent()) {
+            return known.get();
+        }
+        OpenFoodFacts.Product p;
+        try {
+            p = openFoodFacts
+                    .lookup(code)
+                    .orElseThrow(() -> new ApiError(
+                            404, "food_not_found", "This barcode isn't in Open Food Facts. Add the food yourself."));
+        } catch (IllegalStateException e) {
+            throw new ApiError(
+                    503, "lookup_unavailable", "Couldn't reach Open Food Facts. Try again, or add the food yourself.");
+        }
+        FoodOut food = createFood(
+                me,
+                new FoodIn(
+                        p.name(), p.brand(), p.servingG(), p.kcal(), p.proteinG(), p.carbsG(), p.fatG(), p.fibreG()));
+        jdbc.sql("UPDATE vitallink.foods SET barcode = :b WHERE id = :id")
+                .param("b", code)
+                .param("id", food.id())
+                .update();
+        return food;
+    }
+
+    /** The water entries of one local day, newest first (Hydration › Today). */
+    public List<WaterOut> waterOn(CurrentUser me, java.time.LocalDate day) {
+        java.time.ZoneId zone = me.zone();
+        return jdbc.sql("""
+                        SELECT id, ml, logged_at FROM vitallink.hydration_logs
+                        WHERE user_id = :u AND logged_at >= :start AND logged_at < :end
+                        ORDER BY logged_at DESC, id DESC
+                        """)
+                .param("u", me.id())
+                .param("start", day.atStartOfDay(zone).toOffsetDateTime())
+                .param("end", day.plusDays(1).atStartOfDay(zone).toOffsetDateTime())
+                .query((rs, i) -> new WaterOut(
+                        rs.getObject("id", UUID.class),
+                        rs.getInt("ml"),
+                        rs.getObject("logged_at", java.time.OffsetDateTime.class)))
                 .list();
     }
 

@@ -19,6 +19,10 @@ export function ApiProvider({ children }: { children: ReactNode }) {
 /** The client, for screens that write (mark a dose taken…). */
 export const useApi = () => useContext(ApiContext);
 
+/** Fired after a sheet saves, so every screen still mounted fetches again. */
+const listeners = new Set<() => void>();
+export const notifyChanged = () => listeners.forEach((f) => f());
+
 export type Loadable<T> = { status: "loading" } | { status: "error"; error: Error } | { status: "ready"; data: T };
 
 export function useScreen<T>(load: (api: VitalLinkClient) => Promise<T>): Loadable<T> {
@@ -41,5 +45,9 @@ export function useReloadableScreen<T>(load: (api: VitalLinkClient) => Promise<T
     };
   }, [api, load, version]);
   const reload = useCallback(() => setVersion((v) => v + 1), []);
+  useEffect(() => {
+    listeners.add(reload);
+    return () => void listeners.delete(reload);
+  }, [reload]);
   return [state, reload];
 }

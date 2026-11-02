@@ -41,15 +41,15 @@ export const conversations: Conversation[] = [
     tone: "teal",
     unread: false,
     last_at: "2026-09-13T06:45:00-05:00",
-    preview: "Your ferritin is slightly low — let’s recheck in 8 weeks.",
+    preview: "Your ferritin is slightly low. Let’s recheck in 8 weeks.",
     messages: [
-      { id: "m1", from_me: false, at: "2026-09-12T09:12:00-05:00", body: "Hi Alex — I have reviewed your CBC from 11 September. Most values look good." },
+      { id: "m1", from_me: false, at: "2026-09-12T09:12:00-05:00", body: "Hi Alex, I have reviewed your CBC from 11 September. Most values look good." },
       { id: "m2", from_me: false, at: "2026-09-12T09:12:00-05:00", body: "Ferritin came back at 28 ng/mL, just under the reference range, and neutrophils are mildly elevated at 78%. Neither is alarming on its own." },
       { id: "m3", from_me: true, at: "2026-09-12T09:41:00-05:00", body: "Should I be doing anything differently in the meantime?" },
-      { id: "m4", from_me: false, at: "2026-09-12T10:04:00-05:00", body: "Continue the ferrous sulfate and add iron-rich food where you can. I would like to recheck in 8 weeks — I have attached the lab order.", attachment: { name: "Lab order · CBC + Ferritin · PDF" } },
+      { id: "m4", from_me: false, at: "2026-09-12T10:04:00-05:00", body: "Continue the ferrous sulfate and add iron-rich food where you can. I would like to recheck in 8 weeks. I have attached the lab order.", attachment: { name: "Lab order · CBC + Ferritin · PDF" } },
     ],
   },
-  { id: "c2", with: "Coach Maya Reed", role: "Strength & conditioning", role_long: "Strength & conditioning coach", tone: "energy", unread: true, last_at: "2026-09-12T08:45:00-05:00", preview: "Nice work on the deadlift progression — let us add a deload week.", messages: [] },
+  { id: "c2", with: "Coach Maya Reed", role: "Strength & conditioning", role_long: "Strength & conditioning coach", tone: "energy", unread: true, last_at: "2026-09-12T08:45:00-05:00", preview: "Nice work on the deadlift progression. Let us add a deload week.", messages: [] },
   { id: "c3", with: "Dr. Marcus Hale", role: "Internal Medicine", role_long: "Internal Medicine", tone: "teal", unread: false, last_at: "2026-09-10T08:45:00-05:00", preview: "Refill request approved. Pharmacy notified.", messages: [] },
   { id: "c4", with: "VitalLink Support", role: "Account & privacy", role_long: "Account & privacy", tone: "neutral", unread: false, last_at: "2026-09-06T08:45:00-05:00", preview: "We have updated your data sharing preferences.", messages: [] },
 ];
@@ -106,7 +106,7 @@ export const emergency: EmergencyProfile = {
   allergies: ["Penicillin (severe)", "Shellfish"],
   conditions: ["Type 2 diabetes", "Hypertension"],
   medications: ["Metformin 500 mg", "Lisinopril 10 mg"],
-  organ_donor: "Yes — registered in Texas",
+  organ_donor: "Yes, registered in Texas",
   preferred_hospital: "Trinity Valley Medical Center, Dallas",
   notes: "Wears a continuous glucose monitor on left arm.",
   contacts: [

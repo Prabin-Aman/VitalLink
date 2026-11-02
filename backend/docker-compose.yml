@@ -1,4 +1,4 @@
-# Local Postgres for development. Values come from backend/.env (see .env.example).
+# Local Postgres and a mail catcher for development. Values come from backend/.env (see .env.example).
 #   docker compose up -d      start in the background
 #   docker compose down       stop (data is kept in the pgdata volume)
 #   docker compose down -v    stop and wipe the data
@@ -19,6 +19,13 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # Mailpit catches the API's email (password reset links) locally: open http://localhost:8025 to read it.
+  mail:
+    image: axllent/mailpit:v1.27
+    ports:
+      - "127.0.0.1:1025:1025"   # SMTP the API sends to
+      - "127.0.0.1:8025:8025"   # web inbox
 
 volumes:
   pgdata:

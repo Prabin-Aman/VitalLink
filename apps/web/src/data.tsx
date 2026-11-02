@@ -9,12 +9,42 @@ export function ApiProvider({ children }: { children: ReactNode }) {
     () =>
       new VitalLinkClient({
         baseUrl: import.meta.env.VITE_API_URL || undefined,
-        // Until Supabase sign-in: a dev token from this tab, or VITE_DEV_TOKEN (apps/web/.env.local) for any tab.
-        getToken: async () => sessionStorage.getItem("vl.token") ?? import.meta.env.VITE_DEV_TOKEN ?? null,
+        // The signed-in session (Sign In / Create Account), or VITE_DEV_TOKEN from apps/web/.env.local for local tools.
+        getToken: async () => sessionToken() ?? import.meta.env.VITE_DEV_TOKEN ?? null,
       }),
   );
   return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
 }
+
+// ---- Session: "Remember me" keeps the token in localStorage, otherwise only for this tab.
+const KEY = "vl.token";
+const read = (s: () => Storage) => {
+  try {
+    return s().getItem(KEY);
+  } catch {
+    return null;
+  }
+};
+export const sessionToken = () => read(() => sessionStorage) ?? read(() => localStorage);
+export function startSession(token: string, remember: boolean) {
+  endSession();
+  try {
+    (remember ? localStorage : sessionStorage).setItem(KEY, token);
+  } catch {
+    // storage blocked: the token can't be kept, so the user signs in again next time
+  }
+}
+export function endSession() {
+  for (const s of [() => sessionStorage, () => localStorage]) {
+    try {
+      s().removeItem(KEY);
+    } catch {
+      // nothing stored
+    }
+  }
+}
+/** Live mode with nobody signed in (and no local dev token): the app sends people to Sign In. */
+export const needsSignIn = (api: VitalLinkClient) => !api.isMock && !sessionToken() && !import.meta.env.VITE_DEV_TOKEN;
 
 /** The client, for screens that write (mark a dose taken, save settings…). */
 export const useApi = () => useContext(ApiContext);

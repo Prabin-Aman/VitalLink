@@ -5,6 +5,7 @@ import { Linking, StyleSheet, Text, View } from "react-native";
 import { ChipRow, Pill, Screen, Section, SmallButton } from "../components/kit";
 import { ScreenState } from "../components/ui";
 import { useScreen } from "../data";
+import { BookAppointmentSheet, RescheduleSheet } from "../sheets/CareSheets";
 import { c, t } from "../theme";
 
 const CHIPS = ["Upcoming", "Past", "Cancelled"];
@@ -12,12 +13,15 @@ const CHIPS = ["Upcoming", "Past", "Cancelled"];
 export function AppointmentsScreen() {
   const state = useScreen(loadAppointments);
   const [tab, setTab] = useState(CHIPS[0]);
+  const [sheet, setSheet] = useState<{ kind: "book" } | { kind: "reschedule"; id: string; title: string; startsAt: string } | null>(null);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
   const items = v.items.filter((a) => a.group === tab);
 
   return (
-    <Screen title="Appointments" subtitle={v.shortSubtitle} back="/profile" chips={<ChipRow label="Appointment filter" options={CHIPS} value={tab} onChange={setTab} />}>
+    <Screen title="Appointments" subtitle={v.shortSubtitle} back="/profile" add={() => setSheet({ kind: "book" })} chips={<ChipRow label="Appointment filter" options={CHIPS} value={tab} onChange={setTab} />}>
+      {sheet?.kind === "book" && <BookAppointmentSheet onClose={() => setSheet(null)} />}
+      {sheet?.kind === "reschedule" && <RescheduleSheet id={sheet.id} title={sheet.title} startsAt={sheet.startsAt} onClose={() => setSheet(null)} />}
       {items.length === 0 && <Text style={t("bodyM", "textTertiary")}>No {tab.toLowerCase()} appointments.</Text>}
       {items.map((a) => (
         <Section key={a.id} gap={12}>
@@ -37,7 +41,7 @@ export function AppointmentsScreen() {
           {a.group === "Upcoming" && (
             <View style={st.actions}>
               <SmallButton label={a.mobilePrimary} primary style={st.flex} onPress={a.mapsUrl ? () => Linking.openURL(a.mapsUrl!) : undefined} />
-              <SmallButton label="Reschedule" style={st.flex} />
+              <SmallButton label="Reschedule" style={st.flex} onPress={a.canCancel ? () => setSheet({ kind: "reschedule", id: a.id, title: a.title, startsAt: a.startsAt }) : undefined} />
             </View>
           )}
         </Section>

@@ -146,7 +146,7 @@ describe("Privacy › Access details and Devices › Permissions", () => {
     expect(d.share).toMatchObject({ id: "s1", who: "Dr. Laura Bennett", active: true });
     const blocked = v.log[4].details;
     expect(blocked.subtitle).toMatch(/tried to look at/);
-    expect(blocked.rows.find((r) => r.label === "Result")!.value).toBe("Blocked — failed authentication");
+    expect(blocked.rows.find((r) => r.label === "Result")!.value).toBe("Blocked: failed authentication");
     expect(blocked.share).toBeNull();
   });
 

@@ -82,7 +82,14 @@ public class ModuleData {
                 "hydration",
                 "SELECT * FROM vitallink.hydration_logs WHERE user_id = :u ORDER BY logged_at, id",
                 "nutrition_targets",
-                "SELECT * FROM vitallink.nutrition_targets WHERE user_id = :u");
+                "SELECT * FROM vitallink.nutrition_targets WHERE user_id = :u",
+                "recipes",
+                "SELECT * FROM vitallink.recipes WHERE user_id = :u ORDER BY name, id",
+                "recipe_items",
+                """
+                SELECT i.* FROM vitallink.recipe_items i JOIN vitallink.recipes r ON r.id = i.recipe_id
+                WHERE r.user_id = :u ORDER BY r.name, i.position
+                """);
     }
 
     @Bean

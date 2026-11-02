@@ -26,7 +26,7 @@ const NAV: { label: string; icon: IconName; to: string }[] = [
   { label: "Settings", icon: "settings-18", to: "/settings" },
 ];
 
-export function AppShell({ children, name, initials, email }: { children: ReactNode; name: string; initials: string; email: string }) {
+export function AppShell({ children, name, initials, email, photo }: { children: ReactNode; name: string; initials: string; email: string; photo: string | null }) {
   return (
     <div className={s.shell}>
       <aside className={s.sidebar}>
@@ -53,7 +53,7 @@ export function AppShell({ children, name, initials, email }: { children: ReactN
       <div className={s.main}>
         <header className={s.topbar}>
           <TopSearch className={s.search} />
-          <ProfileMenu name={name} initials={initials} email={email} className={s.profile} labelClass={s.label} />
+          <ProfileMenu name={name} initials={initials} email={email} photo={photo} className={s.profile} labelClass={s.label} />
         </header>
         <main className={s.content}>{children}</main>
       </div>

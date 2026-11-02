@@ -3,7 +3,7 @@
 import type { ColorToken } from "@vitallink/tokens";
 import { need, NotAvailableError, type VitalLinkClient } from "../client";
 import { calendarDate, dayMonth, dayMonthYear, daysFrom, longDayMonthYear } from "../format";
-import type { ChipVM } from "../screens";
+import type { ChipVM } from "./shared";
 import type { LabPanel, LabResult, RecordType } from "../types";
 
 const TYPE_LABEL: Record<RecordType, [string, string]> = {
@@ -104,6 +104,8 @@ export interface LabResultsVM {
   subtitle: string;
   tints: { key: string; label: string; value: string; bg: ColorToken; fg: ColorToken }[];
   rows: LabRowVM[];
+  /** Set when there are no lab results yet: the page shows this line instead of a panel. */
+  empty: string | null;
 }
 
 const fixed = (v: number, d: number) => v.toFixed(d);
@@ -121,23 +123,35 @@ const labRow = (r: LabResult): LabRowVM => {
     unit: r.unit,
     range: `${fixed(r.low, r.decimals)} – ${fixed(r.high, r.decimals)}`,
     status: chip,
-    previous: r.previous === null ? "—" : fixed(r.previous, r.decimals),
+    previous: r.previous === null ? "N/A" : fixed(r.previous, r.decimals),
     trend,
     trendLabel: trend === "↑" ? "up" : trend === "↓" ? "down" : trend === "→" ? "unchanged" : "",
     rowBg: dir === "low" ? "rangeLowBg" : dir === "high" ? "rangeHighBg" : null,
   };
 };
 
-async function panel(api: VitalLinkClient, id?: string): Promise<LabPanel> {
+async function panel(api: VitalLinkClient, id?: string): Promise<LabPanel | null> {
   const panels = need(await api.labPanels(), "Lab results");
   const p = id ? panels.find((x) => x.id === id) : panels[0];
-  if (!p) throw new NotAvailableError("This lab panel");
-  return p;
+  if (!p && id) throw new NotAvailableError("This lab panel");
+  return p ?? null;
 }
 
 export async function loadLabResults(api: VitalLinkClient, panelId?: string): Promise<LabResultsVM> {
   const [me, p, all] = await Promise.all([api.me(), panel(api, panelId), api.labPanels()]);
   const list = [...need(all, "Lab results")].sort((a, b) => b.collected_at.localeCompare(a.collected_at));
+  if (!p) {
+    return {
+      panelId: "",
+      panelName: "",
+      collectedOn: "",
+      panels: [],
+      subtitle: "Your lab panels, newest first",
+      tints: [],
+      rows: [],
+      empty: "No lab results yet. Add Results to type them in from a report.",
+    };
+  }
   const named = (x: LabPanel) => x.short_name || x.name;
   const panels = list.map((x) => ({
     id: x.id,
@@ -157,6 +171,7 @@ export async function loadLabResults(api: VitalLinkClient, panelId?: string): Pr
       { key: "abnormal", label: "Out of range", value: String(count("abnormal")), bg: "rangeHighBg", fg: "rangeHigh" },
     ],
     rows: p.results.map(labRow),
+    empty: null,
   };
 }
 
@@ -179,7 +194,7 @@ export async function loadDocument(api: VitalLinkClient, recordId: string): Prom
   const [me, overview, account] = await Promise.all([api.me(), api.recordsOverview(), api.account()]);
   const rec = need(overview, "Medical records").recent.find((r) => r.id === recordId);
   if (!rec || !rec.panel_id) throw new NotAvailableError("A preview of this document");
-  const p = await panel(api, rec.panel_id);
+  const p = (await panel(api, rec.panel_id))!; // with an id, panel() throws rather than returning null
   const tz = me.timezone;
   const now = api.now();
   const share = need(overview, "Medical records").shares.find((s) => rec.shared_with && s.grantee.endsWith(rec.shared_with.replace(/^Dr\.\s*/, "")));

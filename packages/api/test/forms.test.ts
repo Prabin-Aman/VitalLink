@@ -3,20 +3,38 @@ import {
   addDays,
   checkAppointment,
   checkContact,
+  checkExerciseLog,
   checkFood,
   checkGoal,
+  checkGoalEdit,
+  checkLabPanel,
+  checkLabTest,
   checkMedication,
+  checkPhoto,
+  checkMedicationEdit,
+  checkNewFood,
+  checkNutritionTargets,
+  checkTargets,
   checkNote,
   checkReading,
+  checkRefill,
+  checkSet,
+  checkSignUp,
   checkUpload,
   checkWorkout,
   dateLabel,
   dateOptions,
   dateTimeIn,
   foodEstimate,
+  goalEditForm,
+  medicationForm,
   mock,
+  parseHeight,
+  passwordNeeds,
+  setSummary,
   timeIn,
   timeOptions,
+  targetsForm,
   titleFromFile,
   todayIn,
   toE164,
@@ -155,9 +173,9 @@ describe("New Goal", () => {
   const metrics = mock.goalMetrics;
   it("types sleep in hours and distance in km, and stores the API's units", () => {
     const f = { metric: "sleep", direction: "at_least", target: "7.5", starts: "2026-10-28", ends: "" };
-    expect(body(checkGoal(f, metrics))).toMatchObject({ title: "Sleep — 7.5 hours a day", target: 450, area: "recovery", comparator: "at_least" });
+    expect(body(checkGoal(f, metrics))).toMatchObject({ title: "Sleep: 7.5 hours a day", target: 450, area: "recovery", comparator: "at_least" });
     expect(body(checkGoal({ ...f, metric: "distance", target: "5" }, metrics))).toMatchObject({ target: 5000 });
-    expect(body(checkGoal({ ...f, metric: "weight", direction: "at_most", target: "70" }, metrics))).toMatchObject({ title: "Weight — At most 70 kg" });
+    expect(body(checkGoal({ ...f, metric: "weight", direction: "at_most", target: "70" }, metrics))).toMatchObject({ title: "Weight: At most 70 kg" });
   });
   it("refuses a zero target or an end before the start", () => {
     const f = { metric: "steps", direction: "at_least", target: "0", starts: "2026-10-28", ends: "" };
@@ -199,5 +217,129 @@ describe("Edit Emergency Info", () => {
     expect(checkContact({ name: "", relation: "", phone: "" })).toBeNull();
     expect(error(checkContact({ name: "Sam", relation: "", phone: "" })!)).toMatch(/related/);
     expect(body(checkContact({ name: "Sam Carter", relation: "Brother", phone: "(214) 555-0199" })!)).toEqual({ name: "Sam Carter", relation: "Brother", phone: "+12145550199" });
+  });
+});
+
+describe("Edit Medication, Edit Goal, Daily targets", () => {
+  const med = { id: "m1", name: "Metformin", form: "tablet", strength: "500 mg", instructions: null, prescriber: null, refills_left: 3, refill_due_on: null, status: "active" as const, started_on: "2026-01-01", stopped_on: null, frequency: "Twice daily", schedule: [{ time: "20:00:00", days: [1, 3] }, { time: "08:00:00", days: [1, 3] }] };
+  it("prefills from the stored schedule and always sends the days", () => {
+    const f = medicationForm(med);
+    expect(f).toMatchObject({ times: ["08:00", "20:00"], days: ["1", "3"], prescriber: "", refills: "3" });
+    expect(body(checkMedicationEdit({ ...f, days: ["1", "2", "3", "4", "5", "6", "7"] }))).toMatchObject({ days: [1, 2, 3, 4, 5, 6, 7], refills_left: 3, prescriber: "" });
+  });
+
+  const metrics = mock.goalMetrics;
+  const goal = { id: "g1", title: "Sleep: 7.5 hours a day", short_title: "Sleep", area: "recovery" as const, kind: "daily_total" as const, metric: "sleep", comparator: "at_least" as const, target: 450, baseline: null, starts_on: "2026-10-01", ends_on: null, lifecycle: "active" as const, achieved_at: null };
+  it("edits a goal's target in the units it was typed in, and renames it", () => {
+    const f = goalEditForm(goal, metrics);
+    expect(f).toEqual({ target: "7.5", ends: "", status: "active" });
+    expect(body(checkGoalEdit({ ...f, target: "8", status: "paused" }, goal, metrics))).toEqual({ title: "Sleep: 8 hours a day", target: 480, ends_on: null, lifecycle: "paused" });
+    expect(error(checkGoalEdit({ ...f, ends: "2026-09-01" }, goal, metrics))).toMatch(/end date/);
+    // An achieved goal keeps its lifecycle; an unchanged target keeps the title.
+    expect(body(checkGoalEdit(f, { ...goal, lifecycle: "achieved" }, metrics))).toEqual({ target: 450, ends_on: null });
+  });
+
+  it("checks daily targets and stores sleep in minutes", () => {
+    const f = targetsForm(mock.targets);
+    expect(f.sleep).toBe("8");
+    expect(body(checkTargets({ ...f, steps: "12,000", sleep: "7.5" }))).toMatchObject({ daily_steps_goal: 12000, sleep_goal_min: 450 });
+    expect(error(checkTargets({ ...f, steps: "500" }))).toMatch(/Steps should be/);
+  });
+});
+
+describe("Settings › Profile", () => {
+  it("reads heights in either system", () => {
+    expect(parseHeight("5 ft 10 in", "imperial")).toBe(177.8);
+    expect(parseHeight(`5'10"`, "imperial")).toBe(177.8);
+    expect(parseHeight("178 cm", "imperial")).toBe(178);
+    expect(parseHeight("178", "metric")).toBe(178);
+    expect(parseHeight("70", "imperial")).toBe(177.8); // inches
+    expect(parseHeight("tall", "metric")).toBeNull();
+    expect(parseHeight("400 cm", "metric")).toBeNull();
+  });
+  it("accepts small JPEG, PNG or WebP photos", () => {
+    expect(checkPhoto({ type: "image/png", size: 1000 }).ok).toBe(true);
+    expect(error(checkPhoto({ type: "image/gif", size: 1000 }))).toMatch(/JPEG, PNG or WebP/);
+    expect(error(checkPhoto({ type: "image/jpeg", size: 3 * 1024 * 1024 }))).toMatch(/over 2 MB/);
+  });
+});
+
+describe("Log exercise", () => {
+  it("needs reps or a hold time for each set", () => {
+    expect(body(checkSet({ reps: "10", weight: "60", seconds: "" }))).toEqual({ reps: 10, weight_kg: 60, duration_s: null });
+    expect(body(checkSet({ reps: "", weight: "", seconds: "45" }))).toEqual({ reps: null, weight_kg: null, duration_s: 45 });
+    expect(error(checkSet({ reps: "", weight: "60", seconds: "" }))).toMatch(/reps, or the time/);
+    expect(error(checkSet({ reps: "2.5", weight: "", seconds: "" }))).toMatch(/whole number/);
+    expect(setSummary({ reps: 10, weight_kg: 60, duration_s: null })).toBe("10 reps · 60 kg");
+  });
+  it("saves a strength session named after the exercise, with its sets", () => {
+    const f = { date: "2026-10-01", time: "07:00", minutes: "25", effort: "7" };
+    const b = body(checkExerciseLog("Barbell Bench Press", f, [{ reps: 10, weight_kg: 60, duration_s: null }, { reps: null, weight_kg: null, duration_s: 45 }], TZ));
+    expect(b).toMatchObject({ type: "strength", title: "Barbell Bench Press", duration_s: 1500, rpe: 7, started_at: "2026-10-01T07:00:00-05:00" });
+    expect((b as { sets: unknown[] }).sets).toEqual([
+      { exercise: "Barbell Bench Press", reps: 10, weight_kg: 60 },
+      { exercise: "Barbell Bench Press", duration_s: 45 },
+    ]);
+    expect(error(checkExerciseLog("Plank", f, [], TZ))).toBe("Add at least one set.");
+    expect(error(checkExerciseLog("Plank", { ...f, minutes: "" }, [{ reps: 1, weight_kg: null, duration_s: null }], TZ))).toMatch(/how long/);
+  });
+});
+
+describe("Create Account", () => {
+  const f = { first: "Sudip", last: "Ghorasaini", email: "Sudip@Example.com", phone: "(214) 555-0148", password: "Correct-horse-42", confirm: "Correct-horse-42", zip: "75201", dob: "1998-01-08", height: "5 ft 10 in" };
+  it("says what a password still needs", () => {
+    expect(passwordNeeds("short")).toBe("Still needs 12 characters, a number and a symbol.");
+    expect(passwordNeeds("longenoughpassword1")).toBe("Still needs a symbol.");
+    expect(passwordNeeds("Correct-horse-42")).toBeNull();
+  });
+  it("builds the sign-up body and names the field that's wrong", () => {
+    expect(body(checkSignUp(f, "2026-10-31"))).toEqual({ email: "sudip@example.com", password: "Correct-horse-42", first_name: "Sudip", last_name: "Ghorasaini", phone: "+12145550148", zip: "75201", date_of_birth: "1998-01-08", height_cm: 177.8 });
+    expect(error(checkSignUp({ ...f, phone: "897895" }, "2026-10-31"))).toMatch(/10-digit mobile/);
+    expect(error(checkSignUp({ ...f, zip: "4460" }, "2026-10-31"))).toMatch(/5-digit ZIP/);
+    expect(error(checkSignUp({ ...f, height: "tall" }, "2026-10-31"))).toMatch(/height/);
+    expect(error(checkSignUp({ ...f, dob: "2030-01-01" }, "2026-10-31"))).toMatch(/date of birth/);
+    expect(body(checkSignUp({ ...f, phone: "", zip: "", dob: "", height: "" }, "2026-10-31"))).not.toHaveProperty("phone");
+  });
+});
+
+describe("Check-ins, refills, nutrition targets, foods and lab results", () => {
+  it("logs mood as a 1–5 score and splits a mindful session into 5-minute buckets", () => {
+    const f = { metric: "mood", value: "4", value2: "", date: "2026-10-01", time: "21:00" };
+    expect(body(checkReading(f, TZ))).toEqual([{ metric: "mood", value: 4, at: "2026-10-01T21:00:00-05:00" }]);
+    expect(error(checkReading({ ...f, value: "7" }, TZ))).toBe("Mood should be between 1 and 5.");
+    const m = body(checkReading({ ...f, metric: "mindful_minutes", value: "12" }, TZ));
+    expect(m.map((r) => r.value)).toEqual([5, 5, 2]);
+    expect(m.map((r) => r.at)).toEqual(["2026-10-02T02:00:00.000Z", "2026-10-02T02:05:00.000Z", "2026-10-02T02:10:00.000Z"]);
+  });
+
+  it("records a refill", () => {
+    expect(body(checkRefill({ refills: "2", due: "2026-11-30" }, "2026-10-31"))).toEqual({ refills_left: 2, refill_due_on: "2026-11-30" });
+    expect(body(checkRefill({ refills: "0", due: "" }, "2026-10-31"))).toEqual({ refills_left: 0, refill_due_on: null });
+    expect(error(checkRefill({ refills: "1.5", due: "" }, "2026-10-31"))).toMatch(/whole number/);
+    expect(error(checkRefill({ refills: "1", due: "2026-10-01" }, "2026-10-31"))).toMatch(/passed/);
+  });
+
+  it("checks nutrition targets", () => {
+    const f = { kcal: "2,200", protein: "150", carbs: "250", fat: "70", fibre: "30", water: "2500", glass: "250", weekly: "-0.25" };
+    expect(body(checkNutritionTargets(f))).toEqual({ kcal: 2200, protein_g: 150, carbs_g: 250, fat_g: 70, fibre_g: 30, water_ml: 2500, glass_ml: 250, weekly_target_kg: -0.25 });
+    expect(error(checkNutritionTargets({ ...f, kcal: "500" }))).toMatch(/Calories/);
+    expect(error(checkNutritionTargets({ ...f, weekly: "-2" }))).toMatch(/Weekly/);
+  });
+
+  it("adds a food from its label", () => {
+    const f = { name: " Greek yogurt ", brand: "", kcal: "59", serving: "170", protein: "10", carbs: "3.6", fat: "0.4", fibre: "" };
+    expect(body(checkNewFood(f))).toEqual({ name: "Greek yogurt", kcal: 59, protein_g: 10, carbs_g: 3.6, fat_g: 0.4, serving_g: 170 });
+    expect(error(checkNewFood({ ...f, protein: "60", carbs: "50" }))).toMatch(/more than 100 g/);
+    expect(error(checkNewFood({ ...f, name: "" }))).toMatch(/name/);
+  });
+
+  it("types in lab results, never blood type", () => {
+    const t = body(checkLabTest({ name: "Hemoglobin", value: "14.2", unit: "g/dL", low: "13", high: "17" }));
+    expect(t).toEqual({ name: "Hemoglobin", value: 14.2, unit: "g/dL", low: 13, high: 17, decimals: 1 });
+    expect(error(checkLabTest({ name: "Blood type", value: "1", unit: "", low: "0", high: "1" }))).toMatch(/blood type/);
+    expect(error(checkLabTest({ name: "Platelets", value: "245", unit: "", low: "400", high: "150" }))).toMatch(/below/);
+    const p = body(checkLabPanel({ name: "Complete Blood Count", short: "CBC", date: "2026-10-27", laboratory: "" }, [t], TZ, "2026-10-31"));
+    expect(p).toMatchObject({ short_name: "CBC", collected_at: "2026-10-27T09:00:00-05:00", results: [t] });
+    expect(error(checkLabPanel({ name: "CBC", short: "CBC", date: "2026-10-27", laboratory: "" }, [], TZ, "2026-10-31"))).toMatch(/at least one/);
   });
 });

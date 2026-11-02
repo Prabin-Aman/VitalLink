@@ -1,10 +1,11 @@
 // Care view-models: Medications, Appointments, Messages, Notifications, Family,
-// Emergency ID, Devices, Health Library, Settings.
+// Emergency ID, Devices, Settings.
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
 import { ago, dayMonth, dayMonthYear, daysFrom, height, languageName, monthYear, phone, relativeDay, timeOfDay, weekday } from "../format";
-import type { ChipVM, StatVM } from "../screens";
-import type { AppNotification, Article, AvatarTone, Device, NotificationKind, Prescription, SyncPlatform, SyncUpload } from "../types";
+import type { AppNotification, AvatarTone, Device, NotificationKind, Prescription, SyncPlatform, SyncUpload } from "../types";
+import type { Option } from "../forms";
+import type { ChipVM, StatVM } from "./shared";
 
 export const initials = (name: string) =>
   name
@@ -60,6 +61,8 @@ export interface MedRowVM {
   /** Row tint: missed doses and due refills are highlighted. */
   rowBg: ColorToken | null;
   action: string;
+  /** What the row's button does: mark the dose taken, open Dose history, or record a refill. */
+  actionKind: "take" | "history" | "refill";
   /** Mobile: "500 mg · twice daily · Taken 8:00 AM" */
   summary: string;
   mobileAction: string;
@@ -94,19 +97,21 @@ export async function loadMedications(api: VitalLinkClient): Promise<Medications
   const refills = count("refill");
   const missed = count("missed");
   const active = m.prescriptions.length;
+  // Counted per medication, like the table's rows (a twice-daily medication taken twice is one "taken").
+  const taken = m.prescriptions.filter((p) => p.dose.status === "taken").length;
 
   return {
     subtitle: `${active} active prescriptions · ${refills} refill${refills === 1 ? "" : "s"} due this week`,
     shortSubtitle: `${active} active · ${refills} refill${refills === 1 ? "" : "s"} due`,
     tints: [
       { key: "active", label: "Active medications", value: String(active), bg: "bgSurface", fg: "textPrimary" },
-      { key: "taken", label: "Taken today", value: String(m.doses_today.taken), bg: "rangeNormalBg", fg: "rangeNormal" },
+      { key: "taken", label: "Taken today", value: String(taken), bg: "rangeNormalBg", fg: "rangeNormal" },
       { key: "upcoming", label: "Upcoming", value: String(upcomingToday), bg: "bgBrandSubtle", fg: "textBrand" },
       { key: "missed", label: "Missed", value: String(missed), bg: "rangeHighBg", fg: "rangeHigh" },
       { key: "refills", label: "Refills due", value: String(refills), bg: "rangeBorderlineBg", fg: "rangeBorderline" },
     ],
     mobileStats: [
-      { key: "taken", label: "Taken today", value: String(m.doses_today.taken), unit: "", caption: `of ${m.doses_today.total} doses`, accent: "rangeNormal" },
+      { key: "taken", label: "Taken today", value: String(taken), unit: "", caption: `of ${active} medications`, accent: "rangeNormal" },
       { key: "upcoming", label: "Upcoming", value: String(upcomingToday), unit: "", caption: "later today", accent: "goalOnTrack" },
       { key: "missed", label: "Missed", value: String(missed), unit: "", caption: "yesterday", accent: "rangeHigh" },
       { key: "refills", label: "Refills due", value: String(refills), unit: "", caption: "this week", accent: "rangeBorderline" },
@@ -133,6 +138,7 @@ export async function loadMedications(api: VitalLinkClient): Promise<Medications
         status: MED_CHIP[state],
         rowBg: state === "missed" ? "rangeHighBg" : state === "refill" ? "rangeBorderlineBg" : null,
         action: state === "taken" ? "History" : state === "refill" ? "Request Refill" : "Mark Taken",
+        actionKind: state === "taken" ? "history" : state === "refill" ? "refill" : "take",
         summary: [p.strength, p.frequency.toLowerCase(), p.dose.status === "due" ? due : next].join(" · "),
         mobileAction: state === "taken" ? "History" : state === "refill" ? "Request refill" : "Mark taken",
       };
@@ -436,7 +442,7 @@ export async function loadEmergency(api: VitalLinkClient): Promise<EmergencyVM> 
       field("allergies", "Allergies", e.allergies.join(" · "), "rangeHigh"),
       field("conditions", "Conditions", e.conditions.join(" · "), "textInverse"),
       field("medications", "Medications", e.medications.join(" · "), "textInverse"),
-      ...(e.organ_donor ? [field("donor", "Organ donor", e.organ_donor, "rangeNormal", true, e.organ_donor.split(" — ")[0])] : []),
+      ...(e.organ_donor ? [field("donor", "Organ donor", e.organ_donor, "rangeNormal", true, e.organ_donor.split(", ")[0])] : []),
       ...(e.preferred_hospital ? [field("hospital", "Preferred hospital", e.preferred_hospital, "textInverse", false)] : []),
       field("notes", "Notes", e.notes, "textSecondary"),
     ],
@@ -545,76 +551,23 @@ export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
   };
 }
 
-// ---------------------------------------------------------------- library
-
-export interface ArticleVM {
-  id: string;
-  /** Route param for the reader (/library/:slug); mock articles without a slug use their id. */
-  slug: string;
-  tag: ChipVM;
-  title: string;
-  meta: string;
-  shortMeta: string;
-}
-
-export interface LibraryVM {
-  categories: string[];
-  featured: { slug: string; overline: string; title: string; summary: string; meta: string };
-  featuredMobile: { overline: string; title: string; meta: string };
-  trending: ArticleVM[];
-  trendingMobile: ArticleVM[];
-}
-
-const CATEGORY_TONE: Record<string, [ColorToken, ColorToken]> = {
-  Fitness: ["textEnergy", "bgEnergySubtle"],
-  "First Aid": ["textEnergy", "bgEnergySubtle"],
-  Heart: ["textEnergy", "bgEnergySubtle"],
-  Nutrition: ["rangeNormal", "rangeNormalBg"],
-  Diabetes: ["rangeBorderline", "rangeBorderlineBg"],
-  Sleep: ["textBrand", "bgBrandSubtle"],
-  Medication: ["textBrand", "bgBrandSubtle"],
-};
-/** Tag colours [fg, bg] for a library category (Library cards and the article reader). */
-export const categoryTone = (category: string): [ColorToken, ColorToken] => CATEGORY_TONE[category] ?? ["textSecondary", "bgSubtle"];
-
-export async function loadLibrary(api: VitalLinkClient): Promise<LibraryVM> {
-  const l = need(await api.library(), "Health Library");
-  const article = (a: Article): ArticleVM => {
-    const [fg, bg] = CATEGORY_TONE[a.category] ?? ["textSecondary", "bgSubtle"];
-    return {
-      id: a.id,
-      slug: a.slug ?? a.id,
-      tag: { label: a.category.toUpperCase(), fg, bg },
-      title: a.title,
-      meta: `Medically reviewed · ${a.minutes} min read`,
-      shortMeta: `Medically reviewed · ${a.minutes} min`,
-    };
-  };
-  const f = l.featured;
-  const fm = l.featured_mobile;
-  return {
-    categories: l.categories,
-    featured: {
-      slug: f.slug ?? f.id,
-      overline: `FEATURED · ${f.category.toUpperCase()}`,
-      title: f.title,
-      summary: f.summary ?? "",
-      meta: `Medically reviewed${f.reviewer ? ` by ${f.reviewer}` : ""} · ${f.minutes} min read`,
-    },
-    featuredMobile: { overline: `FEATURED · ${fm.category.toUpperCase()}`, title: fm.title, meta: `Medically reviewed · ${fm.minutes} min read` },
-    trending: l.trending.filter((a) => a.title !== f.title).slice(0, 6).map(article),
-    trendingMobile: l.trending.filter((a) => a.id !== fm.id).map(article),
-  };
-}
-
 // ---------------------------------------------------------------- settings
+
+const UNITS: Option[] = [
+  { value: "imperial", label: "Imperial (miles)" },
+  { value: "metric", label: "Metric (km)" },
+];
 
 export interface SettingsVM {
   person: PersonVM;
   memberLine: string;
   memberSince: string;
   email: string;
-  fields: { key: string; label: string; value: string; help?: string; wide?: boolean }[];
+  /** `select` fields carry their options (value = option value); `readonly` can't be edited here. */
+  fields: { key: string; label: string; value: string; help?: string; wide?: boolean; kind?: "readonly" | "select"; options?: Option[] }[];
+  /** Short-lived link to the profile photo, or null (initials show instead). */
+  photo: string | null;
+  units: "metric" | "imperial";
   theme: "light" | "dark" | "system";
   summary: { profile: string; security: string; appearance: string; language: string; units: string };
 }
@@ -623,7 +576,7 @@ export async function loadSettings(api: VitalLinkClient): Promise<SettingsVM> {
   const [me, a] = await Promise.all([api.me(), api.account()]);
   const name = [a.first_name, a.last_name].filter(Boolean).join(" ") || a.email;
   const since = monthYear(a.member_since, me.timezone);
-  const blank = "—";
+  const blank = "N/A";
   return {
     person: person(name, "brand"),
     memberLine: `Member since ${since}${a.city ? ` · ${a.city}` : ""}`,
@@ -632,12 +585,14 @@ export async function loadSettings(api: VitalLinkClient): Promise<SettingsVM> {
     fields: [
       { key: "first", label: "First name", value: a.first_name ?? blank },
       { key: "last", label: "Last name", value: a.last_name ?? blank },
-      { key: "email", label: "Email address", value: a.email, help: "Used for sign-in and account alerts." },
+      { key: "email", label: "Email address", value: a.email, help: "Used for sign-in. It changes with your sign-in account.", kind: "readonly" },
       { key: "phone", label: "Mobile number", value: a.phone ? phone(a.phone) : blank, help: "Used for reminders and goal alerts." },
       { key: "zip", label: "ZIP code", value: a.zip ?? blank, help: "Used to find clinics and facilities near you." },
-      { key: "language", label: "Preferred language", value: languageName(a.language) },
-      { key: "height", label: "Height", value: a.height_cm === null ? blank : height(a.height_cm, a.units), help: "Used to calculate BMI and energy needs.", wide: true },
+      { key: "height", label: "Height", value: a.height_cm === null ? blank : height(a.height_cm, a.units), help: a.units === "metric" ? "In cm, e.g. 178 cm. Used to calculate BMI and energy needs." : "e.g. 5 ft 10 in or 178 cm. Used to calculate BMI and energy needs." },
+      { key: "units", label: "Units", value: a.units, kind: "select", options: UNITS, help: "Distance, pace, body weight and goals. Lifting weights stay in kg." },
     ],
+    photo: a.avatar_url ?? null,
+    units: a.units,
     theme: a.theme,
     summary: {
       profile: name,

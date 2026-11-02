@@ -1,5 +1,8 @@
-// Log Food (Figma 197:73), Log Workout (197:127) and New Goal (197:397) — Dialog 560.
+// Log Food (Figma 197:73), Log Workout (197:127), New Goal (197:397) and Log exercise (215:1843) — Dialog 560.
 import {
+  checkExerciseLog,
+  checkSet,
+  setSummary,
   checkFood,
   checkGoal,
   checkWorkout,
@@ -16,31 +19,36 @@ import {
   type GoalMetricOption,
 } from "@vitallink/api";
 import { useEffect, useState } from "react";
-import { Choices, FormDialog, formStyles as s, must, Note, Row, SelectField, TextField, useZone } from "../components/Form";
+import { createPortal } from "react-dom";
+import { Choices, FormDialog, formStyles as s, ItemList, must, Note, Row, SelectField, TextField, useAccount, useZone } from "../components/Form";
+import { Button } from "../components/ui";
+import { AddFoodDialog } from "./MoreForms";
 import { useApi } from "../data";
 
 const cx = (...c: (string | false | undefined)[]) => c.filter(Boolean).join(" ");
 
 /** The meal slot for the time of day: breakfast before 11, lunch before 15, dinner from 17, else snack. */
-const slotAt = (hhmm: string) => {
+export const slotAt = (hhmm: string) => {
   const h = Number(hhmm.slice(0, 2));
   return h < 11 ? "breakfast" : h < 15 ? "lunch" : h >= 17 && h < 22 ? "dinner" : "snack";
 };
 
 // ---------------------------------------------------------------- Log Food
 
-export function LogFoodDialog({ onClose }: { onClose: () => void }) {
+/** `food` comes preset after Scan Barcode found it. */
+export function LogFoodDialog({ onClose, food }: { onClose: () => void; food?: FoodHit }) {
   const tz = useZone();
-  return tz ? <LogFood tz={tz} onClose={onClose} /> : null;
+  return tz ? <LogFood tz={tz} onClose={onClose} start={food ?? null} /> : null;
 }
 
-function LogFood({ tz, onClose }: { tz: string; onClose: () => void }) {
+function LogFood({ tz, onClose, start }: { tz: string; onClose: () => void; start: FoodHit | null }) {
   const api = useApi();
   const time = timeIn(tz);
-  const [f, setF] = useState({ slot: slotAt(time), grams: "", date: todayIn(tz), time });
-  const [query, setQuery] = useState("");
+  const [f, setF] = useState({ slot: slotAt(time), grams: start ? String(Math.round(start.serving_g)) : "", date: todayIn(tz), time });
+  const [query, setQuery] = useState(start ? (start.brand ? `${start.name} · ${start.brand}` : start.name) : "");
   const [hits, setHits] = useState<FoodHit[] | null>(null);
-  const [food, setFood] = useState<FoodHit | null>(null);
+  const [food, setFood] = useState<FoodHit | null>(start);
+  const [addingFood, setAddingFood] = useState(false);
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
 
   // Search as the user types (2+ letters), a moment after they stop.
@@ -75,6 +83,8 @@ function LogFood({ tz, onClose }: { tz: string; onClose: () => void }) {
         await api.logMeal(must(checkFood({ ...f, foodId: food?.id ?? null }, tz)));
       }}
     >
+      {/* Outside Log Food's own form (a portal): a form inside a form would submit both. */}
+      {addingFood && createPortal(<AddFoodDialog name={query.trim()} onClose={() => setAddingFood(false)} onAdded={(h) => pick(h)} />, document.body)}
       <Choices label="Meal" options={MEAL_SLOTS} selected={[f.slot]} onChange={([v]) => set("slot")(v)} />
       <div>
         <TextField
@@ -93,7 +103,12 @@ function LogFood({ tz, onClose }: { tz: string; onClose: () => void }) {
         {hits && (
           <div className={s.results} role="listbox" aria-label="Foods">
             {hits.length === 0 ? (
-              <span className={cx("vl-body-s", s.empty)}>No foods match “{query.trim()}”.</span>
+              <span className={cx("vl-body-s", s.empty)}>
+                No foods match “{query.trim()}”.{" "}
+                <Button variant="tertiary" size="sm" onClick={() => setAddingFood(true)}>
+                  Add it as a new food
+                </Button>
+              </span>
             ) : (
               hits.slice(0, 8).map((h) => (
                 <button key={h.id} type="button" role="option" aria-selected={false} className={s.result} onClick={() => pick(h)}>
@@ -170,16 +185,16 @@ function LogWorkout({ tz, onClose, preset }: { tz: string; onClose: () => void; 
 // ---------------------------------------------------------------- New Goal
 
 export function NewGoalDialog({ onClose }: { onClose: () => void }) {
-  const tz = useZone();
+  const account = useAccount();
   const api = useApi();
   const [metrics, setMetrics] = useState<GoalMetricOption[] | null>(null);
   useEffect(() => {
     api.goalMetrics().then(setMetrics, () => setMetrics([]));
   }, [api]);
-  return tz && metrics ? <NewGoal tz={tz} metrics={metrics} onClose={onClose} /> : null;
+  return account && metrics ? <NewGoal tz={account.tz} units={account.units} metrics={metrics} onClose={onClose} /> : null;
 }
 
-function NewGoal({ tz, metrics, onClose }: { tz: string; metrics: GoalMetricOption[]; onClose: () => void }) {
+function NewGoal({ tz, units, metrics, onClose }: { tz: string; units: "metric" | "imperial"; metrics: GoalMetricOption[]; onClose: () => void }) {
   const api = useApi();
   const areas = GOAL_AREAS.filter((a) => metrics.some((m) => m.area === a.value));
   const [area, setArea] = useState<string>(areas[0]?.value ?? "activity");
@@ -187,7 +202,7 @@ function NewGoal({ tz, metrics, onClose }: { tz: string; metrics: GoalMetricOpti
   const [f, setF] = useState({ metric: inArea[0]?.code ?? "", direction: "at_least", target: "", starts: todayIn(tz), ends: "" });
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
   const metric = metrics.find((m) => m.code === f.metric);
-  const unit = metric ? goalUnit(metric) : null;
+  const unit = metric ? goalUnit(metric, units) : null;
 
   return (
     <FormDialog
@@ -197,7 +212,7 @@ function NewGoal({ tz, metrics, onClose }: { tz: string; metrics: GoalMetricOpti
       action="Create Goal"
       onClose={onClose}
       save={async () => {
-        await api.createGoal(must(checkGoal(f, metrics)));
+        await api.createGoal(must(checkGoal(f, metrics, units)));
       }}
     >
       <Choices
@@ -217,6 +232,75 @@ function NewGoal({ tz, metrics, onClose }: { tz: string; metrics: GoalMetricOpti
       <Row>
         <TextField label="Starts" type="date" icon="appointments-16" value={f.starts} onChange={set("starts")} />
         <TextField label="Ends" type="date" icon="appointments-16" value={f.ends} min={f.starts} onChange={set("ends")} helper="Optional" />
+      </Row>
+    </FormDialog>
+  );
+}
+
+// ---------------------------------------------------------------- Log exercise
+
+type SetBody = { reps: number | null; weight_kg: number | null; duration_s: number | null };
+
+/** From the Exercise Library: did you do it? The sets (reps, weight, or time for a hold) become a workout. */
+export function LogExerciseDialog({ exercise, onClose }: { exercise: string; onClose: () => void }) {
+  const tz = useZone();
+  return tz ? <LogExercise tz={tz} exercise={exercise} onClose={onClose} /> : null;
+}
+
+function LogExercise({ tz, exercise, onClose }: { tz: string; exercise: string; onClose: () => void }) {
+  const api = useApi();
+  const [f, setF] = useState({ date: todayIn(tz), time: timeIn(tz), minutes: "", effort: "" });
+  const [sets, setSets] = useState<SetBody[]>([]);
+  const [next, setNext] = useState({ reps: "", weight: "", seconds: "" });
+  const [problem, setProblem] = useState<string | null>(null);
+  const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+
+  const addSet = () => {
+    const c = checkSet(next);
+    if (!c.ok) return setProblem(c.error);
+    setProblem(null);
+    setSets((all) => [...all, c.body]);
+    // Keep the weight for the next set; most sets repeat it.
+    setNext((x) => ({ ...x, reps: "", seconds: "" }));
+  };
+
+  return (
+    <FormDialog
+      overline="Workouts › Exercise Library"
+      title={exercise}
+      subtitle="Did you do it? Add your sets and VitalLink saves it to your workouts."
+      action="Save Exercise"
+      onClose={onClose}
+      save={async () => {
+        // A set typed but not added yet still counts.
+        const typed = next.reps || next.seconds ? must(checkSet(next)) : null;
+        await api.logWorkout(must(checkExerciseLog(exercise, f, typed ? [...sets, typed] : sets, tz)));
+      }}
+    >
+      <Row>
+        <TextField label="Date" type="date" icon="appointments-16" value={f.date} max={todayIn(tz)} onChange={set("date")} />
+        <TextField label="Start" type="time" icon="clock-16" value={f.time} onChange={set("time")} />
+      </Row>
+      <ItemList
+        label="Sets"
+        empty="No sets yet. Add each set below."
+        items={sets.map((x, i) => ({ key: String(i), title: `Set ${i + 1}`, caption: setSummary(x), onRemove: () => setSets((all) => all.filter((_, j) => j !== i)) }))}
+        add={null}
+      />
+      <Row>
+        <TextField label="Reps" value={next.reps} onChange={(reps) => setNext((x) => ({ ...x, reps }))} inputMode="numeric" placeholder="10" autoFocus />
+        <TextField label="Weight" value={next.weight} onChange={(weight) => setNext((x) => ({ ...x, weight }))} inputMode="decimal" placeholder="Optional" helper="kg" />
+        <TextField label="Time" value={next.seconds} onChange={(seconds) => setNext((x) => ({ ...x, seconds }))} inputMode="numeric" placeholder="Optional" helper="seconds, for holds like a plank" />
+      </Row>
+      <span>
+        <Button variant="tertiary" size="sm" onClick={addSet}>
+          + Add set
+        </Button>
+      </span>
+      {problem && <Note>{problem}</Note>}
+      <Row>
+        <TextField label="Time taken" value={f.minutes} onChange={set("minutes")} inputMode="numeric" placeholder="25" helper="minutes" />
+        <SelectField label="Effort" value={f.effort} onChange={set("effort")} options={EFFORT} />
       </Row>
     </FormDialog>
   );

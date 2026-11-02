@@ -1,0 +1,401 @@
+.page {
+  background: var(--vl-bg-canvas);
+}
+
+/* Public nav: 76 tall, 18/64 padding, gap 28. */
+.nav {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 64px;
+  background: var(--vl-bg-surface);
+  border-bottom: 1px solid var(--vl-border-subtle);
+}
+.items {
+  flex: 1;
+  display: flex;
+  gap: 24px;
+}
+.items a {
+  color: var(--vl-text-secondary);
+}
+.items a:hover,
+.footCol a:hover {
+  color: var(--vl-text-primary);
+}
+.actions {
+  display: flex;
+  gap: 10px;
+}
+.ghost {
+  padding: 10px 16px;
+  color: var(--vl-text-primary);
+}
+.primary,
+.energy,
+.light,
+.outlineInverse {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  white-space: nowrap;
+}
+.primary {
+  padding: 10px 20px;
+  background: var(--vl-bg-brand);
+  color: var(--vl-text-on-brand);
+}
+.primary:hover {
+  background: var(--vl-bg-brand-hover);
+}
+.energy {
+  background: var(--vl-bg-energy);
+  color: var(--vl-text-on-brand);
+}
+.energy:hover {
+  background: var(--vl-bg-energy-hover);
+}
+.light {
+  border: 1px solid var(--vl-border-default);
+  background: var(--vl-bg-surface);
+  color: var(--vl-text-primary);
+}
+.outlineInverse {
+  border: 1px solid var(--vl-border-strong);
+  color: var(--vl-text-inverse);
+}
+/* Hero / band buttons: 13/24, 46 tall. */
+.big {
+  padding: 13px 24px;
+}
+.light.big,
+.outlineInverse.big {
+  padding: 12px 23px;
+}
+.cta48 {
+  padding: 14px 26px;
+}
+
+/* Bands: 96/120 padding, 40 gap. */
+.band {
+  display: flex;
+  flex-direction: column;
+  gap: 40px;
+  padding: 96px 120px;
+}
+.inverse {
+  background: var(--vl-bg-inverse);
+}
+.canvas {
+  background: var(--vl-bg-canvas);
+}
+.surface {
+  background: var(--vl-bg-surface);
+}
+.head {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.center {
+  align-items: center;
+  text-align: center;
+}
+
+.hero {
+  flex-direction: row;
+  align-items: center;
+  gap: 64px;
+}
+.copy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 26px;
+}
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 12px;
+  border-radius: 999px;
+  background: var(--vl-bg-brand-subtle);
+}
+.buttons {
+  display: flex;
+  gap: 12px;
+}
+.stats {
+  margin: 0;
+  display: flex;
+  gap: 40px;
+}
+.stats div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.stats dd {
+  margin: 0;
+}
+/* Dashboard preview card: 470 wide, 22 padding, radius 16, modal shadow. */
+.preview {
+  width: 470px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 22px;
+  border-radius: var(--vl-radius-xl);
+  background: var(--vl-bg-surface);
+  color: var(--vl-text-primary); /* not the page's inherited colour, which is light in dark mode */
+  box-shadow: var(--vl-elevation-modal);
+}
+.previewHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.score {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--vl-range-normal-bg);
+  color: var(--vl-range-normal);
+}
+.tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.tile {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 8px;
+  background: var(--vl-bg-canvas);
+}
+.tileLabel,
+.tileValue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.tileValue {
+  align-items: baseline;
+  gap: 4px;
+}
+
+.modes {
+  display: flex;
+  gap: 16px;
+}
+.mode {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 24px 22px;
+  border-radius: var(--vl-radius-xl);
+  border: 1px solid var(--vl-border-subtle);
+  background: var(--vl-bg-surface);
+  box-shadow: var(--vl-elevation-card);
+}
+.modeAccent {
+  width: 38px;
+  height: 5px;
+  border-radius: 3px;
+}
+.zones {
+  display: flex;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.zones > div {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 14px 18px;
+}
+
+.features {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.feature {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px 24px;
+  border-radius: var(--vl-radius-xl);
+  border: 1px solid var(--vl-border-subtle);
+  background: var(--vl-bg-surface);
+  box-shadow: var(--vl-elevation-card);
+}
+.featureTile {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+}
+
+.progress {
+  display: flex;
+  align-items: center;
+  gap: 64px;
+}
+.progressCopy {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.goalCards {
+  width: 430px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.goalCard {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  padding: 16px 18px;
+  border-radius: 12px;
+  background: var(--vl-bg-surface);
+  color: var(--vl-text-primary); /* see .preview */
+}
+.goalHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.goalChip {
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--vl-bg-subtle);
+}
+.goalTrack {
+  height: 7px;
+  border-radius: 999px;
+  background: var(--vl-goal-track-bg);
+  overflow: hidden;
+}
+.goalTrack span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+}
+
+.security {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 20px;
+}
+.secCard {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 26px 24px;
+  border-radius: var(--vl-radius-xl);
+  border: 1px solid var(--vl-border-subtle);
+  background: var(--vl-bg-surface);
+}
+.secTile {
+  width: 40px;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+  background: var(--vl-range-normal-bg);
+}
+
+/* Without the testimonials band, Security and FAQ are both on canvas: one 96px gap, not two. */
+.faqBand {
+  padding-top: 0;
+}
+.faq {
+  border-radius: var(--vl-radius-xl);
+  border: 1px solid var(--vl-border-subtle);
+  background: var(--vl-bg-surface);
+  overflow: hidden;
+}
+.qa {
+  padding: 22px 26px;
+}
+.qa + .qa {
+  border-top: 1px solid var(--vl-border-subtle);
+}
+.qa summary,
+.q {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  list-style: none;
+}
+.qa summary {
+  cursor: pointer;
+}
+.qa summary::-webkit-details-marker {
+  display: none;
+}
+.qa[open] > p {
+  margin-top: 8px;
+}
+.qa[open] .chev {
+  transform: rotate(90deg);
+}
+
+.cta {
+  align-items: center;
+  text-align: center;
+  gap: 22px;
+  padding: 104px 120px;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  gap: 32px;
+  padding: 64px 120px 48px;
+  background: var(--vl-bg-canvas);
+  border-top: 1px solid var(--vl-border-subtle);
+}
+.footTop {
+  display: flex;
+  gap: 64px;
+}
+.footBrand {
+  width: 320px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.footCol {
+  width: 156px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.footCol a {
+  color: var(--vl-text-secondary);
+}
+.footBottom {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 24px;
+  border-top: 1px solid var(--vl-border-subtle);
+}

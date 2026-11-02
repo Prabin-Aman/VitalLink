@@ -6,6 +6,7 @@ import { Rings } from "../components/Charts";
 import { BarRow, ChipRow, Row, Screen, Section } from "../components/kit";
 import { ScreenState } from "../components/ui";
 import { useScreen } from "../data";
+import { LogFoodSheet } from "../sheets/FitnessSheets";
 import { c, t } from "../theme";
 
 const CHIPS = ["Today", "Week", "Meals", "Recipes", "Water"];
@@ -13,11 +14,13 @@ const CHIPS = ["Today", "Week", "Meals", "Recipes", "Water"];
 export function NutritionScreen() {
   const state = useScreen(loadNutrition);
   const [tab, setTab] = useState(CHIPS[0]);
+  const [logging, setLogging] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
 
   return (
-    <Screen title="Nutrition" subtitle={v.shortSubtitle} add back="/train" chips={<ChipRow label="Nutrition sections" options={CHIPS} value={tab} onChange={setTab} />}>
+    <Screen title="Nutrition" subtitle={v.shortSubtitle} add={() => setLogging(true)} back="/train" chips={<ChipRow label="Nutrition sections" options={CHIPS} value={tab} onChange={setTab} />}>
+      {logging && <LogFoodSheet onClose={() => setLogging(false)} />}
       {tab !== CHIPS[0] ? (
         <Text style={t("bodyM", "textTertiary")}>{tab} is in a later batch.</Text>
       ) : (

@@ -1,30 +1,30 @@
-import { loadShell } from "@vitallink/api";
+import { ApiError, loadShell } from "@vitallink/api";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";
 import { tokenVar } from "./components/Icon";
-import { useScreen } from "./data";
-import { Activity } from "./screens/Activity";
-import { Appointments } from "./screens/Appointments";
-import { CreateAccount } from "./screens/CreateAccount";
-import { Devices } from "./screens/Devices";
-import { DocumentViewer } from "./screens/DocumentViewer";
-import { Emergency } from "./screens/Emergency";
-import { Family } from "./screens/Family";
-import { LabResults } from "./screens/LabResults";
-import { Article } from "./screens/Article";
-import { Library } from "./screens/Library";
-import { Medications } from "./screens/Medications";
-import { Messages } from "./screens/Messages";
-import { Notifications } from "./screens/Notifications";
-import { Settings } from "./screens/Settings";
-import { Dashboard } from "./screens/Dashboard";
-import { Goals } from "./screens/Goals";
-import { Home } from "./screens/Home";
-import { Nutrition } from "./screens/Nutrition";
-import { Privacy } from "./screens/Privacy";
-import { Records } from "./screens/Records";
-import { SignIn } from "./screens/SignIn";
-import { Workouts } from "./screens/Workouts";
+import { endSession, needsSignIn, useApi, useScreen } from "./data";
+import { Activity } from "./screens/health/Activity";
+import { Appointments } from "./screens/care/Appointments";
+import { CreateAccount } from "./screens/public/CreateAccount";
+import { Devices } from "./screens/care/Devices";
+import { DocumentViewer } from "./screens/records/DocumentViewer";
+import { Emergency } from "./screens/care/Emergency";
+import { Family } from "./screens/sharing/Family";
+import { LabResults } from "./screens/records/LabResults";
+import { Article } from "./screens/library/Article";
+import { Library } from "./screens/library/Library";
+import { Medications } from "./screens/care/Medications";
+import { Messages } from "./screens/inbox/Messages";
+import { Notifications } from "./screens/inbox/Notifications";
+import { Settings } from "./screens/settings/Settings";
+import { Dashboard } from "./screens/dashboard/Dashboard";
+import { Goals } from "./screens/fitness/Goals";
+import { Home } from "./screens/public/Home";
+import { Nutrition } from "./screens/fitness/Nutrition";
+import { Privacy } from "./screens/sharing/Privacy";
+import { Records } from "./screens/records/Records";
+import { ForgotPassword, ResetPassword, SignIn } from "./screens/public/SignIn";
+import { Workouts } from "./screens/fitness/Workouts";
 import { Body } from "./screens/health/Body";
 import { Digital } from "./screens/health/Digital";
 import { Heart } from "./screens/health/Heart";
@@ -35,10 +35,17 @@ import { Sleep } from "./screens/health/Sleep";
 import { Vitals } from "./screens/health/Vitals";
 
 function Shell() {
+  const api = useApi();
   const me = useScreen(loadShell);
-  const who = me.status === "ready" ? me.data : { name: "", initials: "", email: "" };
+  // Nobody signed in, or the session expired: sign in first (mock mode never needs it).
+  if (needsSignIn(api)) return <Navigate to="/sign-in" replace />;
+  if (me.status === "error" && me.error instanceof ApiError && me.error.status === 401) {
+    endSession();
+    return <Navigate to="/sign-in" replace state={{ expired: true }} />;
+  }
+  const who = me.status === "ready" ? me.data : { name: "", initials: "", email: "", photo: null };
   return (
-    <AppShell name={who.name} initials={who.initials} email={who.email}>
+    <AppShell name={who.name} initials={who.initials} email={who.email} photo={who.photo}>
       <Outlet />
     </AppShell>
   );
@@ -57,6 +64,8 @@ export function App() {
     <Routes>
       <Route path="/welcome" element={<Home />} />
       <Route path="/sign-in" element={<SignIn />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/create-account" element={<CreateAccount />} />
       <Route element={<Shell />}>
         <Route index element={<Dashboard />} />

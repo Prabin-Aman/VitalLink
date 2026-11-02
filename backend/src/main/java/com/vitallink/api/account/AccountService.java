@@ -30,6 +30,7 @@ import java.util.UUID;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.stereotype.Service;
@@ -38,7 +39,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class AccountService {
 
-    private static final Set<String> LANGUAGES = Set.of("en-US", "es-US");
+    private static final Set<String> LANGUAGES = Set.of("en-US");
     private static final Pattern PHONE = Pattern.compile("^\\+[1-9][0-9]{6,14}$");
     private static final Pattern ZIP = Pattern.compile("^[0-9]{5}$");
     private static final Set<String> ACCOUNT_FIELDS = Set.of(
@@ -61,12 +62,23 @@ public class AccountService {
 
     private final JdbcClient jdbc;
     private final Settings settings;
+    private final AvatarService avatars;
     private final IdentityAdmin identities;
 
     public AccountService(JdbcClient jdbc, Settings settings, IdentityAdmin identities) {
+        this(jdbc, settings, identities, null);
+    }
+
+    @Autowired
+    public AccountService(JdbcClient jdbc, Settings settings, IdentityAdmin identities, AvatarService avatars) {
         this.jdbc = jdbc;
         this.settings = settings;
         this.identities = identities;
+        this.avatars = avatars;
+    }
+
+    private String avatarUrl(UUID userId) {
+        return avatars == null ? null : avatars.url(userId);
     }
 
     /**
@@ -100,24 +112,20 @@ public class AccountService {
     public User getOrCreate(Claims claims) {
         User user = bySubject(claims.subject()).orElse(null);
         if (user == null) {
-            UUID newId;
-            try {
-                newId = jdbc.sql("""
-                                INSERT INTO vitallink.users (id, auth_subject, email, email_confirmed_at)
-                                VALUES (:id, :subject, :email, :confirmed)
-                                ON CONFLICT (auth_subject) DO NOTHING RETURNING id
-                                """)
-                        .param("id", Ids.uuid7())
-                        .param("subject", claims.subject())
-                        .param("email", claims.email())
-                        .param("confirmed", emailConfirmed(claims) ? com.vitallink.api.core.Clock.now() : null)
-                        .query(UUID.class)
-                        .optional()
-                        .orElse(null);
-            } catch (DuplicateKeyException e) {
-                // Another account already has this email (e.g. its sign-in identity was recreated).
-                throw new ApiError(409, "email_in_use", "This email belongs to another VitalLink account.");
-            }
+            // No conflict target: a parallel first request for the same person collides on the email index
+            // as well as the subject one, and a targeted ON CONFLICT would raise the email clash as an error.
+            UUID newId = jdbc.sql("""
+                            INSERT INTO vitallink.users (id, auth_subject, email, email_confirmed_at)
+                            VALUES (:id, :subject, :email, :confirmed)
+                            ON CONFLICT DO NOTHING RETURNING id
+                            """)
+                    .param("id", Ids.uuid7())
+                    .param("subject", claims.subject())
+                    .param("email", claims.email())
+                    .param("confirmed", emailConfirmed(claims) ? com.vitallink.api.core.Clock.now() : null)
+                    .query(UUID.class)
+                    .optional()
+                    .orElse(null);
             if (newId != null) {
                 jdbc.sql("""
                                 INSERT INTO vitallink.profiles (user_id, first_name, last_name)
@@ -128,7 +136,11 @@ public class AccountService {
                         .param("last", claims.lastName())
                         .update();
             }
-            user = bySubject(claims.subject()).orElseThrow();
+            user = bySubject(claims.subject())
+                    // Nothing inserted and no row for this subject: another account already has this email
+                    // (e.g. its sign-in identity was recreated).
+                    .orElseThrow(() ->
+                            new ApiError(409, "email_in_use", "This email belongs to another VitalLink account."));
         }
         // Keep email and confirmation in step with Supabase (an email change is confirmed there).
         boolean changed = !user.email().equals(claims.email());
@@ -218,11 +230,8 @@ public class AccountService {
     }
 
     public Me me(CurrentUser me) {
-        return new Me(
-                me.id(),
-                me.user().email(),
-                profile(me.id()).displayName(),
-                me.user().timezone());
+        Profile p = profile(me.id());
+        return new Me(me.id(), me.user().email(), p.displayName(), me.user().timezone(), avatarUrl(me.id()), p.units());
     }
 
     public Account account(CurrentUser me) {
@@ -247,7 +256,8 @@ public class AccountService {
                 p.theme(),
                 p.dateOfBirth(),
                 p.sex(),
-                timezone);
+                timezone,
+                avatarUrl(me.id()));
     }
 
     public Account updateAccount(CurrentUser me, Map<String, Object> body) {

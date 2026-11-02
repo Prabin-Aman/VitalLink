@@ -776,7 +776,7 @@ public final class DemoSeed {
             {"Neutrophils", 78.0, "%", 40.0, 75.0, 0, "abnormal"}
         };
         lab(c, user, today.minusDays(100), earlier, null);
-        lab(c, user, today.minusDays(2), latest, "Ferritin low — recheck in 8 weeks. Started ferrous sulfate.");
+        lab(c, user, today.minusDays(2), latest, "Ferritin low. Recheck in 8 weeks. Started ferrous sulfate.");
         Object[][] lipids = {
             {"Total cholesterol", 182.0, "mg/dL", 125.0, 200.0, 0, null},
             {"LDL", 104.0, "mg/dL", 0.0, 100.0, 0, "borderline"},

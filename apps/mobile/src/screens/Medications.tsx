@@ -1,14 +1,17 @@
 // Medications — Mobile 390 (Figma 150:2).
 import { loadMedications } from "@vitallink/api";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { Pill, Row, Screen, Section, SmallButton, StatGrid } from "../components/kit";
 import { ScreenState } from "../components/ui";
 import { useApi, useReloadableScreen } from "../data";
+import { AddMedicationSheet } from "../sheets/CareSheets";
 import { t } from "../theme";
 
 export function MedicationsScreen() {
   const api = useApi();
   const [state, reload] = useReloadableScreen(loadMedications);
+  const [adding, setAdding] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
   const markTaken = (id: string, at: string) => {
@@ -16,7 +19,8 @@ export function MedicationsScreen() {
   };
 
   return (
-    <Screen title="Medications" subtitle={v.shortSubtitle} back="/profile">
+    <Screen title="Medications" subtitle={v.shortSubtitle} back="/profile" add={() => setAdding(true)}>
+      {adding && <AddMedicationSheet onClose={() => setAdding(false)} />}
       <StatGrid stats={v.mobileStats} />
       <Section title="Today's doses" gap={8}>
         {v.rows.map((r) => (

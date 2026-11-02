@@ -39,6 +39,9 @@ the calls built first; 5.3 lists the rest with their paths.
 | `devices()` | `GET /me/devices` | `Device[]` |
 | `sync()` | `POST /me/health/import?days=` | The body is the file (raw, up to 300 MB): an Apple Health export (`export.zip` or `export.xml`, streamed with StAX, DTD and external entities off) or a CSV `start,metric,value` (start ISO with offset or local `YYYY-MM-DD HH:MM` in the account's zone). Readings in the last `days` (≤ 400) become 5-minute buckets: totals spread over the buckets a sample covers and take the largest source per bucket (the Watch and iPhone both count steps); averages pool sources. Apple data is stored as `healthkit` (so it merges with phone sync), CSV as `file_import`. Returns `ImportOut` (records, readings, inserted/updated/unchanged, skipped + first 10 problems, from/to). 422 `unreadable_file` / `nothing_to_import`, 413 `file_too_large`. Counts against the ingest rate limit |
 | `POST /me/health/ingest` with `platform: "bluetooth"` | Readings from a Bluetooth device paired in the web portal (Web Bluetooth): heart-rate strap, blood pressure cuff, scale, pulse oximeter, glucose meter; the device registers like a phone's |
+| `POST /auth/sign-up`, `POST /auth/sign-in` (no token) | Local and test only (404 in production, where Supabase signs in): email + password (12+ characters, a number and a symbol; BCrypt) → `{access_token, expires_at}` (12 h, dev-token shaped). Sign-up also stores name, phone, ZIP, date of birth and height through the account's rules, all or nothing. A wrong email or password gets the same 401; five wrong passwords lock sign-in for 15 minutes (429) |
+| `POST /auth/forgot-password`, `POST /auth/reset-password`, `POST /auth/google`, `GET /auth/config` (no token) | Forgot password always answers 202 and, when the email has an account, emails a single-use link (30 min; SHA-256 stored; at most 3 an hour). Reset sets the password (same rules), ends any lock, voids older links and returns a session; a used or expired link is 410. Google: a Google ID token (signature from Google's JWKS, issuer, audience = GOOGLE_CLIENT_ID, verified email) signs in the account with that email or creates one; it confirms the email. Config: `{password, google_client_id}` |
+| `POST /me/avatar/upload`, `POST /me/avatar/confirm`, `DELETE /me/avatar` | Profile photo: signed upload (JPEG/PNG/WebP ≤ 2 MB under `avatars/{user}/`), confirm checks what was stored and replaces the old photo (queued in `file_deletions`); `avatar_url` (5-minute signed link) on `GET /me` and `/me/account` |
 | `GET /me/sync` | `SyncStatus` (phone uploads) |
 | `shares()` | `GET /me/shares` | `Share[]` |
 | `sharedWithMe()` | `GET /me/shared-with-me` | `SharedWithMe[]` |
@@ -81,7 +84,7 @@ Each row replaced one `client.pending()` call; only `conversations()` is still p
 
 Four shapes changed when they went live, and the mock was changed to match. `nextAppointment` and
 `latestLab` return the structured `Appointment` and `LatestLab` instead of pre-formatted strings, and
-`screens.ts` formats them. `medications()` returns each dose's time (`at`) and a `missed`/`skipped`
+the view-models in `packages/api/src/views/` format them. `medications()` returns each dose's time (`at`) and a `missed`/`skipped`
 status instead of a formatted `time`. `privacySettings()` uses `emergency_on_lock_screen`. Live
 My Health tabs leave out readings nothing measures (walking speed, wrist temperature, app names) and
 send `null` for blocks without data; the view-models show "—" for those.

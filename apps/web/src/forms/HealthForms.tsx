@@ -33,7 +33,7 @@ function AddReading({ tz, onClose }: { tz: string; onClose: () => void }) {
           <TextField label="Diastolic" value={f.value2} onChange={set("value2")} inputMode="numeric" placeholder="76" helper="mmHg" />
         </Row>
       ) : (
-        <TextField label={m.label} value={f.value} onChange={set("value")} inputMode="decimal" helper={m.unit} autoFocus />
+        <TextField label={m.label} value={f.value} onChange={set("value")} inputMode="decimal" helper={m.help ?? m.unit} autoFocus />
       )}
       <Row>
         <TextField label="Date" type="date" icon="appointments-16" value={f.date} max={todayIn(tz)} onChange={set("date")} />

@@ -129,10 +129,10 @@ class SharingTest extends ApiTest {
         }
         assertThat(rows)
                 .containsExactly(
-                        "blocked|None — blocked|Share revoked",
-                        "blocked|None — blocked|Not part of the share",
+                        "blocked|None (blocked)|Share revoked",
+                        "blocked|None (blocked)|Not part of the share",
                         "authorised|Activity|Treatment",
-                        "blocked|None — blocked|No share");
+                        "blocked|None (blocked)|No share");
         assertThat(log.at("/2/actor").asString()).isEqualTo("Dr. Laura Bennett");
         assertThat(log.at("/1/actor").asString())
                 .isEqualTo("Dr. Laura Bennett"); // a refused scope still names the share
@@ -341,10 +341,19 @@ class SharingTest extends ApiTest {
                 .containsOnly(RequestMethod.GET));
     }
 
+    /** The sign-in routes are the way in, so nobody is signed in yet; change-password is not among them. */
+    static final java.util.Set<String> PUBLIC = java.util.Set.of(
+            "/v1/auth/sign-up",
+            "/v1/auth/sign-in",
+            "/v1/auth/config",
+            "/v1/auth/forgot-password",
+            "/v1/auth/reset-password",
+            "/v1/auth/google");
+
     @Test
     void everyApiRouteIdentifiesTheCaller() {
         mappings.getHandlerMethods().forEach((info, method) -> {
-            if (info.getPatternValues().stream().anyMatch(p -> p.startsWith("/v1/"))) {
+            if (info.getPatternValues().stream().anyMatch(p -> p.startsWith("/v1/") && !PUBLIC.contains(p))) {
                 assertThat(Arrays.stream(method.getMethodParameters())
                                 .anyMatch(p -> p.getParameterType() == com.vitallink.api.account.CurrentUser.class
                                         || p.getParameterType() == ConsentGate.class))

@@ -1,0 +1,109 @@
+/* Record types 206 | table 590 | rail 272, 24 apart. */
+.split {
+  display: flex;
+  align-items: flex-start;
+  gap: 24px;
+}
+.types {
+  width: 206px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 14px 12px;
+  border-radius: var(--vl-radius-lg);
+  border: 1px solid var(--vl-border-subtle);
+  background: var(--vl-bg-surface);
+}
+.type {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  text-align: left;
+  color: var(--vl-text-secondary);
+}
+.type:hover {
+  background: var(--vl-bg-subtle);
+}
+.typeOn,
+.typeOn:hover {
+  background: var(--vl-bg-brand-subtle);
+  color: var(--vl-text-brand);
+}
+.grow {
+  flex: 1;
+  min-width: 0;
+}
+.table {
+  flex: 1;
+  min-width: 0;
+  box-shadow: none;
+}
+.table th:first-child,
+.table td:first-child {
+  padding-left: 18px !important;
+}
+.table th:last-child,
+.table td:last-child {
+  padding-right: 18px !important;
+}
+.record {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+}
+.doc {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--vl-bg-subtle);
+}
+.view {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--vl-border-default);
+  background: var(--vl-bg-surface);
+  color: var(--vl-text-primary);
+}
+.view:hover {
+  background: var(--vl-bg-subtle);
+}
+.rail {
+  width: 272px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.rail > section {
+  box-shadow: none;
+}
+.share {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.revoke {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--vl-text-critical);
+}
+
+/* Edit + View in a row's last cell. */
+.rowActions {
+  display: inline-flex;
+  gap: 8px;
+}
+button.view {
+  font: inherit;
+  cursor: pointer;
+}

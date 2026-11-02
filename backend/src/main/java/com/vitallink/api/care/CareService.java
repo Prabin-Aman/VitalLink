@@ -826,7 +826,7 @@ public class CareService {
         String donor = e.donor() == null
                 ? null
                 : switch (e.donor()) {
-                    case yes -> "Yes" + (e.donorNote() != null ? " — " + e.donorNote() : "");
+                    case yes -> "Yes" + (e.donorNote() != null ? ", " + e.donorNote() : "");
                     case no -> "No";
                     case undecided -> "Undecided";
                 };

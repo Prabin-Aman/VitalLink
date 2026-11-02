@@ -59,7 +59,8 @@ export function Screen({
   title: string;
   subtitle?: string;
   back?: string;
-  add?: boolean;
+  /** Shows the Add pill; a function makes it open that screen's entry sheet. */
+  add?: boolean | (() => void);
   chips?: ReactNode;
   children: ReactNode;
   gap?: number;
@@ -71,7 +72,7 @@ export function Screen({
         title={title}
         subtitle={subtitle}
         onBack={back ? () => (router.canGoBack() ? router.back() : router.replace(back as never)) : undefined}
-        trailing={add ? <AddPill /> : undefined}
+        trailing={add ? <AddPill onPress={typeof add === "function" ? add : undefined} /> : undefined}
       >
         {chips}
       </Header>

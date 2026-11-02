@@ -109,6 +109,7 @@ class AccountTest extends ApiTest {
                 "{\"date_of_birth\": \"2999-01-01\"}",
                 "{\"timezone\": \"Mars/Olympus\"}",
                 "{\"language\": \"fr-FR\"}",
+                "{\"language\": \"es-US\"}", // English only (V19)
                 "{\"units\": null}"
             })
     void patchAccountRejects(String body) {

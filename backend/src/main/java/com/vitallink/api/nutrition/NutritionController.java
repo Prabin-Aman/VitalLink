@@ -46,6 +46,18 @@ public class NutritionController {
         return service.searchFoods(me, q);
     }
 
+    @GetMapping("/foods/barcode/{code}")
+    @Operation(summary = "A food by its barcode: one you have, else looked up in Open Food Facts and saved as yours.")
+    public FoodOut foodByBarcode(CurrentUser me, @PathVariable String code) {
+        return service.foodByBarcode(me, code);
+    }
+
+    @GetMapping("/me/hydration")
+    @Operation(summary = "Water entries of one local day (default today), newest first.")
+    public List<WaterOut> water(CurrentUser me, @RequestParam(required = false) java.time.LocalDate date) {
+        return service.waterOn(me, date != null ? date : java.time.LocalDate.now(me.zone()));
+    }
+
     @PostMapping("/me/foods")
     @ResponseStatus(HttpStatus.CREATED)
     public FoodOut createFood(CurrentUser me, @Valid @RequestBody FoodIn body) {

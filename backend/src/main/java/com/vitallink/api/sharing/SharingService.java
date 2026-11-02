@@ -270,7 +270,7 @@ public class SharingService {
                             consent != null ? KIND_LABEL.get(consent.granteeKind()) + " · " + email : email,
                             !r.outcome().equals("blocked")
                                     ? SCOPE_LABEL.get(Scope.valueOf(r.scope()))
-                                    : "None — blocked",
+                                    : "None (blocked)",
                             reason == null
                                     ? (consent != null && consent.purpose() != null ? consent.purpose() : "")
                                     : REFUSAL_PURPOSE.get(reason),

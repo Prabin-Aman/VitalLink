@@ -2,7 +2,7 @@
 import { buildSearchIndex, searchIndex, type SearchIcon, type SearchIndex } from "@vitallink/api";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { useApi } from "../data";
+import { endSession, useApi } from "../data";
 import { Icon, type IconName } from "./Icon";
 import { Avatar } from "./ui";
 import s from "./TopBar.module.css";
@@ -131,7 +131,7 @@ export function TopSearch({ className }: { className: string }) {
   );
 }
 
-export function ProfileMenu({ name, initials, email, className, labelClass }: { name: string; initials: string; email: string; className: string; labelClass: string }) {
+export function ProfileMenu({ name, initials, email, photo, className, labelClass }: { name: string; initials: string; email: string; photo: string | null; className: string; labelClass: string }) {
   const nav = useNavigate();
   const box = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -143,7 +143,7 @@ export function ProfileMenu({ name, initials, email, className, labelClass }: { 
   };
   const signOut = () => {
     // Real sign-out is Supabase's once sign-in exists; for now this drops the tab's dev token.
-    sessionStorage.removeItem("vl.token");
+    endSession();
     go("/welcome");
   };
   const items: { label: string; icon: IconName; onClick: () => void; danger?: boolean }[] = [
@@ -154,7 +154,7 @@ export function ProfileMenu({ name, initials, email, className, labelClass }: { 
   return (
     <div ref={box} className={s.menuBox}>
       <button type="button" className={className} aria-label={`Profile: ${name}`} aria-haspopup="menu" aria-expanded={open} aria-controls={menuId} onClick={() => setOpen((o) => !o)}>
-        <Avatar initials={initials} size={26} fontSize={10} />
+        <Avatar initials={initials} photo={photo} size={26} fontSize={10} />
         <span className={labelClass}>{name}</span>
       </button>
       {open && (

@@ -1,20 +1,24 @@
 // My Health · Digital Wellbeing — Mobile 390 (Figma 87:374).
 import { loadDigital } from "@vitallink/api";
+import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 import { StackBars } from "../../components/Charts";
 import { HealthChips } from "../../components/HealthChips";
 import { Legend, Screen, Section, StatGrid } from "../../components/kit";
 import { ScreenState } from "../../components/ui";
 import { useScreen } from "../../data";
+import { AddReadingSheet } from "../../sheets/HealthSheets";
 import { c, t } from "../../theme";
 
 export function DigitalScreen() {
   const state = useScreen(loadDigital);
+  const [adding, setAdding] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const v = state.data;
 
   return (
-    <Screen title="Digital Wellbeing" subtitle="Screen time and pickups · iPhone" add chips={<HealthChips active="Digital" />}>
+    <Screen title="Digital Wellbeing" subtitle="Screen time and pickups · iPhone" add={() => setAdding(true)} chips={<HealthChips active="Digital" />}>
+      {adding && <AddReadingSheet onClose={() => setAdding(false)} />}
       <Section title="Screen time" gap={14} action={<Text style={t("labelM", "textLink")}>Week</Text>}>
         <View style={st.baseline}>
           <Text style={t("metricL", "textPrimary")}>{v.average}</Text>

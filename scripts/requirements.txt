@@ -1,0 +1,4 @@
+# Python packages for scripts/ (optional). Install with: pip install -r scripts/requirements.txt
+# then: python -m playwright install chromium
+# write-icons.py and spa_serve.py need only the standard library.
+playwright>=1.48

@@ -10,6 +10,17 @@ export interface Me {
   email: string;
   display_name: string | null;
   timezone: string;
+  /** Short-lived link to the profile photo (Settings › Change photo), or null. */
+  avatar_url?: string | null;
+  /** Settings › Units: distances in km (metric) or miles (imperial). */
+  units?: "metric" | "imperial";
+}
+
+/** One water entry (GET /me/hydration: today's, newest first). */
+export interface WaterEntry {
+  id: string;
+  ml: number;
+  at: string;
 }
 
 export interface MetricSummary {
@@ -248,6 +259,23 @@ export interface TrackedGoal {
   short_detail: string;
 }
 
+/** GET /me/goals/{id}: a goal as stored (Edit Goal). */
+export interface GoalDetail {
+  id: string;
+  title: string;
+  short_title: string;
+  area: GoalMetricOption["area"];
+  kind: GoalMetricOption["kind"];
+  metric: string;
+  comparator: "at_least" | "at_most";
+  target: number;
+  baseline: number | null;
+  starts_on: string;
+  ends_on: string | null;
+  lifecycle: "active" | "paused" | "achieved" | "abandoned";
+  achieved_at: ISODate | null;
+}
+
 export interface GoalsOverview {
   goals: TrackedGoal[];
   achieved_this_month: number;
@@ -270,6 +298,37 @@ export interface Prescription {
   /** The dose that decides the row's state: last taken, next due, or missed. */
   dose: { at: ISODate; status: "taken" | "due" | "missed" };
   refill_due: boolean;
+}
+
+/** GET /me/medications/{id}: everything Edit Medication prefills. Times are "HH:MM:SS"; days ISO (Mon = 1). */
+export interface MedicationDetail {
+  id: string;
+  name: string;
+  form: string;
+  strength: string;
+  instructions: string | null;
+  prescriber: string | null;
+  refills_left: number;
+  refill_due_on: string | null;
+  status: "active" | "stopped";
+  started_on: string;
+  stopped_on: string | null;
+  frequency: string;
+  schedule: { time: string; days: number[] }[];
+  /** The last 14 days of logged doses, newest first (Dose history). */
+  recent_doses?: { scheduled_for: ISODate; status: "taken" | "skipped"; logged_at: ISODate }[];
+}
+
+/** GET/PATCH /me/nutrition/targets */
+export interface NutritionTargets {
+  kcal: number;
+  protein_g: number;
+  carbs_g: number;
+  fat_g: number;
+  fibre_g: number;
+  water_ml: number;
+  glass_ml: number;
+  weekly_target_kg: number;
 }
 
 /** GET /me/medications. */
@@ -483,6 +542,7 @@ export interface AccountProfile {
   date_of_birth: CalendarDate | null;
   sex: "female" | "male" | "other" | "undisclosed" | null;
   timezone: string;
+  avatar_url?: string | null;
 }
 
 // ---------------------------------------------------------------- records
@@ -663,6 +723,17 @@ export interface FoodHit {
   carbs_g: number;
   fat_g: number;
   fibre_g: number;
+}
+
+/** Nutrition › Recipes (GET /me/recipes): per-serving macros are worked out from the foods. */
+export interface Recipe {
+  id: string;
+  name: string;
+  servings: number;
+  notes: string | null;
+  items: { food: FoodHit; quantity_g: number; kcal: number }[];
+  per_serving: { grams: number; kcal: number; protein_g: number; carbs_g: number; fat_g: number; fibre_g: number };
+  updated_at: string;
 }
 
 /** GET /me/goals/metrics */

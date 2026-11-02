@@ -1,4 +1,5 @@
 import { loadActivity, type WorkoutType } from "@vitallink/api";
+import { useState } from "react";
 import { ScrollView, StyleSheet, Text, View } from "react-native";
 import { Header } from "../components/Header";
 import { HealthChips } from "../components/HealthChips";
@@ -7,6 +8,7 @@ import { StepsChart } from "../components/StepsChart";
 import { AddPill } from "../components/kit";
 import { Card, Dot, ScreenState } from "../components/ui";
 import { useScreen } from "../data";
+import { AddReadingSheet } from "../sheets/HealthSheets";
 import { c, t } from "../theme";
 
 export const WORKOUT_ICON_18: Record<WorkoutType, IconName> = {
@@ -24,6 +26,7 @@ const MOBILE_STATS = ["distance", "flights", "energy", "goal-days"];
 
 export function ActivityScreen() {
   const state = useScreen(loadActivity);
+  const [adding, setAdding] = useState(false);
   if (state.status !== "ready") return <ScreenState state={state} />;
   const a = state.data;
 
@@ -32,11 +35,12 @@ export function ActivityScreen() {
       <Header
         title="Activity"
         subtitle="Steps, workouts and movement · Apple Watch"
-        trailing={<AddPill />}
+        trailing={<AddPill onPress={() => setAdding(true)} />}
       >
         <HealthChips active="Activity" />
       </Header>
 
+      {adding && <AddReadingSheet onClose={() => setAdding(false)} />}
       <ScrollView contentContainerStyle={st.content}>
         <Card style={st.steps}>
           <View style={st.between}>

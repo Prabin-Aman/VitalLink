@@ -16,10 +16,13 @@ packages/tokens  figma-variables.json → build.mjs → css/tokens.css (web, --v
                                                   + src/generated.ts (colors.light/dark, space, radius, text, elevation)
 packages/assets  icons/*.svg (stroke="currentColor", one file per shape+size, e.g. health-18), emergency-qr.json
 packages/api     types.ts (hand-written; contract.ts checks it against openapi.gen.ts, `npm run api:types`), client.ts (VitalLinkClient; no baseUrl = mock mode), mock.ts + mock-data/*.ts (Figma
-                 sample data), format.ts, screens.ts (dashboard/activity/privacy) and views/*.ts (fitness, care,
-                 records, health) → loadX(api) view-models with display strings, web + mobile variants
+                 sample data), format.ts, forms.ts (form rules), bluetooth.ts, views/*.ts one file per area
+                 (shared, dashboard, activity, health, fitness, workout-tabs, nutrition-tabs, care, records,
+                 privacy, library, search) → loadX(api) view-models with display strings, web + mobile variants
 apps/web         React 19 + Vite 5 + React Router 6 + CSS modules + vite-plugin-svgr (?react imports)
                  components/kit.tsx = shared page parts (PageHeader, PillTabs, StatCard, Panel, BarRow, Split…)
+                 screens/<area>/ (dashboard, health, fitness, records, care, sharing, inbox, library, settings,
+                 public); forms/ = dialogs. STATUS.md lists what's built and what's missing
 apps/mobile      Expo SDK 57 + Expo Router + react-native-svg + react-native-svg-transformer + @expo-google-fonts
                  src/components/kit.tsx = shared parts (Screen, ChipRow, StatGrid, Section, Row, MenuRow, Pill…)
 scripts/         write-icons.py (icons + both Icon registries), icon-masters.json, shoot.py, spa_serve.py
@@ -28,7 +31,7 @@ backend/         Java 25 + Spring Boot 4.1 API (Maven wrapper), docs/ 01–12; s
 
 ## Commands
 ```
-npm install                 # from repo root only (never inside apps/*)
+npm install                 # from repo root only (never inside apps/*); REQUIREMENTS.md = every tool/package + version
 npm run web                 # :5173  every sidebar route, /health/*, /records/*, /welcome, /create-account
 npm run mobile              # Expo; `w` for browser
 npm run web:build && npm run typecheck
@@ -51,7 +54,7 @@ Env: `VITE_API_URL` (web), `EXPO_PUBLIC_API_URL` (mobile). Unset = mock data. La
   new name/size add it to `USES` in `scripts/write-icons.py` and run it — it writes the SVGs and regenerates
   `apps/*/src/components/icons.gen.ts`. New Figma icon → re-export the masters first. Python on Windows: set
   `PYTHONUTF8=1` (the default codec is cp1252) and write files with `newline="\n"`.
-- Screens do no formatting; add fields to view-models in `packages/api/src/views/*.ts` (or screens.ts).
+- Screens do no formatting; add fields to view-models in `packages/api/src/views/*.ts`.
   Every client call is live except `conversations()` (D1), which stays on `client.pending()` + `need()`:
   mock mode serves sample data, live mode says "isn't available yet" instead of fake numbers. Live
   My Health tabs leave out readings nothing measures and send null blocks; view-models show "—".
@@ -83,7 +86,7 @@ config (sample data on :5174), so a sweep of every route doesn't hit the API's r
 Done (Oct 2026, every frame in the Figma file, compared against Figma screenshots): web portal (all 16 sidebar
 items, 9 My Health tabs, Lab Results, Document Viewer, Create Account, public homepage at /welcome) and mobile
 (Welcome, Create Account, Health Overview/Activity/Digital, Workouts, Nutrition, Goals, Records, Profile and
-the 10 Profile screens). Mock data drives everything. Sign-in/sign-up are stubs (real auth = Supabase Auth).
+the 10 Profile screens). Mock data drives everything. Sign-in/Create Account use local email/password accounts until Supabase Auth.
 Backend (Java) is complete through phase 8 and every screen except Messages reads live data (23 Oct 2026).
 **Next:** owner decides D1–D16 → create the group Supabase/Render accounts → Supabase sign-in in the
 apps → phase 9 (phone sync on devices) → phase 10 leftovers (LoadCheck and `scripts/restore-drill.sh` against the real project).
@@ -121,7 +124,7 @@ apps → phase 9 (phone sync on devices) → phase 10 leftovers (LoadCheck and `
   days logged" (Figma 5); notifications show the same 7 items on web and mobile (the frames showed 6 and 5).
 - Copy written for data (no Figma text): the Family note uses "their own privacy centre" (Figma "her"),
   Create Account "Entries don't match yet." helper, mobile Emergency "Show QR" reveals the web QR card.
-- Workouts/Records use km (as in Figma) while Activity uses miles — units should follow Settings › Units.
+- (Fixed) Workouts/Activity distances follow Settings › Units (Figma mixed km and miles).
 
 ## Backend (Java; phases 1–8 built)
 `backend/` is one **Spring Boot 4.1 / Java 25** service (modular monolith), built with the Maven wrapper.
@@ -131,25 +134,40 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Packages: `core` (settings, db, security, audit, consent, storage, userdata, web), `account`, `health`
   (incl. My Health overview + 7 tabs), `training`, `nutrition`, `sharing` (shares, access log, privacy,
   family, all `/users/{id}` views), `care`, `goals`, `records`, `notifications`, `library`, `jobs`, `ops`, `tools`.
-- Plain SQL with Spring `JdbcClient` + HikariCP; Flyway `V1–V13` in `src/main/resources/db/migration`
-  (V1–V6 = the old Alembic 0001–0006); 33 tables in the private `vitallink` schema; RLS on everywhere.
+- Plain SQL with Spring `JdbcClient` + HikariCP; Flyway `V1–V19` in `src/main/resources/db/migration`
+  (V1–V6 = the old Alembic 0001–0006); 38 tables in the private `vitallink` schema; RLS on everywhere.
 - One transaction per `/v1` request (`RequestTransactionFilter`, rolls back on any error status).
   `AuditLog` writes in its own transaction. Consent: pure `Consent.decide()` + `ConsentGate`; every
   `/users/{id}` handler takes a `ConsentGate` (guardrail test); shared routes are GET-only.
 - Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
   = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
 - Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
-- Tests: 241 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.4% line coverage; `SystemCheck`
-  (44-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
+- Tests: 273 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.5% line coverage; `SystemCheck`
+  (47-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
-  `PhoneSim <url> [--hours N]` (uploads like the phone app through ingest), `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
-- Local: Postgres via `docker compose up` in WSL; `.env` `DATABASE_URL` may be `postgresql://…` or JDBC
+  `PhoneSim <url> [--hours N]` (uploads like the phone app through ingest), `SetPassword <email>` (password from
+  `VITALLINK_PASSWORD`), `SystemCheck <url>` — run with `./mvnw -q compile exec:java -Dexec.mainClass=com.vitallink.api.tools.<Tool>`.
+- Local: Postgres and Mailpit via `docker compose up` in WSL; `.env` `DATABASE_URL` may be `postgresql://…` or JDBC
   (use 127.0.0.1, not localhost). Live web: `VITE_API_URL=http://localhost:8000` + dev token in
-  `sessionStorage["vl.token"]` or `VITE_DEV_TOKEN` in `apps/web/.env.local` (any tab). Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
+  the signed-in session (`vl.token` in localStorage with Remember me, else sessionStorage) or `VITE_DEV_TOKEN` in
+  `apps/web/.env.local` for tools. Sign-in: `POST /v1/auth/sign-up`, `/v1/auth/sign-in` (`account/PasswordAuth`,
+  BCrypt, `credentials` table V15, 5 wrong → 15-min lock; local/test only, tokens are dev-token shaped, 12 h;
+  production = Supabase). Demo account password: `SetPassword demo@example.com` with `VITALLINK_PASSWORD`.
+  Without a session the shell redirects to /sign-in (and on a 401). Forgot password (proposed Figma 216:122,
+  216:208, 216:294; routes /forgot-password, /reset-password?token=): `POST /v1/auth/forgot-password` (always
+  202; single-use 30-min link, SHA-256 in `password_resets` V16, ≤3/hour) emails through `core/Mailer` (SMTP;
+  Mailpit in docker compose, inbox http://localhost:8025), `POST /v1/auth/reset-password` signs in. Google:
+  `POST /v1/auth/google` verifies a Google ID token (`account/GoogleSignIn`, Google JWKS, GOOGLE_CLIENT_ID;
+  `GET /v1/auth/config` tells the page) and counts as email confirmation; the page renders Google's own button
+  when configured. Apple isn't offered (paid developer programme): its button says so. Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
   (`.github/workflows/nightly.yml`).
 - Decisions applied by default (owner hasn't decided): D2 (QR on the phone), D4 (doctor/family/other),
   D5 (user confirms appointments), D6 (labs typed in), D9 (no push), D14 (no reviewer names). Messages (D1)
   and dependents (D3) are not built. Compliance: FTC Health Breach Notification Rule (not HIPAA).
+- Stress test (1 to 2 Nov 2026, docs/12 §12.5): `RequestTransactionFilter` admits at most pool size minus a
+  fifth at once (an audit entry needs a second connection; else the pool deadlocks), queues the rest 15 s,
+  then 503 `busy`; `ErrorHandler` maps bad query encoding and NUL/out-of-range input to 422 and unique
+  races to 409. Lists keyed by user-entered names use the id or position.
 - Rate limits: `core/web/RateLimiter` (60 ingest / 3,000 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
@@ -163,15 +181,15 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Web tabs/sections designed on 195:2 "Web · Proposed tabs and sections" and built: Workouts › History,
   Training Plans, Exercise Library, Personal Records (`GET /me/training/records`); Nutrition › Week, Meals
   (remove a meal), Hydration (add water); Settings › Data Export, Delete Account (`DELETE /me`). View-models
-  in `packages/api/src/views/tabs.ts`, screens in `WorkoutTabs.tsx`, `NutritionTabs.tsx`,
-  `SettingsSections.tsx`. Still placeholders: Nutrition › Recipes (no backend), Lab Results other panels,
-  Settings › Account/Security/Language (wait for Supabase sign-in). `npm test` = Vitest for packages/api.
+  in `packages/api/src/views/workout-tabs.ts` and `nutrition-tabs.ts`, screens in `fitness/WorkoutTabs.tsx`,
+  `fitness/NutritionTabs.tsx`, `settings/SettingsSections.tsx`. Still placeholders:
+  Settings › Account (waits for Supabase sign-in). `npm test` = Vitest for packages/api.
 - Sharing UI (Figma 206:1452 Share your data, 206:1516 Manage access): Lab Results "Share with Doctor" and
   Document Viewer "Share" (preset to records), Privacy cards "Manage" (doctors/family list with Stop
   sharing; emergency/devices cards link to their pages). Lab Results tabs are the user's own panels.
 - Top bar (Figma 207:1493, 207:1541): search over pages, records + the tests in lab panels, medications,
   appointments and library (`views/search.ts`, index built on first focus); profile menu with sign out
-  (drops the tab's dev token until Supabase). The shell loads only `/me` (`loadShell`).
+  (ends the session). The shell loads only `/me` (`loadShell`).
 - Also working on web: dashboard D/W/M/6M/Y chart ranges (`loadStepsRange`, `loadBloodPressureRange`),
   Health Library article reader `/library/:slug` (Figma 208:3270; `parseArticle` renders the Markdown
   subset as text-only elements), Lab Results Export (CSV with BOM), Emergency Download PDF / Print Card
@@ -191,8 +209,44 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   Bluetooth device (213:1754: Web Bluetooth in Chrome/Edge, standard GATT profiles decoded in
   `packages/api/src/bluetooth.ts`, saved through ingest with `platform: "bluetooth"`). Dialogs in
   `apps/web/src/forms/DeviceForms.tsx`. Bluetooth was checked with a stand-in `navigator.bluetooth`, not a real
-  device. Still inert:
-  Settings Change photo, Appointments Search Doctors, Nutrition Scan Barcode, Records Import.
+  device. Edit and delete (Figma 214:2165 Edit Medication — Stop/Restart, Delete; 214:2210 Edit Appointment;
+  214:2245 Edit Goal — target, end, Active/Paused, Delete; 214:2324 Edit record details — Delete Record;
+  214:2058 Daily targets → PATCH /me/targets) in `apps/web/src/forms/EditForms.tsx`; opened from the row title
+  (`EditTitle` in kit: medications, goals), an Edit button (appointment cards, records rows), Document Viewer
+  › Edit Details and Goals › Daily Targets; Workouts › History rows have Delete. Rules in forms.ts
+  (`checkMedicationEdit`, `checkGoalEdit`, `checkTargets`). Every save is a PATCH/DELETE the API writes to
+  Postgres; mock mode only checks. Settings › Change photo / Remove (`POST /me/avatar/upload` → PUT →
+  `/me/avatar/confirm`, JPEG/PNG/WebP ≤ 2 MB, `profiles.avatar_key`, V14; `avatar_url` on /me and /me/account,
+  shown in the top bar); Profile Save refreshes the top bar, Language is a select, Height parses ft/in or cm,
+  Email is read-only. Exercise Library cards open Log exercise (Figma 215:1843: sets of reps/weight/hold time,
+  time taken, effort → POST /me/workouts with `sets`). Still inert: Appointments Search Doctors. More dialogs (Figma page 15, `apps/web/src/forms/MoreForms.tsx`): Medications row History →
+  Dose history with Undo (218:1900, DELETE dose) and Request Refill → Record a refill (218:1934, PATCH
+  refills_left/refill_due_on); Nutrition › Targets (218:1966, PATCH /me/nutrition/targets); Log Food "Add it as a
+  new food" → Add a food (218:2030, POST /me/foods, opened in a portal; FormDialog stops submit bubbling);
+  Lab Results › Add Results and Records › Import Records → Add lab results (218:2098, POST /me/labs); Edit
+  Emergency Info has organ donor, preferred hospital and notes (218:2201). Add Reading also logs mood, stress,
+  energy (1–5) and mindful minutes (split into 5-minute buckets). `npm run web` uses the API (`VITE_API_URL` in apps/web/.env.local); in mock
+  mode a save says plainly that nothing was saved.
+  Batch of 31 Oct (Figma 221:2114 Change password, 221:2145 Scan barcode, 221:2168 Edit emergency contact,
+  221:2205 Hydration today): Settings › Security → `POST /v1/auth/change-password` (422 wrong_password, not
+  401, so the web doesn't sign out; 409 no_password for Google-only accounts); Hydration › Today lists
+  `GET /me/hydration` (entries `{id, ml, at}`) with Remove; Edit Emergency Info rows have Edit (PATCH the
+  contact); Nutrition › Scan Barcode → `GET /v1/foods/barcode/{code}` (`nutrition/OpenFoodFacts`, foods.barcode
+  V17, a found food is saved as the user's and opens Log Food preset); `/me` carries `units` and the Settings
+  Units select drives `distance()`/`pace()` in format.ts (Activity, Workouts, History). Nutrition › Recipes
+  (Figma 222:2104 tab, 222:2330 New/Edit recipe, 222:2417 Log a recipe): `nutrition/RecipeService`, V18
+  `recipes` + `recipe_items` (foods with grams, 1–20 servings; per-serving macros computed on read; each item
+  carries its full food), `POST /me/recipes/{id}/log` writes an ordinary meal (macros copied, so edits never
+  change past meals). Web: `forms/RecipeForms.tsx`, `RecipesTab` in NutritionTabs.
+  Create Account steps 2–8 (proposed Figma 226:2235–226:3348; `screens/public/Onboarding.tsx`): after step 1
+  creates the account, Personal Information (sex, units, time zone), Health Profile (daily targets), Body
+  Metrics (weight, waist, body fat as readings), Medical Information (conditions/allergies), Emergency Contact
+  (+ preferred hospital), Privacy (read-only), Finish (summary). Each saves through the ordinary API and can be
+  skipped; Back then Continue never adds the same rows twice.
+- Copy rules (owner, 1 Nov 2026): no em dashes in anything a user sees (empty values show "N/A", goal titles
+  are "Sleep: 7.5 hours a day"); English only (Spanish removed; V19 limits `profiles.language` to en-US, and
+  the language choice is gone from Settings and sign-up). The homepage's navy bands are pinned `.vl-light` and
+  their grey text `.vl-dark`, so dark mode doesn't turn them white.
   Mobile live mode: `apps/mobile/.env.local` with `EXPO_PUBLIC_API_URL` + `EXPO_PUBLIC_DEV_TOKEN`, and
   `CORS_ORIGIN=http://localhost:5173,http://localhost:8081` in `backend/.env` for the web build.
 - Not built yet: stored insights (computed on read),

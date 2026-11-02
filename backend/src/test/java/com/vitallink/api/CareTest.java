@@ -280,7 +280,7 @@ class CareTest extends ApiTest {
         assertThat(e.at("/allergies").toString()).isEqualTo("[\"Penicillin (severe)\"]");
         assertThat(e.at("/conditions").toString()).isEqualTo("[\"Type 2 diabetes\"]");
         assertThat(e.at("/medications").toString()).isEqualTo("[\"Metformin 500 mg\"]");
-        assertThat(e.at("/organ_donor").asString()).isEqualTo("Yes — registered in Texas");
+        assertThat(e.at("/organ_donor").asString()).isEqualTo("Yes, registered in Texas");
         List<String> contacts = new ArrayList<>();
         e.at("/contacts")
                 .forEach(c -> contacts.add(

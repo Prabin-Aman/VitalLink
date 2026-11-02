@@ -3,6 +3,7 @@
 import {
   checkAppointment,
   checkContact,
+  phone,
   checkMedication,
   checkReschedule,
   CONDITION_KINDS,
@@ -115,7 +116,7 @@ function BookAppointment({ tz, onClose }: { tz: string; onClose: () => void }) {
         placeholder={f.mode === "telehealth" ? "Optional" : "Clinic name and city"}
       />
       <TextField label="Notes" value={f.notes} onChange={set("notes")} placeholder="Optional" />
-      <Note>VitalLink doesn't book with the clinic — this keeps the visit in your calendar and reminders.</Note>
+      <Note>VitalLink doesn't book with the clinic. This keeps the visit in your calendar and reminders.</Note>
     </FormDialog>
   );
 }
@@ -149,7 +150,7 @@ function Reschedule({ tz, id, title, startsAt, onClose }: { tz: string; id: stri
         <TextField label="New date" type="date" icon="appointments-16" value={f.date} min={todayIn(tz)} onChange={(date) => setF((x) => ({ ...x, date }))} />
         <TextField label="New time" type="time" icon="clock-16" value={f.time} onChange={(time) => setF((x) => ({ ...x, time }))} />
       </Row>
-      <Note>Let the clinic know too — VitalLink doesn't contact them.</Note>
+      <Note>Let the clinic know too. VitalLink doesn't contact them.</Note>
     </FormDialog>
   );
 }
@@ -160,20 +161,49 @@ type Contact = EmergencyProfile["contacts"][number];
 
 export function EditEmergencyDialog({ onClose }: { onClose: () => void }) {
   const api = useApi();
-  const [start, setStart] = useState<{ conditions: ConditionItem[]; contacts: Contact[] } | null>(null);
+  const [start, setStart] = useState<Start | null>(null);
   useEffect(() => {
-    Promise.all([api.conditions(), api.emergencyProfile()]).then(([conditions, p]) => setStart({ conditions, contacts: p.contacts }), () => setStart({ conditions: [], contacts: [] }));
+    Promise.all([api.conditions(), api.emergencyProfile()]).then(
+      ([conditions, p]) =>
+        setStart({
+          conditions,
+          contacts: p.contacts,
+          // The profile shows the donor choice as text ("Yes — …"); the form needs the value.
+          donor: p.organ_donor?.startsWith("Yes") ? "yes" : p.organ_donor?.startsWith("No") ? "no" : "undecided",
+          hospital: p.preferred_hospital ?? "",
+          notes: p.notes ?? "",
+        }),
+      () => setStart({ conditions: [], contacts: [], donor: "undecided", hospital: "", notes: "" }),
+    );
   }, [api]);
   return start ? <EditEmergency start={start} onClose={onClose} /> : null;
 }
 
-function EditEmergency({ start, onClose }: { start: { conditions: ConditionItem[]; contacts: Contact[] }; onClose: () => void }) {
+type Start = { conditions: ConditionItem[]; contacts: Contact[]; donor: string; hospital: string; notes: string };
+const DONOR = [
+  { value: "yes", label: "Yes" },
+  { value: "no", label: "No" },
+  { value: "undecided", label: "Not decided" },
+];
+
+function EditEmergency({ start, onClose }: { start: Start; onClose: () => void }) {
   const api = useApi();
+  const [id, setId] = useState({ donor: start.donor, hospital: start.hospital, notes: start.notes });
   const [conditions, setConditions] = useState(start.conditions);
   const [contacts, setContacts] = useState(start.contacts);
   const [adding, setAdding] = useState<{ label: string; kind: "chronic" | "allergy" } | null>(null);
   const [newConditions, setNewConditions] = useState<{ label: string; kind: "chronic" | "allergy" }[]>([]);
   const [contact, setContact] = useState({ name: "", relation: "", phone: "" });
+  // Edit (Figma 221:2168) fills the fields with a saved contact; Save Changes then updates it in place.
+  const [editing, setEditing] = useState<Contact | null>(null);
+  const edit = (x: Contact) => {
+    setEditing(x);
+    setContact({ name: x.name, relation: x.relation, phone: phone(x.phone) });
+  };
+  const stopEditing = () => {
+    setEditing(null);
+    setContact({ name: "", relation: "", phone: "" });
+  };
 
   const keepAdding = () => {
     if (!adding) return setAdding({ label: "", kind: "chronic" });
@@ -192,14 +222,24 @@ function EditEmergency({ start, onClose }: { start: { conditions: ConditionItem[
       save={async () => {
         const typed = adding?.label.trim() ? [{ label: adding.label.trim(), kind: adding.kind }] : [];
         const c = checkContact(contact);
-        const addContact = c === null ? null : must(c);
+        const typedContact = c === null ? null : must(c);
+        if (editing && !typedContact) throw new FormProblem("Fill in the contact you're editing, or Stop editing.");
+        const addContact = editing ? null : typedContact;
         if (addContact && contacts.length >= 5) throw new FormProblem("You can list up to 5 emergency contacts. Remove one first.");
+        if (id.notes.length > 500) throw new FormProblem("Notes can be up to 500 characters.");
+        if (id.donor !== start.donor || id.hospital !== start.hospital || id.notes !== start.notes) {
+          await api.updateEmergencyProfile({ organ_donor: id.donor, preferred_hospital: id.hospital.trim() || null, notes: id.notes.trim() });
+        }
         for (const x of start.conditions) if (x.id && !conditions.some((y) => y.id === x.id)) await api.removeCondition(x.id);
         for (const x of start.contacts) if (x.id && !contacts.some((y) => y.id === x.id)) await api.removeContact(x.id);
         for (const x of [...newConditions, ...typed]) await api.addCondition(x.label, x.kind);
         if (addContact) await api.addContact({ ...addContact, primary: contacts.length === 0 });
+        if (editing?.id && typedContact) await api.updateContact(editing.id, typedContact);
       }}
     >
+      <Choices label="Organ donor" options={DONOR} selected={[id.donor]} onChange={([donor]) => setId((x) => ({ ...x, donor }))} />
+      <TextField label="Preferred hospital" value={id.hospital} onChange={(hospital) => setId((x) => ({ ...x, hospital }))} placeholder="Optional" />
+      <TextField label="Notes for first responders" value={id.notes} onChange={(notes) => setId((x) => ({ ...x, notes }))} placeholder="e.g. Wears a glucose monitor on the left arm" helper="Shown on your Medical ID (up to 500 characters)." />
       <ItemList
         label="Conditions & allergies"
         empty="None listed."
@@ -239,8 +279,12 @@ function EditEmergency({ start, onClose }: { start: { conditions: ConditionItem[
         items={contacts.map((x, i) => ({
           key: x.id ?? `c-${i}`,
           title: x.name,
-          caption: [x.relation, x.phone, x.primary ? "Primary" : null].filter(Boolean).join(" · "),
-          onRemove: () => setContacts((all) => all.filter((y) => y !== x)),
+          caption: [x.relation, phone(x.phone), x.primary ? "Primary" : null].filter(Boolean).join(" · "),
+          onEdit: x.id ? () => edit(x) : undefined,
+          onRemove: () => {
+            if (editing === x) stopEditing();
+            setContacts((all) => all.filter((y) => y !== x));
+          },
         }))}
         add={null}
       />
@@ -248,7 +292,14 @@ function EditEmergency({ start, onClose }: { start: { conditions: ConditionItem[
         <TextField label="Contact name" value={contact.name} onChange={(name) => setContact((x) => ({ ...x, name }))} placeholder="Name" />
         <TextField label="Relationship" value={contact.relation} onChange={(relation) => setContact((x) => ({ ...x, relation }))} placeholder="e.g. Sister" />
       </Row>
-      <TextField label="Phone" type="tel" icon="phone-16" value={contact.phone} onChange={(phone) => setContact((x) => ({ ...x, phone }))} placeholder="(214) 555-0100" helper="Fill these in to add a contact when you save." />
+      <TextField label="Phone" type="tel" icon="phone-16" value={contact.phone} onChange={(phone) => setContact((x) => ({ ...x, phone }))} placeholder="(214) 555-0100"
+        helper={editing ? `Editing ${editing.name} · Save Changes updates the contact.` : "Fill these in to add a contact when you save."}
+      />
+      {editing && (
+        <span>
+          <Button variant="tertiary" size="sm" onClick={stopEditing}>Stop editing</Button>
+        </span>
+      )}
     </FormDialog>
   );
 }

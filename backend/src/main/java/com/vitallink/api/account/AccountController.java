@@ -14,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -26,9 +27,12 @@ public class AccountController {
     private final AccountService service;
     private final DataRightsService rights;
 
-    public AccountController(AccountService service, DataRightsService rights) {
+    private final AvatarService avatars;
+
+    public AccountController(AccountService service, DataRightsService rights, AvatarService avatars) {
         this.service = service;
         this.rights = rights;
+        this.avatars = avatars;
     }
 
     @GetMapping
@@ -46,6 +50,27 @@ public class AccountController {
     @Operation(summary = "Change profile fields; a missing field is left alone, null clears an optional one.")
     public Account updateAccount(CurrentUser me, @RequestBody Map<String, Object> body) {
         return service.updateAccount(me, body);
+    }
+
+    @PostMapping("/avatar/upload")
+    @Operation(
+            summary =
+                    "Start a profile photo upload (JPEG, PNG or WebP, at most 2 MB): PUT the image to the URL, then confirm.")
+    public AvatarService.UploadOut startAvatar(CurrentUser me, @RequestBody AvatarService.UploadIn body) {
+        return avatars.startUpload(me, body);
+    }
+
+    @PostMapping("/avatar/confirm")
+    @Operation(summary = "Check the uploaded image and make it the profile photo; the old one is deleted.")
+    public Me confirmAvatar(CurrentUser me, @RequestBody Map<String, String> body) {
+        avatars.confirm(me, body.get("key"));
+        return service.me(me);
+    }
+
+    @DeleteMapping("/avatar")
+    public ResponseEntity<Void> removeAvatar(CurrentUser me) {
+        avatars.remove(me);
+        return ResponseEntity.noContent().build();
     }
 
     @GetMapping("/targets")
