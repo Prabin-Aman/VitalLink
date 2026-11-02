@@ -1,5 +1,6 @@
 import { VitalLinkClient } from "@vitallink/api";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
+import { accessToken, hasSession } from "./auth";
 
 // No VITE_API_URL → mock mode (design data). Set it to point at the backend (http://localhost:8000).
 const ApiContext = createContext<VitalLinkClient>(new VitalLinkClient());
@@ -10,41 +11,17 @@ export function ApiProvider({ children }: { children: ReactNode }) {
       new VitalLinkClient({
         baseUrl: import.meta.env.VITE_API_URL || undefined,
         // The signed-in session (Sign In / Create Account), or VITE_DEV_TOKEN from apps/web/.env.local for local tools.
-        getToken: async () => sessionToken() ?? import.meta.env.VITE_DEV_TOKEN ?? null,
+        getToken: async () => (await accessToken()) ?? import.meta.env.VITE_DEV_TOKEN ?? null,
       }),
   );
   return <ApiContext.Provider value={client}>{children}</ApiContext.Provider>;
 }
 
-// ---- Session: "Remember me" keeps the token in localStorage, otherwise only for this tab.
-const KEY = "vl.token";
-const read = (s: () => Storage) => {
-  try {
-    return s().getItem(KEY);
-  } catch {
-    return null;
-  }
-};
-export const sessionToken = () => read(() => sessionStorage) ?? read(() => localStorage);
-export function startSession(token: string, remember: boolean) {
-  endSession();
-  try {
-    (remember ? localStorage : sessionStorage).setItem(KEY, token);
-  } catch {
-    // storage blocked: the token can't be kept, so the user signs in again next time
-  }
-}
-export function endSession() {
-  for (const s of [() => sessionStorage, () => localStorage]) {
-    try {
-      s().removeItem(KEY);
-    } catch {
-      // nothing stored
-    }
-  }
-}
+// Sessions live in auth.ts (Supabase in production, the API's local accounts otherwise).
+export { endSession } from "./auth";
+
 /** Live mode with nobody signed in (and no local dev token): the app sends people to Sign In. */
-export const needsSignIn = (api: VitalLinkClient) => !api.isMock && !sessionToken() && !import.meta.env.VITE_DEV_TOKEN;
+export const needsSignIn = (api: VitalLinkClient) => !api.isMock && !hasSession() && !import.meta.env.VITE_DEV_TOKEN;
 
 /** The client, for screens that write (mark a dose taken, save settings…). */
 export const useApi = () => useContext(ApiContext);

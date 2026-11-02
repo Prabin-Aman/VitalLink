@@ -86,7 +86,8 @@ config (sample data on :5174), so a sweep of every route doesn't hit the API's r
 Done (Oct 2026, every frame in the Figma file, compared against Figma screenshots): web portal (all 16 sidebar
 items, 9 My Health tabs, Lab Results, Document Viewer, Create Account, public homepage at /welcome) and mobile
 (Welcome, Create Account, Health Overview/Activity/Digital, Workouts, Nutrition, Goals, Records, Profile and
-the 10 Profile screens). Mock data drives everything. Sign-in/Create Account use local email/password accounts until Supabase Auth.
+the 10 Profile screens). Mock data drives everything. Sign-in (`apps/web/src/auth.ts`): Supabase Auth when `VITE_SUPABASE_URL` +
+`VITE_SUPABASE_PUBLISHABLE_KEY` are set (production, Vercel), else the API's local email/password accounts.
 Backend (Java) is complete through phase 8 and every screen except Messages reads live data (23 Oct 2026).
 **Next:** owner decides D1–D16 → create the group Supabase/Render accounts → Supabase sign-in in the
 apps → phase 9 (phone sync on devices) → phase 10 leftovers (LoadCheck and `scripts/restore-drill.sh` against the real project).
@@ -142,7 +143,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
   = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
 - Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
-- Tests: 273 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.5% line coverage; `SystemCheck`
+- Tests: 274 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.5% line coverage; `SystemCheck`
   (47-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
   `PhoneSim <url> [--hours N]` (uploads like the phone app through ingest), `SetPassword <email>` (password from
@@ -168,6 +169,12 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   fifth at once (an audit entry needs a second connection; else the pool deadlocks), queues the rest 15 s,
   then 503 `busy`; `ErrorHandler` maps bad query encoding and NUL/out-of-range input to 422 and unique
   races to 409. Lists keyed by user-entered names use the id or position.
+- Production setup (2 Nov 2026): Supabase project `gfjiaihdnzyvffonyzar` (us-east-1; migrations V1–V19 applied,
+  private `records` bucket; user tokens ES256 via JWKS); web on Vercel `https://vital-link-flax.vercel.app`
+  (`vercel.json` rewrites every path to index.html); API on Render not created yet. Supabase sign-up with email
+  confirmation keeps the optional profile details in localStorage (`vl.signup.pending`) until the emailed link
+  signs the person in, then PATCHes /me/account. "Signed in recently" (delete account) uses the token's `amr`
+  timestamp, since Supabase refreshes `iat` hourly. Launch config `web-supabase` (:5175) runs the portal in Supabase mode.
 - Rate limits: `core/web/RateLimiter` (60 ingest / 3,000 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.

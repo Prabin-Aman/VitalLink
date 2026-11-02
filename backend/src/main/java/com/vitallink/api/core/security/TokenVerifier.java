@@ -18,6 +18,7 @@ import java.net.MalformedURLException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.text.ParseException;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -93,9 +94,25 @@ public class TokenVerifier {
                 e.strip().toLowerCase(),
                 Boolean.TRUE.equals(meta.get("email_verified")),
                 aal instanceof String s ? s : "aal1",
-                c.getIssueTime().toInstant().getEpochSecond(),
+                signedInAt(c),
                 name(meta.get("first_name")),
                 name(meta.get("last_name")));
+    }
+
+    /**
+     * When the user last proved who they are. Supabase lists each sign-in method with its time in {@code amr};
+     * a refreshed token keeps those times but gets a new {@code iat}. Without {@code amr}, {@code iat}.
+     */
+    static long signedInAt(JWTClaimsSet c) {
+        long latest = -1;
+        if (c.getClaim("amr") instanceof List<?> amr) {
+            for (Object entry : amr) {
+                if (entry instanceof Map<?, ?> m && m.get("timestamp") instanceof Number t) {
+                    latest = Math.max(latest, t.longValue());
+                }
+            }
+        }
+        return latest >= 0 ? latest : c.getIssueTime().toInstant().getEpochSecond();
     }
 
     /**

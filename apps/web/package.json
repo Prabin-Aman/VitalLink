@@ -11,6 +11,7 @@
   "dependencies": {
     "@fontsource/inter": "^5.1.0",
     "@fontsource/roboto-mono": "^5.1.0",
+    "@supabase/supabase-js": "^2.118.0",
     "@vitallink/api": "*",
     "@vitallink/tokens": "*",
     "react": "19.2.3",

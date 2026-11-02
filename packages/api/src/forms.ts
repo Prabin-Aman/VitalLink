@@ -175,8 +175,19 @@ export function checkBodyMetrics(f: BodyMetricsForm, units: "metric" | "imperial
 }
 
 export interface SignUpForm { first: string; last: string; email: string; phone: string; password: string; confirm: string; zip: string; dob: string; height: string }
-/** POST /v1/auth/sign-up body; the optional details are checked here so the user sees which one is wrong. */
-export function checkSignUp(f: SignUpForm, today: string): Checked<object> {
+/** The sign-up body (POST /v1/auth/sign-up, or Supabase sign-up plus PATCH /me/account for the details). */
+export interface SignUpBody {
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  phone?: string;
+  zip?: string;
+  date_of_birth?: string;
+  height_cm?: number;
+}
+/** The optional details are checked here so the user sees which one is wrong. */
+export function checkSignUp(f: SignUpForm, today: string): Checked<SignUpBody> {
   if (!f.first.trim() || !f.last.trim()) return fail("Enter your first and last name.");
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(f.email.trim())) return fail("Enter a valid email address.");
   const needs = passwordNeeds(f.password);

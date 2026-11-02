@@ -5,6 +5,7 @@ import { useNavigate } from "react-router-dom";
 import { FormDialog, must, Note, TextField } from "../../components/Form";
 import { Panel, RowButton, Txt } from "../../components/kit";
 import { Button } from "../../components/ui";
+import { changePassword } from "../../auth";
 import { endSession, useApi } from "../../data";
 import { exportMyData } from "../../download";
 import s from "./Settings.module.css";
@@ -148,7 +149,7 @@ function ChangePasswordDialog({ onClose }: { onClose: () => void }) {
       onClose={onClose}
       save={async () => {
         const c = must(checkPasswordChange(f));
-        if (!api.isMock) await api.changePassword(c.current, c.next);
+        if (!api.isMock) await changePassword(api, c.current, c.next);
       }}
     >
       <TextField label="Current password" type="password" autoComplete="current-password" value={f.current} onChange={set("current")} autoFocus />

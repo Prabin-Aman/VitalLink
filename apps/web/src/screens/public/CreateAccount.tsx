@@ -1,12 +1,14 @@
-// Create Account — Desktop 1440 (Figma 26:2). Step 1 creates the account (POST /v1/auth/sign-up); steps
+// Create Account — Desktop 1440 (Figma 26:2). Step 1 creates the account (Supabase sign-up in production,
+// POST /v1/auth/sign-up locally; with email confirmation the person continues from the emailed link); steps
 // 2–8 (proposed, Figma 226:2235–226:3348, in Onboarding.tsx) save the rest through the ordinary API and
 // can each be skipped, or left with "Save and finish later".
 import { checkSignUp, passwordNeeds, todayIn } from "@vitallink/api";
-import { useCallback, useRef, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cx, Txt } from "../../components/kit";
 import { Logo } from "../../components/ui";
-import { startSession, useApi } from "../../data";
+import { applyPendingProfile, hasSession, resendConfirmation, signUp, supabase } from "../../auth";
+import { useApi } from "../../data";
 import { initialDrafts, OnboardingCard, saveStep, useAccountDefaults, type Created, type Drafts, type StepResult } from "./Onboarding";
 import s from "./CreateAccount.module.css";
 
@@ -42,6 +44,14 @@ export function CreateAccount() {
   // What each step last saved: after Back, Continue on an unchanged step doesn't add the same rows again.
   const [saved, setSaved] = useState<Record<number, string>>({});
   const created = useRef<Created>({ conditions: 0, contactId: null });
+  // Supabase sent a confirmation link to this address; the account continues from that link.
+  const [confirming, setConfirming] = useState<string | null>(null);
+  // Back from the confirmation link (signed in by it): save the sign-up details that waited, then step 2.
+  useEffect(() => {
+    if (!supabase || !hasSession()) return;
+    setStep(2);
+    applyPendingProfile(api).catch(() => undefined);
+  }, [api]);
   useAccountDefaults(setDrafts, step > 1);
 
   const pw = v.password ?? "";
@@ -60,13 +70,9 @@ export function CreateAccount() {
     if (!c.ok) return setError(c.error);
     setBusy(true);
     setError(null);
-    api
-      .signUp(c.body)
+    signUp(api, c.body)
       .then(
-        (s) => {
-          startSession(s!.access_token, true);
-          setStep(2);
-        },
+        (r) => (r === "confirm-email" ? setConfirming(c.body.email) : setStep(2)),
         (err: Error) => setError(err.message),
       )
       .finally(() => setBusy(false));
@@ -125,7 +131,35 @@ export function CreateAccount() {
       </ol>
 
       <main className={s.body}>
-        {step > 1 ? (
+        {confirming ? (
+          <section className={s.card} aria-labelledby="confirm-title">
+            <div className={s.heading}>
+              <Txt s="overline" c="textBrand">STEP 1 OF {STEPS.length}</Txt>
+              <Txt s="h2" as="h1"><span id="confirm-title">Check your email</span></Txt>
+              <Txt s="bodyM" c="textSecondary" as="p">
+                We sent a link to {confirming}. Open it to confirm your email, and you'll continue here with step 2.
+              </Txt>
+            </div>
+            <Txt s="bodyS" c="textTertiary" as="p">
+              Didn't get it? Check spam, or{" "}
+              <button
+                type="button"
+                className={cx("vl-body-s-strong", s.textButton)}
+                disabled={busy}
+                onClick={() => {
+                  setBusy(true);
+                  setError(null);
+                  resendConfirmation(confirming)
+                    .then(() => setError(null), (e: Error) => setError(e.message))
+                    .finally(() => setBusy(false));
+                }}
+              >
+                send it again
+              </button>
+              .
+            </Txt>
+          </section>
+        ) : step > 1 ? (
           <OnboardingCard step={step} drafts={drafts} setDrafts={setDrafts} results={results} demo={api.isMock} />
         ) : (
         <section className={s.card} aria-labelledby="create-title">
@@ -172,10 +206,16 @@ export function CreateAccount() {
             <span role={error ? "alert" : undefined}>{error ?? blocker}</span>
           </Txt>
         )}
-        {step < 8 && <Link to={step === 1 ? "/sign-in" : "/"} className={cx("vl-body-m-strong", s.link)}>Save and finish later</Link>}
-        <button type="submit" className={cx("vl-label-l", s.continue)} disabled={(step === 1 && !ready) || busy}>
-          {busy ? (step === 1 ? "Creating…" : "Saving…") : step === 8 ? "Go to Dashboard" : "Continue"}
-        </button>
+        {confirming ? (
+          <Link to="/sign-in" className={cx("vl-body-m-strong", s.link)}>Back to Sign In</Link>
+        ) : (
+          <>
+            {step < 8 && <Link to={step === 1 ? "/sign-in" : "/"} className={cx("vl-body-m-strong", s.link)}>Save and finish later</Link>}
+            <button type="submit" className={cx("vl-label-l", s.continue)} disabled={(step === 1 && !ready) || busy}>
+              {busy ? (step === 1 ? "Creating…" : "Saving…") : step === 8 ? "Go to Dashboard" : "Continue"}
+            </button>
+          </>
+        )}
       </footer>
     </form>
   );

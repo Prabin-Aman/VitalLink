@@ -3,7 +3,8 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, tokenVar } from "../../components/Icon";
 import { AccentDot, Button, Chip, Logo } from "../../components/ui";
-import { startSession, useApi, useScreen } from "../../data";
+import { forgotPassword, hasSession, keepLocalToken, resetNeedsToken, resetPassword, signIn, signInWithGoogle, supabase, supabaseGoogle } from "../../auth";
+import { useApi, useScreen } from "../../data";
 import s from "./SignIn.module.css";
 
 // Brand-panel preview card: always the sample dashboard (nobody is signed in on this page).
@@ -122,11 +123,13 @@ const loadGsi = () =>
  * Google's own button (its branding rules require it) when GOOGLE_CLIENT_ID is set on the API; otherwise the
  * design's button, which says Google sign-in isn't set up.
  */
-function GoogleButton({ onToken, onProblem }: { onToken: (credential: string) => void; onProblem: (m: string) => void }) {
+function GoogleButton({ onToken, onProblem, remember }: { onToken: (credential: string) => void; onProblem: (m: string) => void; remember: boolean }) {
   const api = useApi();
   const box = useRef<HTMLDivElement>(null);
   const [clientId, setClientId] = useState<string | null>(null);
   useEffect(() => {
+    // With Supabase, Google goes through Supabase's provider instead (below), not the API's client id.
+    if (supabase) return setClientId("");
     api.authConfig().then((c) => setClientId(c.google_client_id), () => setClientId(""));
   }, [api]);
   useEffect(() => {
@@ -145,11 +148,15 @@ function GoogleButton({ onToken, onProblem }: { onToken: (credential: string) =>
       variant="secondary"
       size="block"
       onClick={() =>
-        onProblem(
-          api.isMock
-            ? "Google sign-in works when the portal runs with the API."
-            : "Google sign-in isn't set up yet: the API needs a Google OAuth client ID (GOOGLE_CLIENT_ID). Use your email and password for now.",
-        )
+        supabaseGoogle
+          ? signInWithGoogle(remember).catch((e: Error) => onProblem(e.message))
+          : onProblem(
+              api.isMock
+                ? "Google sign-in works when the portal runs with the API."
+                : supabase
+                  ? "Google sign-in isn't set up yet. Use your email and password for now."
+                  : "Google sign-in isn't set up yet: the API needs a Google OAuth client ID (GOOGLE_CLIENT_ID). Use your email and password for now.",
+            )
       }
     >
       <Icon name="user-17" color="iconDefault" />
@@ -173,7 +180,7 @@ export function SignIn() {
 
   const enter = useCallback(
     (token: string) => {
-      startSession(token, remember);
+      keepLocalToken(token, remember);
       nav("/");
     },
     [nav, remember],
@@ -186,17 +193,16 @@ export function SignIn() {
     [api, enter],
   );
 
-  // Email and password against the API (POST /v1/auth/sign-in). The mock build has no accounts: it just enters.
+  // Email and password: Supabase in production, the API's local accounts otherwise. The mock build has no accounts: it just enters.
   const submit = (e: FormEvent) => {
     e.preventDefault();
     if (api.isMock) return nav("/");
     if (!email.trim() || !password) return setError("Enter your email and password.");
     setBusy(true);
     setError(null);
-    api
-      .signIn(email.trim(), password)
+    signIn(api, email.trim(), password, remember)
       .then(
-        (r) => enter(r!.access_token),
+        () => nav("/"),
         (err: Error) => setError(err.message),
       )
       .finally(() => setBusy(false));
@@ -250,7 +256,7 @@ export function SignIn() {
           </div>
 
           <div className={s.social}>
-            <GoogleButton onToken={google} onProblem={setError} />
+            <GoogleButton onToken={google} onProblem={setError} remember={remember} />
             <Button
               variant="secondary"
               size="block"
@@ -285,8 +291,7 @@ export function ForgotPassword() {
     if (api.isMock) return setError("Password reset works when the portal runs with the API.");
     setBusy(true);
     setError(null);
-    api
-      .forgotPassword(email.trim())
+    forgotPassword(api, email.trim())
       .then(
         () => setSent(true),
         (err: Error) => setError(err.message),
@@ -299,7 +304,7 @@ export function ForgotPassword() {
       <AuthLayout onSubmit={(e) => e.preventDefault()}>
         <Heading
           title="Check your email"
-          sub={`If an account uses ${email.trim()}, a link to reset its password is on its way. The link works for 30 minutes.`}
+          sub={`If an account uses ${email.trim()}, a link to reset its password is on its way. The link works for ${supabase ? "an hour" : "30 minutes"}.`}
         />
         <Link to="/sign-in" className={s.linkButton}>
           Back to Sign In
@@ -340,24 +345,23 @@ export function ResetPassword() {
   const [password, setPassword] = useState("");
   const [confirm, setConfirm] = useState("");
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(token ? null : "This link is missing its code. Open the link from the email again.");
+  // Supabase: opening the email link already signed the person in for this. Local accounts: the link carries a token.
+  const usable = resetNeedsToken ? !!token : hasSession();
+  const [error, setError] = useState<string | null>(
+    usable ? null : resetNeedsToken ? "This link is missing its code. Open the link from the email again." : "This link has expired or was already used. Ask for a new one.",
+  );
   const needs = password ? passwordNeeds(password) : null;
 
   const save = (e: FormEvent) => {
     e.preventDefault();
-    if (!token) return;
+    if (!usable) return;
     if (!password || needs) return setError(needs ?? "Choose a new password.");
     if (password !== confirm) return setError("The two passwords don't match.");
     setBusy(true);
     setError(null);
-    api
-      .resetPassword(token, password)
+    resetPassword(api, token, password)
       .then(
-        (r) => {
-          if (!r) return setError("Password reset works when the portal runs with the API.");
-          startSession(r.access_token, true);
-          nav("/");
-        },
+        () => nav("/"),
         (err: Error) => setError(err.message),
       )
       .finally(() => setBusy(false));
@@ -376,7 +380,7 @@ export function ResetPassword() {
         <input className={s.input} type="password" autoComplete="new-password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
       </label>
       <Problem text={error} />
-      <Button type="submit" size="block" disabled={busy || !token}>
+      <Button type="submit" size="block" disabled={busy || !usable}>
         {busy ? "Saving…" : "Save and sign in"}
       </Button>
       <p className={s.footer}>
