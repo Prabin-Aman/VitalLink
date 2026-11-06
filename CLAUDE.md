@@ -1,6 +1,6 @@
 # VitalLink — context for Claude Code
 
-Group capstone (Kathmandu University, Group 2: Amrit Gautam, Dinesh Chaudhary, Shreenibash Shrestha,
+Group capstone (The University of Texas at Arlington, Group 2: Amrit Gautam, Dinesh Chaudhary, Shreenibash Shrestha,
 Sudip Ghorasaini; owner Abhinaash). Consumer health & fitness web portal for the Dallas area. The Expo mobile app
 was deleted at the owner's request (Nov 2026; in git history).
 Owner prefers concise, direct, actionable answers.

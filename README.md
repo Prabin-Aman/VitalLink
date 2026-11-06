@@ -4,7 +4,7 @@ A free health and fitness web app for people in the Dallas area. Each person own
 nutrition, goals, medications, appointments and medical records. It leaves their account only through a share they
 create and can revoke.
 
-Group capstone, Kathmandu University, Group 2.
+Group capstone, The University of Texas at Arlington, Group 2.
 
 | | |
 |---|---|
