@@ -36,8 +36,8 @@ export function Privacy() {
   return (
     <>
       <header className={s.heading}>
-        <h1 className="vl-h1">Privacy Centre</h1>
-        <p className="vl-body-l" style={{ color: tokenVar("textSecondary") }}>
+        <h2 className="vl-h3">Privacy Centre</h2>
+        <p className="vl-body-m" style={{ color: tokenVar("textSecondary") }}>
           Who can see your health record, what they looked at, and how to revoke it.
         </p>
       </header>

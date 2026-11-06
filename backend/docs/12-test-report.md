@@ -7,7 +7,7 @@ Ubuntu with a Postgres service container on every push that touches `backend/`.
 
 | Check | Command | Result |
 |---|---|---|
-| Unit, API, database and guardrail tests | `./mvnw verify` | **285 passed, 0 failed, 0 skipped** (6 Nov 2026; coverage last measured at 80.5% on 1 Nov) |
+| Unit, API, database and guardrail tests | `./mvnw verify` | **286 passed, 0 failed, 0 skipped** (6 Nov 2026; coverage last measured at 80.5% on 1 Nov) |
 | Coverage (JaCoCo) | `target/site/jacoco/index.html` | **80.4% of lines** (the hand-run `tools` package, now with LoadCheck, counts as uncovered; see 12.4) |
 | System test (packaged jar over real HTTP) | `SystemCheck http://localhost:8000` | **47 of 47 steps passed** (1 Nov 2026, through V18: recipes and today's water added) |
 | Load test (packaged jar, demo account) | `LoadCheck http://localhost:8000` | **Pass**: 5,000-bucket ingest 1.1 s (target < 2 s); warm p95 dashboard 40 ms, overview 60 ms, training 25 ms, goals 25 ms (target < 300 ms) |

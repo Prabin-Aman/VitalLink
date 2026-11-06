@@ -164,4 +164,31 @@ class AccountTest extends ApiTest {
                 .isEqualTo(204);
         assertThat(get(u, "/v1/me").at("/onboarded").asBoolean()).isTrue();
     }
+
+    /** An account made before its name was known picks it up during setup, and never after. */
+    @Test
+    void aBlankNameIsFilledFromTheTokenOnlyDuringSetup() {
+        UUID subject = UUID.randomUUID();
+        String email = "late-name-" + subject + "@example.com";
+        String nameless = token(email, subject, true, null, null);
+        get(nameless, "/v1/me");
+        assertThat(get(nameless, "/v1/me/account").at("/first_name").isNull()).isTrue();
+
+        String named = token(email, subject, true, "Ana", "Cruz");
+        Res filled = get(named, "/v1/me/account");
+        assertThat(filled.at("/first_name").asString()).isEqualTo("Ana");
+        assertThat(filled.at("/last_name").asString()).isEqualTo("Cruz");
+
+        // A name the person changed isn't replaced.
+        patch(named, "/v1/me/account", Map.of("first_name", "Anna"));
+        assertThat(get(named, "/v1/me/account").at("/first_name").asString()).isEqualTo("Anna");
+
+        // After setup, clearing the name in Settings sticks.
+        post(named, "/v1/me/onboarding/complete", null);
+        java.util.Map<String, Object> clear = new java.util.HashMap<>();
+        clear.put("first_name", null);
+        clear.put("last_name", null);
+        patch(named, "/v1/me/account", clear);
+        assertThat(get(named, "/v1/me/account").at("/first_name").isNull()).isTrue();
+    }
 }

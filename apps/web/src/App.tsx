@@ -17,6 +17,7 @@ import { Medications } from "./screens/care/Medications";
 import { Messages } from "./screens/inbox/Messages";
 import { Notifications } from "./screens/inbox/Notifications";
 import { Settings } from "./screens/settings/Settings";
+import { SettingsFrame } from "./screens/settings/SettingsFrame";
 import { Dashboard } from "./screens/dashboard/Dashboard";
 import { Goals } from "./screens/fitness/Goals";
 import { Home } from "./screens/public/Home";
@@ -100,8 +101,8 @@ export function App() {
         <Route path="messages" element={<Messages />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="emergency" element={<Emergency />} />
-        <Route path="devices" element={<Devices />} />
-        <Route path="privacy" element={<Privacy />} />
+        <Route path="devices" element={<SettingsFrame current="Connected Devices"><Devices /></SettingsFrame>} />
+        <Route path="privacy" element={<SettingsFrame current="Privacy"><Privacy /></SettingsFrame>} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotBuilt />} />
       </Route>

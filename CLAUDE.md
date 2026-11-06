@@ -129,7 +129,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Auth: Nimbus JOSE; production verifies Supabase JWKS, local/test HS256 dev tokens. Files: `FileStorage`
   = Supabase Storage in production, signed local files (`/local-storage/{token}`) in dev/test.
 - Each module implements `UserData` (export queries + delete hook) for `GET /me/export` and `DELETE /me`.
-- Tests: 285 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.5% line coverage; `SystemCheck`
+- Tests: 286 JUnit + MockMvc tests on real Postgres (`<db>_test`), 80.5% line coverage; `SystemCheck`
   (47-step black-box test over HTTP) runs in CI against the packaged jar. `./mvnw spotless:apply` formats.
 - Tools (local only): `DevToken <email>`, `DemoSeed` (demo@example.com, 90 days in every module),
   `PhoneSim <url> [--hours N]` (uploads like the phone app through ingest), `SetPassword <email>` (password from
@@ -164,7 +164,8 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   Google sign-in: OAuth client ID `775096923930-s5ogureo5mm6n822lqft9be091istahi.apps.googleusercontent.com`
   (public; goes in Supabase › Providers › Google with the client secret, which is never kept in this repo).
 - Batch of 6 Nov 2026 (owner's request; proposed Figma page 195:2): Connected Devices and Privacy left the sidebar and
-  the profile menu and open from Settings, which stays lit on them (other Figma frames' sidebars still show both).
+  the profile menu and open inside Settings (`SettingsFrame` keeps its section menu on screen; no Figma frame for that
+  layout; other Figma frames' sidebars still show both).
   Settings › Account (232:2247: email and Change email 232:2637, sign-in methods, member since, Sign out everywhere).
   Security › Two-step verification (232:2446, set up 232:2670, off 232:2705, sign-in code step 232:2789), Supabase
   TOTP. The API refuses a password-only (aal1) token with 403 `mfa_required` once the account has a verified factor

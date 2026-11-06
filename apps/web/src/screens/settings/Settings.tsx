@@ -1,29 +1,15 @@
 // Account Settings — Desktop 1440 (Figma 74:760).
 import { checkPhoto, loadSettings, parseHeight, PHOTO_TYPES } from "@vitallink/api";
 import { useRef, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
-import { cx, PageHeader, Panel, RowButton, Txt } from "../../components/kit";
+import { useLocation } from "react-router-dom";
+import { cx, Panel, RowButton, Txt } from "../../components/kit";
 import { Avatar, Button } from "../../components/ui";
 import { notifyChanged, useApi, useReloadableScreen } from "../../data";
 import { applyTheme, storedTheme, type Theme } from "../../theme";
 import { ScreenState } from "../ScreenState";
+import { SettingsFrame } from "./SettingsFrame";
 import { AccountSection, DataExportSection, DeleteAccountSection, SecuritySection } from "./SettingsSections";
 import s from "./Settings.module.css";
-
-// Sections with their own page link there; Profile and Appearance live here.
-const NAV: { label: string; to?: string; danger?: boolean }[] = [
-  { label: "Profile" },
-  { label: "Account" },
-  { label: "Security" },
-  { label: "Privacy", to: "/privacy" },
-  { label: "Notifications", to: "/notifications" },
-  { label: "Connected Devices", to: "/devices" },
-  { label: "Family", to: "/family" },
-  { label: "Emergency", to: "/emergency" },
-  { label: "Appearance" },
-  { label: "Data Export" },
-  { label: "Delete Account", danger: true },
-];
 
 // Figma swatches: bg/canvas, bg/inverse and bg/muted, always in light mode.
 const THEMES: { key: Theme; label: string; swatch: string }[] = [
@@ -35,7 +21,8 @@ const THEMES: { key: Theme; label: string; swatch: string }[] = [
 export function Settings() {
   const api = useApi();
   const [state] = useReloadableScreen(loadSettings);
-  const [section, setSection] = useState("Profile");
+  // Opened from Privacy or Connected Devices, whose menu says which section.
+  const [section, setSection] = useState<string>((useLocation().state as { section?: string } | null)?.section ?? "Profile");
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [theme, setTheme] = useState<Theme | null>(storedTheme);
   const [photoBusy, setPhotoBusy] = useState(false);
@@ -168,25 +155,9 @@ export function Settings() {
   }
 
   return (
-    <>
-      <PageHeader title="Settings" subtitle="Account, security, appearance and data controls." />
-      <div className={s.split}>
-        <nav className={s.nav} aria-label="Settings sections">
-          {NAV.map((n) => {
-            const on = n.label === section || (section === "Appearance" && n.label === "Appearance");
-            const cls = cx(on ? "vl-body-m-strong" : "vl-body-m", s.item, on && s.itemOn, n.danger && s.danger);
-            return n.to ? (
-              <Link key={n.label} to={n.to} className={cls}>{n.label}</Link>
-            ) : (
-              <button key={n.label} type="button" className={cls} aria-current={on || undefined} onClick={() => setSection(n.label)}>
-                {n.label}
-              </button>
-            );
-          })}
-        </nav>
-        <div className={s.main}>{body}</div>
-      </div>
-    </>
+    <SettingsFrame current={section} onPick={setSection}>
+      {body}
+    </SettingsFrame>
   );
 }
 

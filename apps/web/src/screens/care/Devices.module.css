@@ -1,7 +1,12 @@
-/* Devices: wrap of 352px cards, 16 apart. */
+/* Devices: cards inside the Settings column, wide enough for their three buttons on one line. */
+.heading {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
 .grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 352px)); /* 352 at 1440; narrower laptops shrink them */
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
   gap: 16px;
   align-items: start;
 }
@@ -61,11 +66,4 @@
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-/* Tablet: cards reflow to fit (three across at 1024). */
-@media (max-width: 1279px) {
-  .grid {
-    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  }
 }

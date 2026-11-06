@@ -4,7 +4,7 @@ import { importSummary, loadDevices, type DeviceVM, type ImportResult } from "@v
 import { useState } from "react";
 import { FormDialog, KeyValueList, Note, useZone } from "../../components/Form";
 import { Icon, type IconName } from "../../components/Icon";
-import { PageHeader, RowButton, Txt } from "../../components/kit";
+import { RowButton, Txt } from "../../components/kit";
 import { Button, Chip } from "../../components/ui";
 import { useApi, useReloadableScreen } from "../../data";
 import { AddDeviceDialog, BluetoothDialog, ImportDataDialog, type DeviceDialog } from "../../forms/DeviceForms";
@@ -36,7 +36,10 @@ export function Devices() {
 
   return (
     <>
-      <PageHeader title="Connected Devices" subtitle={v.subtitle} />
+      <header className={s.heading}>
+        <Txt s="h3" as="h2">Connected Devices</Txt>
+        <Txt s="bodyM" c="textSecondary" as="p">{v.subtitle}</Txt>
+      </header>
       {perms && (
         // Permissions (Figma 211:1647): what the device sends; VitalLink never writes to it.
         <FormDialog

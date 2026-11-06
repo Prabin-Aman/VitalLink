@@ -248,6 +248,27 @@ public class AccountService {
                 .single();
     }
 
+    /**
+     * An account can exist with no name when its first request carried none. Until setup is finished, a name in the
+     * token (Google's) fills the gap; after that a blank name is the person's own choice in Settings.
+     */
+    private void fillBlankName(CurrentUser me) {
+        String first = me.claims().firstName();
+        String last = me.claims().lastName();
+        if (first == null && last == null) {
+            return;
+        }
+        jdbc.sql("""
+                        UPDATE vitallink.profiles SET first_name = :first, last_name = :last
+                        WHERE user_id = :id AND onboarded_at IS NULL
+                          AND COALESCE(first_name, '') = '' AND COALESCE(last_name, '') = ''
+                        """)
+                .param("first", first)
+                .param("last", last)
+                .param("id", me.id())
+                .update();
+    }
+
     /** Create Account's setup steps are finished or left for later; the first time counts. */
     public void completeOnboarding(CurrentUser me) {
         jdbc.sql("UPDATE vitallink.profiles SET onboarded_at = COALESCE(onboarded_at, now()) WHERE user_id = :id")
@@ -256,6 +277,7 @@ public class AccountService {
     }
 
     public Account account(CurrentUser me) {
+        fillBlankName(me);
         Profile p = profile(me.id());
         String timezone = jdbc.sql("SELECT timezone FROM vitallink.users WHERE id = :id")
                 .param("id", me.id())
