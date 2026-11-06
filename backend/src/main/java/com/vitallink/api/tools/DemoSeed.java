@@ -332,8 +332,8 @@ public final class DemoSeed {
         }
         exec(c, """
                 INSERT INTO vitallink.profiles (user_id, first_name, last_name, date_of_birth, sex, height_cm, phone, zip,
-                                                city, units)
-                VALUES (?, 'Alex', 'Carter', '1994-04-17', 'male', 178, '+12145550148', '75201', 'Dallas, TX', 'metric')
+                                                city, units, onboarded_at)
+                VALUES (?, 'Alex', 'Carter', '1994-04-17', 'male', 178, '+12145550148', '75201', 'Dallas, TX', 'metric', now())
                 ON CONFLICT (user_id) DO NOTHING
                 """, id);
         return id;

@@ -1,11 +1,12 @@
-// Settings › Data Export (Figma 205:1541), Delete Account (205:1781) and Security › Change password (221:2114).
+// Settings › Data Export (Figma 205:1541), Delete Account (205:1781), Security › Change password (221:2114) and,
+// proposed: Account (232:2247), Security (232:2446), Change email (232:2637), two-step set up and off (232:2670, 232:2705).
 import { ApiError, checkPasswordChange } from "@vitallink/api";
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { FormDialog, must, Note, TextField } from "../../components/Form";
-import { Panel, RowButton, Txt } from "../../components/kit";
+import { FormDialog, FormProblem, must, Note, TextField } from "../../components/Form";
+import { cx, Panel, RowButton, Txt } from "../../components/kit";
 import { Button } from "../../components/ui";
-import { changePassword } from "../../auth";
+import { accountAccess, changeEmail, changePassword, confirmTwoStep, hostedSignIn, removeTwoStep, signOutEverywhere, startTwoStep } from "../../auth";
 import { endSession, useApi } from "../../data";
 import { exportMyData } from "../../download";
 import s from "./Settings.module.css";
@@ -120,19 +121,178 @@ export function DeleteAccountSection() {
   );
 }
 
+function SettingRow({ title, caption, children }: { title: string; caption: string; children?: ReactNode }) {
+  return (
+    <div className={s.securityRow}>
+      <div>
+        <Txt s="bodyMStrong" as="p">{title}</Txt>
+        <Txt s="caption" c="textTertiary">{caption}</Txt>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+/** How the person signs in, or null while it loads. */
+function useAccess() {
+  const [access, setAccess] = useState<{ methods: string[]; factorId: string | null } | null>(null);
+  const load = useCallback(() => {
+    accountAccess().then(setAccess, () => setAccess({ methods: [], factorId: null }));
+  }, []);
+  useEffect(load, [load]);
+  return [access, load] as const;
+}
+
+export function AccountSection({ email, memberDate }: { email: string; memberDate: string }) {
+  const nav = useNavigate();
+  const [access] = useAccess();
+  const [changing, setChanging] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
+  const everywhere = () => {
+    if (!confirm("Sign out on every phone and browser, including this one?")) return;
+    signOutEverywhere().then(
+      () => nav("/sign-in", { replace: true }),
+      (e: Error) => setProblem(e.message),
+    );
+  };
+  return (
+    <Panel title="Account" gap={14}>
+      <Txt s="bodyM" c="textSecondary" as="p">How you sign in to VitalLink and where you're signed in.</Txt>
+      <SettingRow
+        title="Email address"
+        caption={hostedSignIn ? `${email}. A change takes effect when you open the link we email you.` : `${email}. Changing it needs the hosted sign-in.`}
+      >
+        {hostedSignIn && <RowButton onClick={() => setChanging(true)}>Change email</RowButton>}
+      </SettingRow>
+      <SettingRow title="Sign-in methods" caption={access ? access.methods.join(", ") || "N/A" : "Loading…"} />
+      <SettingRow title="Member since" caption={memberDate} />
+      <SettingRow
+        title="Signed-in devices"
+        caption={hostedSignIn ? "Signs you out on every phone and browser, including this one." : "Sign out from the profile menu. Signing out everywhere needs the hosted sign-in."}
+      >
+        {hostedSignIn && <RowButton onClick={everywhere}>Sign out everywhere</RowButton>}
+      </SettingRow>
+      {problem && <Txt s="bodyS" c="textCritical" as="p">{problem}</Txt>}
+      {changing && <ChangeEmailDialog onClose={() => setChanging(false)} />}
+    </Panel>
+  );
+}
+
+function ChangeEmailDialog({ onClose }: { onClose: () => void }) {
+  const [email, setEmail] = useState("");
+  const [sent, setSent] = useState(false);
+  return (
+    <FormDialog
+      overline="Settings › Account"
+      title="Change email"
+      subtitle="We email a confirmation link. If both your old and new address get one, open both. Your sign-in changes after that."
+      action={sent ? undefined : "Send Link"}
+      busyLabel="Sending…"
+      stayOpen
+      onClose={onClose}
+      save={
+        sent
+          ? undefined
+          : async () => {
+              const next = email.trim().toLowerCase();
+              if (!/^[^@\s]+@[^@\s]+\.[^@\s]{2,}$/.test(next)) throw new FormProblem("Enter a valid email address.");
+              await changeEmail(next);
+              setSent(true);
+            }
+      }
+    >
+      {sent ? (
+        <Note>Check your email. Until you open the link, keep using your current email to sign in.</Note>
+      ) : (
+        <>
+          <TextField label="New email address" type="email" autoComplete="email" value={email} onChange={setEmail} placeholder="name@example.com" autoFocus />
+          <Note>Until then, keep using your current email to sign in.</Note>
+        </>
+      )}
+    </FormDialog>
+  );
+}
+
 export function SecuritySection() {
   const [open, setOpen] = useState(false);
+  const [access, reload] = useAccess();
+  const [twoStep, setTwoStep] = useState<"setup" | "off" | null>(null);
+  const on = !!access?.factorId;
   return (
     <Panel title="Security" gap={14}>
-      <div className={s.securityRow}>
-        <div>
-          <Txt s="bodyMStrong" as="p">Password</Txt>
-          <Txt s="caption" c="textTertiary">Change it any time. You stay signed in on this device.</Txt>
-        </div>
+      <Txt s="bodyM" c="textSecondary" as="p">Protect your account and your health data.</Txt>
+      <SettingRow title="Password" caption="Change it any time. You stay signed in on this device.">
         <RowButton onClick={() => setOpen(true)}>Change password</RowButton>
-      </div>
+      </SettingRow>
+      <SettingRow
+        title="Two-step verification"
+        caption={
+          !hostedSignIn
+            ? "Needs the hosted sign-in, so it isn't available here."
+            : !access
+              ? "Loading…"
+              : on
+                ? "On. Signing in asks for a code from your authenticator app."
+                : "Off. Asks for a code from an authenticator app when you sign in."
+        }
+      >
+        {hostedSignIn && access && <RowButton onClick={() => setTwoStep(on ? "off" : "setup")}>{on ? "Turn off" : "Set up"}</RowButton>}
+      </SettingRow>
       {open && <ChangePasswordDialog onClose={() => setOpen(false)} />}
+      {twoStep === "setup" && <TwoStepSetupDialog onClose={() => { setTwoStep(null); reload(); }} />}
+      {twoStep === "off" && access?.factorId && <TwoStepOffDialog factorId={access.factorId} onClose={() => { setTwoStep(null); reload(); }} />}
     </Panel>
+  );
+}
+
+function TwoStepSetupDialog({ onClose }: { onClose: () => void }) {
+  const [setup, setSetup] = useState<{ factorId: string; qr: string; key: string } | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const [code, setCode] = useState("");
+  const done = useRef(false);
+  const started = useRef(false);
+  useEffect(() => {
+    if (started.current) return;
+    started.current = true;
+    startTwoStep().then(setSetup, (e: Error) => setProblem(e.message));
+  }, []);
+  return (
+    <FormDialog
+      overline="Settings › Security"
+      title="Set up two-step verification"
+      subtitle="Scan this with an authenticator app such as Google Authenticator or Authy, then enter the code it shows."
+      action="Turn On"
+      onClose={() => {
+        // Closed without confirming: drop the unfinished setup.
+        if (setup && !done.current) removeTwoStep(setup.factorId).catch(() => undefined);
+        onClose();
+      }}
+      save={async () => {
+        if (!setup) throw new FormProblem(problem ?? "The code isn't ready yet.");
+        if (!/^\d{6}$/.test(code.trim())) throw new FormProblem("Enter the 6-digit code from your authenticator app.");
+        await confirmTwoStep(setup.factorId, code.trim());
+        done.current = true;
+      }}
+    >
+      {setup ? <img className={cx("vl-light", s.qr)} src={setup.qr} alt="QR code for your authenticator app" /> : <Txt s="bodyS" c={problem ? "textCritical" : "textTertiary"} as="p">{problem ?? "Preparing your code…"}</Txt>}
+      <TextField label="6-digit code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
+      {setup && <Note>If you lose the app, you'll need its key to get back in. Keep this key safe: {setup.key}</Note>}
+    </FormDialog>
+  );
+}
+
+function TwoStepOffDialog({ factorId, onClose }: { factorId: string; onClose: () => void }) {
+  return (
+    <FormDialog
+      overline="Settings › Security"
+      title="Turn off two-step verification"
+      subtitle="Signing in will only need your password again."
+      action="Turn Off"
+      onClose={onClose}
+      save={() => removeTwoStep(factorId)}
+    >
+      <Note>You can set it up again at any time.</Note>
+    </FormDialog>
   );
 }
 

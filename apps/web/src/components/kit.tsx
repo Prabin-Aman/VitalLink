@@ -121,13 +121,6 @@ export function EditTitle({ children, onClick, label }: { children: ReactNode; o
 }
 
 /** Shown under a tab whose screen isn't in the Figma file yet. */
-export function NotDesigned({ what }: { what: string }) {
-  return (
-    <Txt s="bodyM" c="textTertiary" as="p">
-      {what} is in a later batch.
-    </Txt>
-  );
-}
 
 /** Stat card: dot + Label/Medium, Metric/L + unit, caption (Stat / * frames). */
 export function StatCard({ stat }: { stat: StatVM }) {

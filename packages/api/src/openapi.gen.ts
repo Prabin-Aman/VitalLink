@@ -188,6 +188,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/onboarding/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Create Account's setup steps are finished or left for later, so they aren't asked again. */
+        post: operations["completeOnboarding"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/notifications/read": {
         parameters: {
             query?: never;
@@ -1391,6 +1408,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/doctors/search": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Doctors in Texas from the public NPI Registry, by name, specialty or both, optionally in a city. */
+        get: operations["searchDoctors"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/devices": {
         parameters: {
             query?: never;
@@ -2303,6 +2337,7 @@ export interface components {
             avatar_url?: string;
             /** @enum {string} */
             units?: "metric" | "imperial";
+            onboarded?: boolean;
         };
         AppointmentIn: {
             clinician: string;
@@ -2914,6 +2949,14 @@ export interface components {
             short_label?: string;
             granted?: boolean;
         };
+        Doctor: {
+            npi?: string;
+            name?: string;
+            credential?: string;
+            specialty?: string;
+            address?: string;
+            phone?: string;
+        };
         DeviceOut: {
             /** Format: uuid */
             id?: string;
@@ -3446,6 +3489,24 @@ export interface operations {
                 content: {
                     "application/json": components["schemas"]["Meal"];
                 };
+            };
+        };
+    };
+    completeOnboarding: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description No Content */
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
             };
         };
     };
@@ -5633,6 +5694,30 @@ export interface operations {
                     "application/json": {
                         [key: string]: unknown;
                     };
+                };
+            };
+        };
+    };
+    searchDoctors: {
+        parameters: {
+            query?: {
+                name?: string;
+                specialty?: string;
+                city?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["Doctor"][];
                 };
             };
         };

@@ -1,19 +1,19 @@
 // Appointments — Desktop 1440 (Figma 70:53).
-import { loadAppointments, type CalendarVM } from "@vitallink/api";
+import { loadAppointments, type CalendarVM, type DoctorRowVM } from "@vitallink/api";
 import { useState } from "react";
 import { Action, cx, PageHeader, Panel, PillTabs, Split, Txt } from "../../components/kit";
 import { Button, Chip } from "../../components/ui";
 import { useApi, useReloadableScreen } from "../../data";
 import { ScreenState } from "../ScreenState";
 import s from "./Appointments.module.css";
-import { BookAppointmentDialog, RescheduleDialog } from "../../forms/CareForms";
+import { BookAppointmentDialog, RescheduleDialog, SearchDoctorsDialog } from "../../forms/CareForms";
 import { EditAppointmentDialog } from "../../forms/EditForms";
 
 const TABS = ["Upcoming", "Past", "Cancelled"] as const;
 const DOW = ["S", "M", "T", "W", "T", "F", "S"];
 
 export function Appointments() {
-  const [form, setForm] = useState<{ kind: "book" } | { kind: "edit"; id: string } | { kind: "reschedule"; id: string; title: string; startsAt: string } | null>(null);
+  const [form, setForm] = useState<{ kind: "book"; preset?: DoctorRowVM["preset"] } | { kind: "search" } | { kind: "edit"; id: string } | { kind: "reschedule"; id: string; title: string; startsAt: string } | null>(null);
   const api = useApi();
   const [state, reload] = useReloadableScreen(loadAppointments);
   const cancel = (id: string, title: string) => {
@@ -27,7 +27,8 @@ export function Appointments() {
 
   return (
     <>
-      <PageHeader title="Appointments" subtitle={v.subtitle} actions={<><Action primary onClick={() => setForm({ kind: "book" })}>Book Appointment</Action>{form?.kind === "book" && <BookAppointmentDialog onClose={() => setForm(null)} />}</>} />
+      <PageHeader title="Appointments" subtitle={v.subtitle} actions={<><Action primary onClick={() => setForm({ kind: "book" })}>Book Appointment</Action>{form?.kind === "book" && <BookAppointmentDialog preset={form.preset} onClose={() => setForm(null)} />}</>} />
+      {form?.kind === "search" && <SearchDoctorsDialog onClose={() => setForm(null)} onPick={(preset) => setForm({ kind: "book", preset })} />}
       {form?.kind === "edit" && <EditAppointmentDialog id={form.id} onClose={() => setForm(null)} />}
       {form?.kind === "reschedule" && <RescheduleDialog id={form.id} title={form.title} startsAt={form.startsAt} onClose={() => setForm(null)} />}
       <PillTabs label="Appointment filter" tabs={[...TABS]} value={tab} onChange={setTab} />
@@ -37,9 +38,9 @@ export function Appointments() {
             <Calendar cal={v.calendar} />
             <Panel title="Need to see someone new?" level="h5" gap={10}>
               <Txt s="bodyS" c="textSecondary" as="p">
-                Search 480+ providers across the Dallas–Fort Worth network by specialty, language and availability.
+                Search the US national provider registry by name, specialty and city.
               </Txt>
-              <Button variant="secondary" size="block" className={s.search}>
+              <Button variant="secondary" size="block" className={s.search} onClick={() => setForm({ kind: "search" })}>
                 Search Doctors
               </Button>
             </Panel>

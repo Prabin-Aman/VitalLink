@@ -76,4 +76,23 @@ class IdentityAdminTest {
         assertThat(new IdentityAdmin("", "").emailConfirmed(UUID.fromString(SUBJECT), "ana@example.com"))
                 .isFalse();
     }
+
+    /** Two-step verification is on only with a verified factor; answers are kept a minute; failures don't lock out. */
+    @Test
+    void secondFactorMeansAVerifiedOneAndFailuresDontLockPeopleOut() {
+        IdentityAdmin admin = new IdentityAdmin(base, "service-key");
+        UUID started = UUID.randomUUID();
+        reply = "{\"factors\": [{\"status\": \"unverified\"}]}";
+        assertThat(admin.hasSecondFactor(started)).isFalse();
+
+        UUID on = UUID.randomUUID();
+        reply = "{\"factors\": [{\"status\": \"verified\"}]}";
+        assertThat(admin.hasSecondFactor(on)).isTrue();
+        status = 500;
+        assertThat(admin.hasSecondFactor(on)).as("kept for a minute").isTrue();
+        assertThat(admin.hasSecondFactor(UUID.randomUUID()))
+                .as("Supabase failing")
+                .isFalse();
+        assertThat(new IdentityAdmin("", "").hasSecondFactor(on)).as("local").isFalse();
+    }
 }

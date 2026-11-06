@@ -44,9 +44,28 @@ import org.springframework.web.bind.annotation.RestController;
 public class CareController {
 
     private final CareService service;
+    private final DoctorSearch doctors;
 
-    public CareController(CareService service) {
+    public CareController(CareService service, DoctorSearch doctors) {
         this.service = service;
+        this.doctors = doctors;
+    }
+
+    @GetMapping("/doctors/search")
+    @Operation(
+            summary =
+                    "Doctors in Texas from the public NPI Registry, by name, specialty or both, optionally in a city.")
+    public List<DoctorSearch.Doctor> searchDoctors(
+            CurrentUser me,
+            @RequestParam(required = false) @jakarta.validation.constraints.Size(max = 60) String name,
+            @RequestParam(required = false) @jakarta.validation.constraints.Size(max = 60) String specialty,
+            @RequestParam(required = false) @jakarta.validation.constraints.Size(max = 60) String city) {
+        boolean named = name != null && name.strip().length() >= 2;
+        boolean special = specialty != null && specialty.strip().length() >= 2;
+        if (!named && !special) {
+            throw com.vitallink.api.core.ApiError.invalid("Enter a name or a specialty, at least 2 letters.");
+        }
+        return doctors.search(name, specialty, city);
     }
 
     // ---------------------------------------------------------------- medications

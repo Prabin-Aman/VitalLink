@@ -50,6 +50,7 @@ import type {
   PersonalRecord,
   TrainingPlan,
   ArticleDetail,
+  Doctor,
 } from "./types";
 import { mock } from "./mock";
 
@@ -153,6 +154,8 @@ export class VitalLinkClient {
 
   // ---- Writes.
   /** PATCH /me/account: only the fields given change; null clears an optional one. */
+  /** Create Account's setup steps are finished or left for later. */
+  completeOnboarding = () => this.send("POST", "/me/onboarding/complete");
   updateAccount = (patch: Partial<Omit<AccountProfile, "email" | "member_since" | "two_factor">>) =>
     this.send<AccountProfile>("PATCH", "/me/account", patch);
   /** Mark one scheduled dose taken or skipped (idempotent). `at` is the dose's scheduled time. */
@@ -183,6 +186,14 @@ export class VitalLinkClient {
   importHealthFile = (file: Blob, days: number) => this.send<ImportResult>("POST", `/me/health/import?days=${days}`, file);
   /** POST /me/health/ingest: 5-minute buckets (phone sync, or a Bluetooth device paired in the browser). */
   ingest = (body: object) => this.send<IngestResult>("POST", "/me/health/ingest", body);
+  /** Doctors from the public NPI Registry; mock mode filters a short sample. */
+  searchDoctors = (q: { name: string; specialty: string; city: string }) => {
+    const params = new URLSearchParams(Object.entries(q).filter(([, v]) => v));
+    const words = [q.name, q.specialty].filter(Boolean).map((w) => w.toLowerCase());
+    return this.get<Doctor[]>(`/me/doctors/search?${params}`, () =>
+      mock.doctors.filter((d) => words.some((w) => `${d.name} ${d.specialty}`.toLowerCase().includes(w))),
+    );
+  };
   /** Seeded and own foods matching `q` (2+ letters); empty in mock mode. */
   searchFoods = (q: string) => (this.isMock ? Promise.resolve([] as FoodHit[]) : this.get<FoodHit[]>(`/foods/search?q=${encodeURIComponent(q)}`, () => []));
   logMeal = (body: object) => this.send("POST", "/me/meals", body);
@@ -341,7 +352,7 @@ export class VitalLinkClient {
     return bp && bp.value2 != null ? { systolic: bp.value, diastolic: bp.value2 } : null;
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
-  /** GET /me/sync: the phone app's uploads (phone sync status on Connected Devices). */
+  /** GET /me/sync: uploads through ingest (Bluetooth; the phone sync panel left the web with the mobile app). */
   sync = () => this.get<SyncStatus>("/me/sync", () => mock.sync);
   workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
   /** Every personal record (heaviest set per exercise, fastest 5 km and 10 km). */

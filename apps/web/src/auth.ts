@@ -102,23 +102,43 @@ function problem(e: { message: string; status?: number; code?: string }): Error 
 
 const origin = () => window.location.origin;
 
-export async function signIn(api: VitalLinkClient, email: string, password: string, remember: boolean) {
+/** "needs-code" when two-step verification is on: the password was right, the code is next. */
+export async function signIn(api: VitalLinkClient, email: string, password: string, remember: boolean): Promise<"signed-in" | "needs-code"> {
   if (supabase) {
     setRemembering(remember);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     if (error) throw problem(error);
-    return;
+    const level = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    return level.data?.currentLevel === "aal1" && level.data.nextLevel === "aal2" ? "needs-code" : "signed-in";
   }
   const r = await api.signIn(email, password);
   keepLocalToken(r!.access_token, remember);
+  return "signed-in";
+}
+
+const CODE_PROBLEM = "That code didn't match. Enter the newest code from your authenticator app.";
+
+/** The second step of signing in: the session now counts as two-step, and the API accepts it. */
+export async function verifySignInCode(code: string) {
+  if (!supabase) return;
+  const factor = (await supabase.auth.mfa.listFactors()).data?.totp[0];
+  if (!factor) throw new Error("Two-step verification isn't set up on this account. Sign in again.");
+  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId: factor.id, code });
+  if (error) throw new Error(CODE_PROBLEM);
 }
 
 // With email confirmation on, Supabase signs the person in only once they open the link, so the profile
 // details wait in this browser until then (applyPendingProfile).
 const PENDING = "vl.signup.pending";
+// This browser filled in step 1's form. Without it (Google, or a link opened elsewhere) step 1 asks for the details.
+const FORM_DONE = "vl.signup.form";
+export const filledSignUpForm = () => local.get(FORM_DONE) !== null;
+export const rememberSignUpForm = () => local.set(FORM_DONE, "1");
+export const forgetSignUpForm = () => local.remove(FORM_DONE);
 
 /** "signed-in", or "confirm-email" when the person has to open the link Supabase sent first. */
 export async function signUp(api: VitalLinkClient, body: SignUpBody): Promise<"signed-in" | "confirm-email"> {
+  rememberSignUpForm();
   if (supabase) {
     setRemembering(true);
     const { email, password, first_name, last_name, ...profile } = body;
@@ -205,5 +225,57 @@ export async function signInWithGoogle(remember: boolean) {
   if (!supabase) return;
   setRemembering(remember);
   const { error } = await supabase.auth.signInWithOAuth({ provider: "google", options: { redirectTo: `${origin()}/` } });
+  if (error) throw problem(error);
+}
+
+// ---- Settings › Account and Security. Local accounts have none of these: the screens say so.
+
+/** Whether changing the email, signing out everywhere and two-step verification are on offer. */
+export const hostedSignIn = !!supabase;
+
+export async function accountAccess(): Promise<{ methods: string[]; factorId: string | null }> {
+  if (!supabase) return { methods: ["Email and password"], factorId: null };
+  const [user, factors] = await Promise.all([supabase.auth.getUser(), supabase.auth.mfa.listFactors()]);
+  const names: Record<string, string> = { email: "Email and password", google: "Google" };
+  const methods = (user.data.user?.identities ?? []).map((i) => names[i.provider] ?? i.provider);
+  return { methods, factorId: factors.data?.totp[0]?.id ?? null };
+}
+
+/** Supabase emails a link; the sign-in changes when it's opened, and the API follows the next token. */
+export async function changeEmail(email: string) {
+  if (!supabase) return;
+  const { error } = await supabase.auth.updateUser({ email }, { emailRedirectTo: `${origin()}/settings` });
+  if (error) throw problem(error);
+}
+
+export async function signOutEverywhere() {
+  if (!supabase) return;
+  const { error } = await supabase.auth.signOut({ scope: "global" });
+  if (error) throw problem(error);
+  endSession();
+}
+
+/** Starts two-step verification: a QR code and key for the authenticator app, not on until a code is confirmed. */
+export async function startTwoStep(): Promise<{ factorId: string; qr: string; key: string }> {
+  if (!supabase) throw new Error("Two-step verification needs the hosted sign-in.");
+  // A setup that was abandoned earlier blocks a new one.
+  const existing = (await supabase.auth.mfa.listFactors()).data?.all ?? [];
+  for (const f of existing) if (f.status === "unverified") await supabase.auth.mfa.unenroll({ factorId: f.id });
+  const { data, error } = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "Authenticator app" });
+  if (error) throw problem(error);
+  const qr = data.totp.qr_code.startsWith("data:") ? data.totp.qr_code : `data:image/svg+xml;utf8,${encodeURIComponent(data.totp.qr_code)}`;
+  return { factorId: data.id, qr, key: data.totp.secret.replace(/(.{4})/g, "$1 ").trim() };
+}
+
+export async function confirmTwoStep(factorId: string, code: string) {
+  if (!supabase) return;
+  const { error } = await supabase.auth.mfa.challengeAndVerify({ factorId, code });
+  if (error) throw new Error(CODE_PROBLEM);
+}
+
+/** Turns it off, or drops a setup that wasn't finished. */
+export async function removeTwoStep(factorId: string) {
+  if (!supabase) return;
+  const { error } = await supabase.auth.mfa.unenroll({ factorId });
   if (error) throw problem(error);
 }

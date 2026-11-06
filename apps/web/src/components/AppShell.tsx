@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Link, NavLink } from "react-router-dom";
+import { Link, NavLink, useLocation } from "react-router-dom";
 import { Icon, type IconName } from "./Icon";
 import { Logo } from "./ui";
 import { ProfileMenu, TopSearch } from "./TopBar";
@@ -7,6 +7,7 @@ import s from "./AppShell.module.css";
 
 // Sidebar items in Figma order (desktop Dashboard 12:2, sidebar). Below 1280px the shell follows the
 // Tablet 1024 frames (147:5476): a 72px icon sidebar, avatar-only profile, 24px content gutters.
+// Connected Devices and Privacy open from Settings (owner, Nov 2026), so Settings stays lit on those pages.
 const NAV: { label: string; icon: IconName; to: string }[] = [
   { label: "Dashboard", icon: "dashboard-18", to: "/" },
   { label: "My Health", icon: "health-18", to: "/health" },
@@ -21,12 +22,14 @@ const NAV: { label: string; icon: IconName; to: string }[] = [
   { label: "Messages", icon: "messages-18", to: "/messages" },
   { label: "Notifications", icon: "notifications-18", to: "/notifications" },
   { label: "Emergency Profile", icon: "emergency-18", to: "/emergency" },
-  { label: "Connected Devices", icon: "devices-18", to: "/devices" },
-  { label: "Privacy", icon: "privacy-18", to: "/privacy" },
   { label: "Settings", icon: "settings-18", to: "/settings" },
 ];
 
+const UNDER_SETTINGS = ["/devices", "/privacy"];
+
 export function AppShell({ children, name, initials, email, photo }: { children: ReactNode; name: string; initials: string; email: string; photo: string | null }) {
+  const { pathname } = useLocation();
+  const underSettings = UNDER_SETTINGS.some((p) => pathname.startsWith(p));
   return (
     <div className={s.shell}>
       <aside className={s.sidebar}>
@@ -35,10 +38,10 @@ export function AppShell({ children, name, initials, email, photo }: { children:
         </div>
         <nav className={s.nav} aria-label="Main">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.to === "/"} title={n.label} className={({ isActive }) => (isActive ? `${s.item} ${s.active}` : s.item)}>
+            <NavLink key={n.to} to={n.to} end={n.to === "/"} title={n.label} className={({ isActive }) => (isActive || (underSettings && n.to === "/settings") ? `${s.item} ${s.active}` : s.item)}>
               {({ isActive }) => (
                 <>
-                  <Icon name={n.icon} color={isActive ? "iconBrand" : "iconSubtle"} />
+                  <Icon name={n.icon} color={isActive || (underSettings && n.to === "/settings") ? "iconBrand" : "iconSubtle"} />
                   <span className={s.label}>{n.label}</span>
                 </>
               )}

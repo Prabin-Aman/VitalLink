@@ -1,7 +1,7 @@
 # VitalLink backend
 
 **Status (23 Oct 2026): every planned module is built, in Java.** One Spring Boot service (a modular
-monolith) serves the web portal and the mobile app: accounts with export and delete, the health core
+monolith) serves the web portal: accounts with export and delete, the health core
 (sync ingest, series, dashboard, devices, My Health overview and seven tabs), sharing with the consent
 engine and the append-only audit log, training, nutrition, care (medications and doses, appointments,
 conditions, the emergency medical ID), goals and streaks, records with stored files and lab panels,
@@ -107,7 +107,7 @@ docker run --rm --network host --env-file .env -e PORT=8100 vitallink-api   # ht
 |---|---|
 | `ENV` | `local`, `test` or `production` (dev tokens and the demo seed only work in local/test) |
 | `DATABASE_URL` | `postgresql://user:pass@host:port/db` (as Supabase shows it) or a JDBC URL with `DATABASE_USER` / `DATABASE_PASSWORD` |
-| `CORS_ORIGIN` | The web portal's origin; locally a comma-separated list (add `http://localhost:8081` for the mobile web build) |
+| `CORS_ORIGIN` | The web portal's origin; locally a comma-separated list |
 | `SUPABASE_URL` | Production: tokens are verified against this project's JWKS |
 | `SUPABASE_SERVICE_ROLE_KEY` | Production: Storage signing and deleting sign-in identities (server-side only) |
 | `STORAGE_BUCKET` | Private bucket for record files (default `records`) |
@@ -117,11 +117,11 @@ docker run --rm --network host --env-file .env -e PORT=8100 vitallink-api   # ht
 
 ## In one paragraph
 
-VitalLink is a free health and fitness app for people in the Dallas area. It has two clients: the
-Expo mobile app (`apps/mobile`) and the React web portal (`apps/web`). Both talk to **one Spring Boot
+VitalLink is a free health and fitness app for people in the Dallas area. Its client is the React
+web portal (`apps/web`), which talks to **one Spring Boot
 service** (a modular monolith) hosted on **Render's free tier**. The service stores everything in a
 private schema in **Supabase Postgres**. **Supabase Auth** handles sign-in and **Supabase Storage**
-holds uploaded documents. The phone syncs data from Apple HealthKit and Android Health Connect.
+holds uploaded documents. Apple Health data arrives as the export file from the Health app; Bluetooth devices pair in the browser.
 Every user is a consumer who owns their data. Data leaves an account only through a **share** that
 the owner creates, which is read-only, time-boxed and revocable. A **consent engine** checks every
 such read and writes an entry to an **append-only audit log**. There is no hospital, clinic,

@@ -1,4 +1,4 @@
-# VitalLink: what's built and what's missing (1 Nov 2026)
+# VitalLink: what's built and what's missing (6 Nov 2026)
 
 The web portal and the Java API are feature-complete for everything in the Figma file. Every web screen
 reads and writes the live API; every save is a row in PostgreSQL. What's left falls into the groups below,
@@ -39,30 +39,26 @@ Nothing on web is waiting on an existing API any more.
 
 | Button / tab | What it needs |
 |---|---|
-| Settings › Account; 2FA | Supabase sign-in (email change, 2FA) |
-| Appointments › Search Doctors | A provider directory: no free data source chosen; may conflict with consumers-only. Suggest removing |
+| Nothing left on web | Settings › Account, two-step verification and Search Doctors were built on 6 Nov 2026 |
 
-## 4. Mobile (paused: web is the focus)
+## 4. Mobile: removed
 
-- Entry sheets (Add Reading … Edit Emergency Info, Figma 198:317): built but **uncommitted** in
-  `apps/mobile/src/sheets/`, `components/Sheet.tsx` and the screens that open them; adds `expo-document-picker`.
-- No mobile frames: Sleep, Heart, Body chips, record detail; Workouts and Nutrition chips other than the first.
-- None of the web's edit/delete, sharing, devices or import features exist on mobile yet.
-- **Phase 9 phone sync**: HealthKit / Health Connect need an Expo development build and real devices. The
-  web side is ready (`GET /me/sync`, the phone sync panel); `PhoneSim` stands in until then.
+The Expo app was deleted on owner's request (Nov 2026; it's in git history before that). Phase 9 phone sync went
+with it: HealthKit is only reachable from a native iOS app, so Apple Health data arrives through the export file.
+Figma's mobile pages and the mobile view-model fields in `packages/api` are still there.
 
 ## 5. Not verified on real hardware or at real scale
 
 - **Barcode camera** uses the browser's BarcodeDetector (Chrome on Android/macOS); on Windows desktop
   Chrome the digits are typed. The camera path hasn't been tried on a phone.
 - **Bluetooth pairing** was tested with a stand-in `navigator.bluetooth`; try a real strap or cuff in Chrome.
-- **Apple Health import** was tested with a generated 476-record export; real exports can be hundreds of MB.
+- **Apple Health import** was tested with a generated 2.5 million record export (37 MB zip, 934 MB XML) at Render's
+  heap size, in about 30 s on a fast machine. Not yet tried with a real iPhone export or on Render's 0.1 CPU.
 - `LoadCheck` and `scripts/restore-drill.sh` have only run locally, not against the real Supabase project.
 
 ## 6. Repository housekeeping
 
 - `DESIGN.md` describes Anthropic's website design, not VitalLink: keep as reference or remove?
-- `backend/docs/VitalLink_Presentation_Script.docx` is untracked: commit it or keep it out?
 - `design-ref/` is an empty folder (git doesn't track it).
 
 ## Where things live

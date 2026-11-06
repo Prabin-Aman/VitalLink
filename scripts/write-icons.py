@@ -141,7 +141,7 @@ ICONS: dict[str, str] = {
         "M6.66602 17.5L8.74935 12.9166L6.66602 9.99996L7.49935 6.66663L10.416 5.41663L12.4993 7.49996L14.9993 8.74996",
         "M10 9.16663L12.5 10.8333L13.3333 14.1666",
         "M4.16602 7.91663L6.66602 6.66663"),
-    # ---- 22px (mobile tab bar) ----
+    # ---- 22px ----
     "home-22": svg(22, 22,
         "M2.75 8.70833L11 2.75L19.25 8.70833V18.3333C19.25 18.5764 19.1534 18.8096 18.9815 18.9815C18.8096 19.1534 18.5764 19.25 18.3333 19.25H3.66667C3.42355 19.25 3.19039 19.1534 3.01849 18.9815C2.84658 18.8096 2.75 18.5764 2.75 18.3333V8.70833Z",
         "M8.25 19.25V12.8333H13.75V19.25"),
@@ -256,9 +256,7 @@ def main() -> None:
     root = OUT.parent.parent.parent
     (root / "apps/web/src/components/icons.gen.ts").write_text(
         registry(names, "?react", "// Strokes are currentColor; colour comes from a token at the call site."), newline="\n")
-    (root / "apps/mobile/src/components/icons.gen.ts").write_text(
-        registry(names, "", "// Strokes are currentColor; react-native-svg's `color` prop tints them."), newline="\n")
-    print(f"wrote {len(files)} icons to {OUT} and both registries")
+    print(f"wrote {len(files)} icons to {OUT} and the web registry")
 
 
 if __name__ == "__main__":

@@ -1,13 +1,13 @@
 // Connected Devices — Desktop 1440 (Figma 73:635); phone sync panel (proposed 212:3117); Add a device and its
 // dialogs live in forms/DeviceForms.tsx (213:1667, 212:3400, 213:1701, 213:1754).
-import { importSummary, loadDevices, type DeviceVM, type ImportResult, type PhoneSyncVM } from "@vitallink/api";
+import { importSummary, loadDevices, type DeviceVM, type ImportResult } from "@vitallink/api";
 import { useState } from "react";
 import { FormDialog, KeyValueList, Note, useZone } from "../../components/Form";
 import { Icon, type IconName } from "../../components/Icon";
 import { PageHeader, RowButton, Txt } from "../../components/kit";
 import { Button, Chip } from "../../components/ui";
 import { useApi, useReloadableScreen } from "../../data";
-import { AddDeviceDialog, BluetoothDialog, ImportDataDialog, PhoneAppDialog, type DeviceDialog } from "../../forms/DeviceForms";
+import { AddDeviceDialog, BluetoothDialog, ImportDataDialog, type DeviceDialog } from "../../forms/DeviceForms";
 import { ScreenState } from "../ScreenState";
 import s from "./Devices.module.css";
 
@@ -26,12 +26,6 @@ export function Devices() {
   const [dialog, setDialog] = useState<DeviceDialog | null>(null);
   const [imported, setImported] = useState<ImportResult | null>(null);
   const tz = useZone();
-  const [checked, setChecked] = useState(false);
-  // The web can't reach the phone: "Sync now" fetches again and shows the newest upload the phone has sent.
-  const check = () => {
-    setChecked(true);
-    reload();
-  };
   const disconnect = (id: string, name: string) => {
     if (!confirm(`Disconnect ${name}? Its past readings stay in your account.`)) return;
     setPerms(null);
@@ -63,7 +57,6 @@ export function Devices() {
         </FormDialog>
       )}
       {dialog === "add" && <AddDeviceDialog onClose={() => setDialog(null)} onPick={setDialog} />}
-      {dialog === "phone" && <PhoneAppDialog onClose={() => setDialog(null)} />}
       {dialog === "import" && <ImportDataDialog onClose={() => setDialog(null)} onImported={setImported} />}
       {dialog === "bluetooth" && <BluetoothDialog onClose={() => setDialog(null)} />}
       {imported && tz && (
@@ -71,9 +64,6 @@ export function Devices() {
           {importSummary(imported, tz)}.{imported.problems.length > 0 && ` Skipped, for example: ${imported.problems.slice(0, 3).join("; ")}.`}
         </Note>
       )}
-      {v.phones.map((p) => (
-        <PhoneSync key={p.title} p={p} checked={checked} onCheck={check} />
-      ))}
       <div className={s.grid}>
         {v.devices.map((d) => (
           <article key={d.id} className={s.card} aria-label={d.name}>
@@ -89,7 +79,7 @@ export function Devices() {
             </div>
             <Txt s="bodyS" c="textSecondary">{d.data}</Txt>
             <div className={s.actions}>
-              <RowButton onClick={v.phones.length ? check : () => setDialog("phone")}>Sync now</RowButton>
+              <RowButton onClick={() => setDialog("import")}>Import data</RowButton>
               <RowButton onClick={() => setPerms(d)}>Permissions</RowButton>
               <RowButton onClick={() => disconnect(d.id, d.name)}>Disconnect</RowButton>
             </div>
@@ -101,39 +91,5 @@ export function Devices() {
         </button>
       </div>
     </>
-  );
-}
-
-function PhoneSync({ p, checked, onCheck }: { p: PhoneSyncVM; checked: boolean; onCheck: () => void }) {
-  return (
-    <section className={s.card} aria-label={`Phone sync: ${p.title}`}>
-      <div className={s.top}>
-        <span className={s.tile}>
-          <Icon name="health-22" />
-        </span>
-        <div className={s.titles}>
-          <Txt s="h5" as="h2">{p.title}</Txt>
-          <Txt s="caption" c="textTertiary">{p.caption}</Txt>
-        </div>
-        <Chip chip={p.status} dot />
-      </div>
-      <Txt s="bodyS" c="textSecondary">{p.summary}</Txt>
-      {p.uploads.length > 0 && (
-        <>
-          <Txt s="labelL">Recent uploads</Txt>
-          <KeyValueList label="Recent uploads" labelWidth={160} rows={p.uploads.map((u) => ({ label: u.when, value: u.detail }))} />
-        </>
-      )}
-      <div className={s.phoneActions}>
-        <RowButton onClick={onCheck}>Check again</RowButton>
-        <span aria-live="polite">
-          <Txt s="caption" c="textTertiary">
-            {checked
-              ? "Checked just now. Open VitalLink on your phone to upload anything newer."
-              : "Your phone uploads whenever VitalLink is open on it, and in the background when the phone allows."}
-          </Txt>
-        </span>
-      </div>
-    </section>
   );
 }

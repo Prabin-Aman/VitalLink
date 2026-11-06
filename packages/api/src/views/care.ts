@@ -3,7 +3,7 @@
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
 import { ago, dayMonth, dayMonthYear, daysFrom, height, languageName, monthYear, phone, relativeDay, timeOfDay, weekday } from "../format";
-import type { AppNotification, AvatarTone, Device, NotificationKind, Prescription, SyncPlatform, SyncUpload } from "../types";
+import type { AppNotification, AvatarTone, Device, NotificationKind, Prescription, SyncPlatform, SyncUpload, Doctor } from "../types";
 import type { Option } from "../forms";
 import type { ChipVM, StatVM } from "./shared";
 
@@ -558,10 +558,31 @@ const UNITS: Option[] = [
   { value: "metric", label: "Metric (km)" },
 ];
 
+/** A doctor as Search Doctors lists it, with what Book Appointment starts from. */
+export interface DoctorRowVM {
+  id: string;
+  title: string;
+  line: string;
+  preset: { clinician: string; specialty: string; location: string };
+}
+
+export function doctorRow(d: Doctor): DoctorRowVM {
+  const title = d.credential ? `${d.name}, ${d.credential}` : d.name;
+  return {
+    id: d.npi,
+    title,
+    line: [d.specialty, d.address, d.phone].filter(Boolean).join(" · "),
+    // The appointment form allows 80 characters; the registry can run longer.
+    preset: { clinician: title.slice(0, 80), specialty: (d.specialty ?? "").slice(0, 80), location: d.address ?? "" },
+  };
+}
+
 export interface SettingsVM {
   person: PersonVM;
   memberLine: string;
   memberSince: string;
+  /** The month and year alone, for Settings › Account. */
+  memberDate: string;
   email: string;
   /** `select` fields carry their options (value = option value); `readonly` can't be edited here. */
   fields: { key: string; label: string; value: string; help?: string; wide?: boolean; kind?: "readonly" | "select"; options?: Option[] }[];
@@ -581,6 +602,7 @@ export async function loadSettings(api: VitalLinkClient): Promise<SettingsVM> {
     person: person(name, "brand"),
     memberLine: `Member since ${since}${a.city ? ` · ${a.city}` : ""}`,
     memberSince: `Member since ${since}`,
+    memberDate: since,
     email: a.email,
     fields: [
       { key: "first", label: "First name", value: a.first_name ?? blank },

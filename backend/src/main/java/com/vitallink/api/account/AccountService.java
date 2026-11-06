@@ -231,7 +231,28 @@ public class AccountService {
 
     public Me me(CurrentUser me) {
         Profile p = profile(me.id());
-        return new Me(me.id(), me.user().email(), p.displayName(), me.user().timezone(), avatarUrl(me.id()), p.units());
+        return new Me(
+                me.id(),
+                me.user().email(),
+                p.displayName(),
+                me.user().timezone(),
+                avatarUrl(me.id()),
+                p.units(),
+                onboarded(me.id()));
+    }
+
+    private boolean onboarded(UUID id) {
+        return jdbc.sql("SELECT onboarded_at IS NOT NULL FROM vitallink.profiles WHERE user_id = :id")
+                .param("id", id)
+                .query(Boolean.class)
+                .single();
+    }
+
+    /** Create Account's setup steps are finished or left for later; the first time counts. */
+    public void completeOnboarding(CurrentUser me) {
+        jdbc.sql("UPDATE vitallink.profiles SET onboarded_at = COALESCE(onboarded_at, now()) WHERE user_id = :id")
+                .param("id", me.id())
+                .update();
     }
 
     public Account account(CurrentUser me) {

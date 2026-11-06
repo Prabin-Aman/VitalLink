@@ -2,12 +2,12 @@
 import { checkPhoto, loadSettings, parseHeight, PHOTO_TYPES } from "@vitallink/api";
 import { useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
-import { cx, NotDesigned, PageHeader, Panel, RowButton, Txt } from "../../components/kit";
+import { cx, PageHeader, Panel, RowButton, Txt } from "../../components/kit";
 import { Avatar, Button } from "../../components/ui";
 import { notifyChanged, useApi, useReloadableScreen } from "../../data";
 import { applyTheme, storedTheme, type Theme } from "../../theme";
 import { ScreenState } from "../ScreenState";
-import { DataExportSection, DeleteAccountSection, SecuritySection } from "./SettingsSections";
+import { AccountSection, DataExportSection, DeleteAccountSection, SecuritySection } from "./SettingsSections";
 import s from "./Settings.module.css";
 
 // Sections with their own page link there; Profile and Appearance live here.
@@ -157,14 +157,14 @@ export function Settings() {
         </Panel>
       </>
     );
+  } else if (section === "Account") {
+    body = <AccountSection email={v.email} memberDate={v.memberDate} />;
   } else if (section === "Security") {
     body = <SecuritySection />;
   } else if (section === "Data Export") {
     body = <DataExportSection />;
   } else if (section === "Delete Account") {
     body = <DeleteAccountSection />;
-  } else {
-    body = <NotDesigned what={section} />;
   }
 
   return (

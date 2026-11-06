@@ -1,6 +1,9 @@
 // Add Medication (Figma 197:206), Book Appointment (197:278), Reschedule (197:359) and
 // Edit Emergency Info (197:520) — Dialog 560.
 import {
+  checkDoctorSearch,
+  doctorRow,
+  type DoctorRowVM,
   checkAppointment,
   checkContact,
   phone,
@@ -21,7 +24,7 @@ import {
   type EmergencyProfile,
 } from "@vitallink/api";
 import { useEffect, useState } from "react";
-import { Choices, FormDialog, FormProblem, ItemList, must, Note, Row, SelectField, TextField, useZone } from "../components/Form";
+import { Choices, FormDialog, formStyles, FormProblem, ItemList, must, Note, Row, SelectField, TextField, useZone } from "../components/Form";
 import { Button } from "../components/ui";
 import { useApi } from "../data";
 
@@ -77,14 +80,56 @@ export function AddMedicationDialog({ onClose }: { onClose: () => void }) {
 
 // ---------------------------------------------------------------- Book Appointment
 
-export function BookAppointmentDialog({ onClose }: { onClose: () => void }) {
+export function BookAppointmentDialog({ onClose, preset }: { onClose: () => void; preset?: DoctorRowVM["preset"] }) {
   const tz = useZone();
-  return tz ? <BookAppointment tz={tz} onClose={onClose} /> : null;
+  return tz ? <BookAppointment tz={tz} onClose={onClose} preset={preset} /> : null;
 }
 
-function BookAppointment({ tz, onClose }: { tz: string; onClose: () => void }) {
+/** Search doctors (proposed Figma 232:2733): the public NPI Registry; Add Visit opens Book Appointment filled in. */
+export function SearchDoctorsDialog({ onClose, onPick }: { onClose: () => void; onPick: (preset: DoctorRowVM["preset"]) => void }) {
   const api = useApi();
-  const [f, setF] = useState({ clinician: "", specialty: "", mode: "in_person", date: todayIn(tz), time: "10:00", length: "30", location: "", notes: "" });
+  const [f, setF] = useState({ name: "", specialty: "", city: "Dallas" });
+  const [rows, setRows] = useState<DoctorRowVM[] | null>(null);
+  const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
+  return (
+    <FormDialog
+      overline="Appointments › Search Doctors"
+      title="Search doctors"
+      subtitle="Find a doctor in the US national provider registry. Enter a name, a specialty or both."
+      action="Search"
+      busyLabel="Searching…"
+      stayOpen
+      onClose={onClose}
+      save={async () => {
+        setRows(null);
+        setRows(((await api.searchDoctors(must(checkDoctorSearch(f)))) ?? []).map(doctorRow));
+      }}
+    >
+      <TextField label="Name" value={f.name} onChange={set("name")} placeholder="e.g. Bennett" autoFocus />
+      <TextField label="Specialty" value={f.specialty} onChange={set("specialty")} placeholder="e.g. Cardiology" />
+      <TextField label="City" value={f.city} onChange={set("city")} helper="Texas only. Leave empty to search the whole state." />
+      {rows && (
+        <div className={formStyles.items} aria-label="Doctors found">
+          {rows.length === 0 && <p className={`vl-body-s ${formStyles.empty}`}>No doctors found. Try fewer words or another city.</p>}
+          {rows.map((r) => (
+            <div key={r.id} className={formStyles.item}>
+              <span className={formStyles.itemText}>
+                <span className="vl-body-s-strong">{r.title}</span>
+                <span className={`vl-caption ${formStyles.helper}`}>{r.line}</span>
+              </span>
+              <Button variant="secondary" size="sm" onClick={() => onPick(r.preset)}>Add Visit</Button>
+            </div>
+          ))}
+        </div>
+      )}
+      <Note>From the public NPI Registry. Listings can be out of date, so call to confirm. VitalLink doesn't book with the clinic.</Note>
+    </FormDialog>
+  );
+}
+
+function BookAppointment({ tz, onClose, preset }: { tz: string; onClose: () => void; preset?: DoctorRowVM["preset"] }) {
+  const api = useApi();
+  const [f, setF] = useState({ clinician: "", specialty: "", mode: "in_person", date: todayIn(tz), time: "10:00", length: "30", location: "", notes: "", ...preset });
   const set = (k: keyof typeof f) => (v: string) => setF((x) => ({ ...x, [k]: v }));
 
   return (

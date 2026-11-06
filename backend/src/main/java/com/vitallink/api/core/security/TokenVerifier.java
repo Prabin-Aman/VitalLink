@@ -89,14 +89,15 @@ public class TokenVerifier {
         }
         Map<?, ?> meta = c.getClaim("user_metadata") instanceof Map<?, ?> m ? m : Map.of();
         Object aal = c.getClaim("aal");
+        String[] names = names(meta);
         return new Claims(
                 subject,
                 e.strip().toLowerCase(),
                 Boolean.TRUE.equals(meta.get("email_verified")),
                 aal instanceof String s ? s : "aal1",
                 signedInAt(c),
-                name(meta.get("first_name")),
-                name(meta.get("last_name")));
+                names[0],
+                names[1]);
     }
 
     /**
@@ -113,6 +114,29 @@ public class TokenVerifier {
             }
         }
         return latest >= 0 ? latest : c.getIssueTime().toInstant().getEpochSecond();
+    }
+
+    /**
+     * First and last name: the sign-up form's fields, else what Google sends through Supabase ({@code given_name}
+     * and {@code family_name}, or only {@code full_name} / {@code name}, split at the first space).
+     */
+    static String[] names(Map<?, ?> meta) {
+        String first = name(meta.get("first_name"));
+        String last = name(meta.get("last_name"));
+        if (first != null || last != null) {
+            return new String[] {first, last};
+        }
+        first = name(meta.get("given_name"));
+        last = name(meta.get("family_name"));
+        if (first != null || last != null) {
+            return new String[] {first, last};
+        }
+        Object full = meta.get("full_name") != null ? meta.get("full_name") : meta.get("name");
+        if (!(full instanceof String s) || s.isBlank()) {
+            return new String[] {null, null};
+        }
+        String[] parts = s.strip().split("\s+", 2);
+        return new String[] {name(parts[0]), parts.length > 1 ? name(parts[1]) : null};
     }
 
     /**

@@ -1,14 +1,15 @@
 // Create Account — Desktop 1440 (Figma 26:2). Step 1 creates the account (Supabase sign-up in production,
 // POST /v1/auth/sign-up locally; with email confirmation the person continues from the emailed link); steps
 // 2–8 (proposed, Figma 226:2235–226:3348, in Onboarding.tsx) save the rest through the ordinary API and
-// can each be skipped, or left with "Save and finish later".
-import { checkSignUp, passwordNeeds, todayIn } from "@vitallink/api";
+// can each be skipped, or left with "Save and finish later". Someone who arrives signed in without having filled in
+// the form (Google) gets step 1 without email or password (proposed Figma 235:15).
+import { ApiError, checkAccountDetails, checkSignUp, passwordNeeds, todayIn } from "@vitallink/api";
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { cx, Txt } from "../../components/kit";
 import { Logo } from "../../components/ui";
-import { applyPendingProfile, hasSession, resendConfirmation, signUp, supabase } from "../../auth";
-import { useApi } from "../../data";
+import { applyPendingProfile, filledSignUpForm, forgetSignUpForm, hasSession, rememberSignUpForm, resendConfirmation, signUp } from "../../auth";
+import { endSession, useApi } from "../../data";
 import { initialDrafts, OnboardingCard, saveStep, useAccountDefaults, type Created, type Drafts, type StepResult } from "./Onboarding";
 import s from "./CreateAccount.module.css";
 
@@ -46,18 +47,48 @@ export function CreateAccount() {
   const created = useRef<Created>({ conditions: 0, contactId: null });
   // Supabase sent a confirmation link to this address; the account continues from that link.
   const [confirming, setConfirming] = useState<string | null>(null);
-  // Back from the confirmation link (signed in by it): save the sign-up details that waited, then step 2.
+  // Signed in already: finished accounts go to the dashboard, and the rest carry on where they belong.
+  const [checking, setChecking] = useState(!api.isMock && hasSession());
+  const [fromGoogle, setFromGoogle] = useState(false);
   useEffect(() => {
-    if (!supabase || !hasSession()) return;
-    setStep(2);
-    applyPendingProfile(api).catch(() => undefined);
-  }, [api]);
+    if (api.isMock || !hasSession()) return;
+    api
+      .me()
+      .then(async (me) => {
+        if (me.onboarded) return nav("/", { replace: true });
+        if (filledSignUpForm()) {
+          // Back from the confirmation link, or a reload: save the details that waited, then step 2.
+          await applyPendingProfile(api).catch(() => undefined);
+          setStep(2);
+        } else {
+          const a = await api.account();
+          setFromGoogle(true);
+          setV({
+            first: a.first_name ?? "",
+            last: a.last_name ?? "",
+            email: a.email,
+            phone: a.phone ?? "",
+            zip: a.zip ?? "",
+            dob: a.date_of_birth ?? "",
+            height: a.height_cm === null ? "" : `${a.height_cm} cm`,
+          });
+        }
+        setChecking(false);
+      })
+      .catch((e: unknown) => {
+        if (e instanceof ApiError && e.code === "mfa_required") return nav("/sign-in", { replace: true, state: { code: true } });
+        // The session is no good: start from the form.
+        if (e instanceof ApiError && e.status === 401) endSession();
+        else setError(e instanceof Error ? e.message : String(e));
+        setChecking(false);
+      });
+  }, [api, nav]);
   useAccountDefaults(setDrafts, step > 1);
 
   const pw = v.password ?? "";
   const matches = pw.length > 0 && pw === (v.confirm ?? "");
   const needs = pw ? passwordNeeds(pw) : null;
-  const ready = !!(v.first && v.last && v.email && pw && !needs && matches && terms);
+  const ready = fromGoogle ? !!(v.first?.trim() && v.last?.trim() && terms) : !!(v.first && v.last && v.email && pw && !needs && matches && terms);
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
@@ -65,6 +96,23 @@ export function CreateAccount() {
     if (!ready) return;
     if (api.isMock) return setStep(2);
     const today = todayIn(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    if (fromGoogle) {
+      const d = checkAccountDetails({ first: "", last: "", phone: "", zip: "", dob: "", height: "", ...v }, today);
+      if (!d.ok) return setError(d.error);
+      setBusy(true);
+      setError(null);
+      api
+        .updateAccount(d.body)
+        .then(
+          () => {
+            rememberSignUpForm(); // a reload now carries on at step 2
+            setStep(2);
+          },
+          (err: Error) => setError(err.message),
+        )
+        .finally(() => setBusy(false));
+      return;
+    }
     const form = { first: "", last: "", email: "", phone: "", password: "", confirm: "", zip: "", dob: "", height: "", ...v };
     const c = checkSignUp(form, today);
     if (!c.ok) return setError(c.error);
@@ -79,8 +127,23 @@ export function CreateAccount() {
   };
 
   // Steps 2–8: save what was filled in, then move on; the last step enters the app.
+  const finish = () => {
+    setBusy(true);
+    setError(null);
+    api
+      .completeOnboarding()
+      .then(
+        () => {
+          forgetSignUpForm();
+          nav("/");
+        },
+        (err: Error) => setError(err.message),
+      )
+      .finally(() => setBusy(false));
+  };
+
   const next = () => {
-    if (step === 8) return nav("/");
+    if (step === 8) return finish();
     const key = JSON.stringify(slice(step, drafts));
     if (saved[step] === key) return setStep(step + 1);
     setBusy(true);
@@ -104,16 +167,33 @@ export function CreateAccount() {
     return f.help;
   };
   // Why Continue is still off, so the button never just looks broken.
-  const blocker = !v.first || !v.last ? "Enter your first and last name." : !v.email ? "Enter your email." : !pw || needs ? "Choose a password that meets the rules." : !matches ? "Confirm your password." : !terms ? "Agree to the Terms of Service to continue." : null;
+  const blocker = fromGoogle ? (!v.first?.trim() || !v.last?.trim() ? "Enter your first and last name." : !terms ? "Agree to the Terms of Service to continue." : null) : !v.first || !v.last ? "Enter your first and last name." : !v.email ? "Enter your email." : !pw || needs ? "Choose a password that meets the rules." : !matches ? "Confirm your password." : !terms ? "Agree to the Terms of Service to continue." : null;
+
+  if (checking) return null;
 
   return (
     <form className={s.page} onSubmit={submit}>
       <header className={s.header}>
         <Logo />
-        {step === 1 && (
+        {step === 1 && !fromGoogle && (
           <Txt s="bodyM" c="textSecondary">
             Already have an account?{" "}
             <Link to="/sign-in" className={cx("vl-body-m-strong", s.link)}>Sign In</Link>
+          </Txt>
+        )}
+        {step === 1 && fromGoogle && (
+          <Txt s="bodyM" c="textSecondary">
+            Not you?{" "}
+            <button
+              type="button"
+              className={cx("vl-body-m-strong", s.link, s.textButton)}
+              onClick={() => {
+                endSession();
+                nav("/welcome", { replace: true });
+              }}
+            >
+              Sign out
+            </button>
           </Txt>
         )}
       </header>
@@ -165,13 +245,15 @@ export function CreateAccount() {
         <section className={s.card} aria-labelledby="create-title">
           <div className={s.heading}>
             <Txt s="overline" c="textBrand">STEP 1 OF {STEPS.length}</Txt>
-            <Txt s="h2" as="h1"><span id="create-title">Create your account</span></Txt>
+            <Txt s="h2" as="h1"><span id="create-title">{fromGoogle ? "Finish setting up your account" : "Create your account"}</span></Txt>
             <Txt s="bodyM" c="textSecondary" as="p">
-              This is the only step you need to finish now. Health, training and emergency details can be added later.
+              {fromGoogle
+                ? "You signed in with Google. Check your name and add what you'd like. Only your name and the terms are needed."
+                : "This is the only step you need to finish now. Health, training and emergency details can be added later."}
             </Txt>
           </div>
           <div className={s.grid}>
-            {FIELDS.map((f) => (
+            {FIELDS.filter((f) => !fromGoogle || (f.key !== "password" && f.key !== "confirm")).map((f) => (
               <label key={f.key} className={cx(s.field, f.wide && s.wide)}>
                 <Txt s="labelL">{f.label}</Txt>
                 <input
@@ -180,6 +262,7 @@ export function CreateAccount() {
                   placeholder={f.placeholder}
                   autoComplete={f.autoComplete}
                   value={v[f.key] ?? ""}
+                  readOnly={fromGoogle && f.key === "email"}
                   onChange={(e) => setV({ ...v, [f.key]: e.target.value })}
                   max={f.type === "date" ? new Date().toISOString().slice(0, 10) : undefined}
                   aria-invalid={(f.key === "confirm" && !!v.confirm && !matches) || (f.key === "password" && !!needs) ? true : undefined}
@@ -210,7 +293,12 @@ export function CreateAccount() {
           <Link to="/sign-in" className={cx("vl-body-m-strong", s.link)}>Back to Sign In</Link>
         ) : (
           <>
-            {step < 8 && <Link to={step === 1 ? "/sign-in" : "/"} className={cx("vl-body-m-strong", s.link)}>Save and finish later</Link>}
+            {step === 1 && !fromGoogle && <Link to="/sign-in" className={cx("vl-body-m-strong", s.link)}>Save and finish later</Link>}
+            {step > 1 && step < 8 && (
+              <button type="button" className={cx("vl-body-m-strong", s.link, s.textButton)} disabled={busy} onClick={finish}>
+                Save and finish later
+              </button>
+            )}
             <button type="submit" className={cx("vl-label-l", s.continue)} disabled={(step === 1 && !ready) || busy}>
               {busy ? (step === 1 ? "Creating…" : "Saving…") : step === 8 ? "Go to Dashboard" : "Continue"}
             </button>

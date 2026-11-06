@@ -249,3 +249,11 @@ Refused shared read (`403`):
 { "error": { "code": "scope_not_granted", "message": "This share doesn't include sleep data.",
              "detail": { "scope": "sleep" }, "request_id": "req_01J8Z6…" } }
 ```
+
+## Doctor search
+
+`GET /v1/me/doctors/search?name=&specialty=&city=` looks doctors up in the public NPI Registry (Texas). A name or a specialty of at least 2 letters is required (422 otherwise); 503 `doctor_search_unavailable` when the registry can't be reached. Only the search words leave the API.
+
+## Two-step verification
+
+With a verified factor on the account, a token without `aal2` gets 403 `mfa_required` on every signed-in route.

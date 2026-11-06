@@ -73,4 +73,29 @@ class TokenClaimsTest {
         assertThat(TokenVerifier.parse(claims("ana@example.com", Map.of())).isRecent(600))
                 .isTrue();
     }
+
+    /** Google through Supabase has no first_name/last_name: names come from what it does send. */
+    @Test
+    void googleSignUpsGetTheirNameFromTheFullNameOrGivenAndFamilyNames() {
+        Claims full = TokenVerifier.parse(claims("ana@example.com", Map.of("full_name", "  Ana  de la Cruz ")));
+        assertThat(full.firstName()).isEqualTo("Ana");
+        assertThat(full.lastName()).isEqualTo("de la Cruz");
+
+        Claims nameOnly = TokenVerifier.parse(claims("ana@example.com", Map.of("name", "Ana")));
+        assertThat(nameOnly.firstName()).isEqualTo("Ana");
+        assertThat(nameOnly.lastName()).isNull();
+
+        Claims given = TokenVerifier.parse(
+                claims("ana@example.com", Map.of("given_name", "Ana", "family_name", "Cruz", "full_name", "A C")));
+        assertThat(given.firstName()).isEqualTo("Ana");
+        assertThat(given.lastName()).isEqualTo("Cruz");
+
+        // The sign-up form's own fields win, and a full name that isn't text is ignored.
+        Claims form = TokenVerifier.parse(claims("ana@example.com", Map.of("first_name", "Ann", "full_name", "A C")));
+        assertThat(form.firstName()).isEqualTo("Ann");
+        assertThat(form.lastName()).isNull();
+        assertThat(TokenVerifier.parse(claims("ana@example.com", Map.of("full_name", 42)))
+                        .firstName())
+                .isNull();
+    }
 }

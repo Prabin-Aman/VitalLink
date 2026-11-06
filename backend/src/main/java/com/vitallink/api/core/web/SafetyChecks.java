@@ -40,7 +40,9 @@ public class SafetyChecks extends OncePerRequestFilter {
 
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
-        return request.getRequestURI().startsWith("/local-storage/"); // uploads have their own 25 MB limit
+        String uri = request.getRequestURI();
+        // Uploads have their own limits: files 25 MB, health imports 300 MB (HealthImport, read as a stream).
+        return uri.startsWith("/local-storage/") || uri.equals("/v1/me/health/import");
     }
 
     @Override

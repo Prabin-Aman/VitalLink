@@ -239,4 +239,32 @@ class HealthImportTest extends ApiTest {
         assertThat(r.status()).as(r.text()).isEqualTo(202);
         assertThat(get(u, "/v1/me/devices").at("/0/name").asString()).isEqualTo("Polar H10");
     }
+
+    /**
+     * A real export is large, and every record's {@code device} attribute is full of escapes like {@code &lt;}. Both
+     * broke real files: the 2 MB limit on request bodies, and the XML parser's cap on entity references.
+     */
+    @Test
+    void aLargeExportWithApplesEscapedDeviceTextImports() {
+        String u = user();
+        StringBuilder xml =
+                new StringBuilder("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<HealthData locale=\"en_US\">\n");
+        Instant start = T0.minus(30, ChronoUnit.DAYS);
+        int count = 40_000;
+        for (int i = 0; i < count; i++) {
+            Instant t = start.plus(i, ChronoUnit.MINUTES);
+            xml.append("<Record type=\"HKQuantityTypeIdentifierStepCount\" sourceName=\"iPhone\" ")
+                    .append("device=\"&lt;&lt;HKDevice: 0x28&gt;, name:iPhone, model:iPhone&gt;\" unit=\"count\" ")
+                    .append("startDate=\"")
+                    .append(at(t))
+                    .append("\" endDate=\"")
+                    .append(at(t.plus(1, ChronoUnit.MINUTES)))
+                    .append("\" value=\"10\"/>\n");
+        }
+        byte[] body = xml.append("</HealthData>\n").toString().getBytes(StandardCharsets.UTF_8);
+        assertThat(body.length).as("over the 2 MB limit on ordinary requests").isGreaterThan(2 * 1024 * 1024);
+        Res res = upload(u, body, "?days=90");
+        assertThat(res.status()).as(res.text()).isEqualTo(200);
+        assertThat(res.at("/records").asInt()).isEqualTo(count);
+    }
 }

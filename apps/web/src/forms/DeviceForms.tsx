@@ -1,5 +1,5 @@
-// Connected Devices › Add (proposed, Figma 213:1667) and its three ways in: Phone app (212:3400), Import health
-// data (213:1701) and Pair a Bluetooth device (213:1754) — Dialog 560.
+// Connected Devices › Add (proposed, Figma 213:1667) and its two ways in: Import health data (213:1701) and
+// Pair a Bluetooth device (213:1754). The Phone app row is gone with the mobile app (owner, Nov 2026).
 import {
   BLE_KINDS,
   bleIngest,
@@ -24,7 +24,7 @@ import { Button } from "../components/ui";
 import { useApi } from "../data";
 import { saveFile } from "../download";
 
-export type DeviceDialog = "add" | "phone" | "import" | "bluetooth";
+export type DeviceDialog = "add" | "import" | "bluetooth";
 
 export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPick: (d: DeviceDialog) => void }) {
   return (
@@ -34,32 +34,11 @@ export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPi
         empty=""
         add={null}
         items={[
-          { key: "phone", title: "Phone app", caption: "Apple Health or Health Connect, synced by the VitalLink app", onRemove: () => onPick("phone"), removeLabel: "How to connect" },
+          { key: "import", title: "Apple Health or a file", caption: "An Apple Health export (export.zip) or a CSV of readings", onRemove: () => onPick("import"), removeLabel: "Import file" },
           { key: "bluetooth", title: "Bluetooth", caption: "Strap, cuff, scale, oximeter or glucose meter · Chrome or Edge", onRemove: () => onPick("bluetooth"), removeLabel: "Pair device" },
-          { key: "import", title: "Import a file", caption: "An Apple Health export (export.zip) or a CSV of readings", onRemove: () => onPick("import"), removeLabel: "Import file" },
         ]}
       />
       <Note>VitalLink only reads from your devices; it never changes their settings.</Note>
-    </FormDialog>
-  );
-}
-
-export function PhoneAppDialog({ onClose }: { onClose: () => void }) {
-  return (
-    <FormDialog overline="Connected Devices › Add › Phone app" title="Connect your phone" subtitle="Devices connect through the VitalLink app on your phone." onClose={onClose}>
-      <KeyValueList
-        label="Steps"
-        labelWidth={24}
-        rows={[
-          { label: "1", value: "Install VitalLink on your iPhone or Android phone." },
-          { label: "2", value: "Sign in with the email you use here." },
-          { label: "3", value: "Allow access to Apple Health or Health Connect when asked." },
-          { label: "4", value: "Your watch, phone and monitors appear here after the first upload." },
-        ]}
-      />
-      <Note>
-        A blood pressure cuff, scale or glucose monitor connects the same way: pair it with its own app, let that app write to Apple Health or Health Connect, and VitalLink picks up the readings.
-      </Note>
     </FormDialog>
   );
 }
@@ -86,7 +65,7 @@ export function ImportDataDialog({ onClose, onImported }: { onClose: () => void;
     >
       <DropZone file={file} onFile={setFile} accept={IMPORT_TYPES} prompt="Drop export.zip, export.xml or a .csv here" hint="Up to 300 MB" />
       <Choices label="Period" options={IMPORT_PERIODS} selected={[days]} onChange={([d]) => setDays(d)} />
-      <Note>On iPhone: Health app › your picture › Export All Health Data, then upload export.zip here. Importing again updates readings rather than doubling them.</Note>
+      <Note>On iPhone: Health app › your picture › Export All Health Data. It can take a few minutes. Save export.zip to Files, then choose it here, on the iPhone or on a computer you sent it to. Import again whenever you want newer data: readings update rather than double.</Note>
       <span>
         <Button variant="tertiary" size="sm" onClick={() => saveFile(new Blob(["﻿" + IMPORT_CSV_TEMPLATE], { type: "text/csv" }), "vitallink-readings-template.csv")}>
           Download the CSV template

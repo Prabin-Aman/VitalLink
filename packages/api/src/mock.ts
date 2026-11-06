@@ -18,7 +18,7 @@ import type {
   Share,
   Workout,
 } from "./types";
-import { account, appointments, conversations, devices, emergency, family, library, medicationsOverview, notifications, sync } from "./mock-data/care";
+import { account, appointments, conversations, devices, doctors, emergency, family, library, medicationsOverview, notifications, sync } from "./mock-data/care";
 import { goalsOverview, nutrition, training } from "./mock-data/fitness";
 import { bodyTab, digitalTab, healthOverview, heartTab, mentalTab, respiratoryTab, sleepTab, vitalsTab } from "./mock-data/health";
 import { labPanels, recordsOverview } from "./mock-data/records";
@@ -32,6 +32,7 @@ const me: Me = {
   display_name: "Alex Carter",
   units: "metric",
   timezone: "America/Chicago",
+  onboarded: true,
 };
 
 const dashboard: Dashboard = {
@@ -201,6 +202,7 @@ export const mock = {
   medicationsOverview,
   appointments,
   conversations,
+  doctors,
   notifications,
   family,
   /** Same list as the API's GoalMetrics.ALL. */

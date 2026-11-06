@@ -109,6 +109,8 @@ export function searchIndex(index: SearchIndex, query: string, perGroup = 3): { 
 // ---------------------------------------------------------------- top bar (Figma 207:1541)
 
 export interface ShellVM {
+  /** False sends the person to Create Account's setup steps. */
+  onboarded: boolean;
   name: string;
   initials: string;
   email: string;
@@ -120,6 +122,7 @@ export async function loadShell(api: VitalLinkClient): Promise<ShellVM> {
   const me = await api.me();
   const name = me.display_name || me.email.split("@")[0];
   return {
+    onboarded: me.onboarded !== false,
     name,
     initials: name.split(/\s+/).map((s) => s[0]).join("").slice(0, 2).toUpperCase(),
     email: me.email,

@@ -12,6 +12,7 @@ import type {
   Library,
   MedicationsOverview,
   SyncStatus,
+  Doctor,
 } from "../types";
 
 export const medicationsOverview: MedicationsOverview = {
@@ -30,6 +31,12 @@ export const appointments: Appointment[] = [
   { id: "a2", clinician: "Dr. Marcus Hale", specialty: "Internal Medicine", starts_at: "2026-09-18T15:00:00-05:00", mode: "telehealth", location: "Telehealth video visit", status: "confirmed" },
   { id: "a3", clinician: "Dr. Priya Raman", specialty: "Endocrinology", starts_at: "2026-09-28T09:15:00-05:00", mode: "in_person", location: "Oak Cliff Community Hospital", status: "pending" },
   { id: "a0", clinician: "Dr. Marcus Hale", specialty: "Internal Medicine", starts_at: "2026-09-09T11:00:00-05:00", mode: "in_person", location: "Oak Cliff Community Hospital", status: "completed" },
+];
+
+export const doctors: Doctor[] = [
+  { npi: "1000000001", name: "Laura Bennett", credential: "MD", specialty: "Cardiovascular Disease", address: "3500 Gaston Ave, Dallas", phone: "214-555-0148" },
+  { npi: "1000000002", name: "Omar Bennett", credential: "DO", specialty: "Family Medicine", address: "8200 Walnut Hill Ln, Dallas", phone: "214-555-0172" },
+  { npi: "1000000003", name: "Priya Raman", credential: "MD", specialty: "Dermatology", address: "5323 Harry Hines Blvd, Dallas", phone: "214-555-0190" },
 ];
 
 export const conversations: Conversation[] = [

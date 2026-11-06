@@ -7,11 +7,14 @@ import com.vitallink.api.core.Settings;
 import com.vitallink.api.core.consent.Consent.Viewer;
 import com.vitallink.api.core.consent.ConsentGate;
 import com.vitallink.api.core.consent.ConsentGates;
+import com.vitallink.api.core.security.Claims;
+import com.vitallink.api.core.security.IdentityAdmin;
 import com.vitallink.api.core.security.TokenVerifier;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Predicate;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.HttpHeaders;
@@ -37,9 +40,16 @@ public class WebConfig implements WebMvcConfigurer {
     private final AccountService accounts;
     private final ConsentGates gates;
     private final RateLimiter limits;
+    private final IdentityAdmin identities;
 
     public WebConfig(
-            Settings settings, TokenVerifier tokens, AccountService accounts, ConsentGates gates, RateLimiter limits) {
+            Settings settings,
+            TokenVerifier tokens,
+            AccountService accounts,
+            ConsentGates gates,
+            RateLimiter limits,
+            IdentityAdmin identities) {
+        this.identities = identities;
         this.limits = limits;
         this.gates = gates;
         this.settings = settings;
@@ -69,10 +79,23 @@ public class WebConfig implements WebMvcConfigurer {
             var claims = tokens.verify(request.getHeader("Authorization"));
             String uri = request.getRequestURI();
             limits.check(claims.subject(), uri.equals("/v1/me/health/ingest") || uri.equals("/v1/me/health/import"));
+            if (!settings.isDev()) {
+                requireSecondFactor(claims, identities::hasSecondFactor);
+            }
             cached = new CurrentUser(accounts.getOrCreate(claims), claims);
             request.setAttribute(CALLER, cached);
         }
         return cached;
+    }
+
+    /**
+     * With two-step verification on, a password alone must not reach health data: Supabase issues an aal1 token
+     * before the code is entered, so the API refuses it until the token says aal2.
+     */
+    static void requireSecondFactor(Claims claims, Predicate<UUID> hasFactor) {
+        if (!"aal2".equals(claims.aal()) && hasFactor.test(claims.subject())) {
+            throw new ApiError(403, "mfa_required", "Enter the code from your authenticator app.");
+        }
     }
 
     private final class CallerResolver implements HandlerMethodArgumentResolver {

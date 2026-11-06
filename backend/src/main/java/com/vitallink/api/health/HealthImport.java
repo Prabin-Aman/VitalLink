@@ -159,6 +159,12 @@ public final class HealthImport {
         // The export carries an internal DTD; never resolve anything outside the file (XXE).
         f.setProperty(XMLInputFactory.SUPPORT_DTD, false);
         f.setProperty(XMLInputFactory.IS_SUPPORTING_EXTERNAL_ENTITIES, false);
+        // Every record's device attribute is full of &lt; and &gt;, which the JDK counts towards its entity caps, so
+        // real
+        // exports stop early. Those caps guard against entities defined in a DTD, and the DTD is off above.
+        f.setProperty("jdk.xml.entityExpansionLimit", "0");
+        f.setProperty("jdk.xml.totalEntitySizeLimit", "0");
+        f.setProperty("jdk.xml.maxGeneralEntitySizeLimit", "0");
         try {
             XMLStreamReader x = f.createXMLStreamReader(in, "UTF-8");
             boolean health = false;

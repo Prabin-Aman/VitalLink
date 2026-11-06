@@ -43,6 +43,12 @@ function Shell() {
     endSession();
     return <Navigate to="/sign-in" replace state={{ expired: true }} />;
   }
+  // Two-step verification is on and the code hasn't been entered (Google sign-in lands here).
+  if (me.status === "error" && me.error instanceof ApiError && me.error.code === "mfa_required") {
+    return <Navigate to="/sign-in" replace state={{ code: true }} />;
+  }
+  // New accounts finish setting up first; Google sign-ups arrive here without having seen the form.
+  if (me.status === "ready" && !me.data.onboarded) return <Navigate to="/create-account" replace />;
   const who = me.status === "ready" ? me.data : { name: "", initials: "", email: "", photo: null };
   return (
     <AppShell name={who.name} initials={who.initials} email={who.email} photo={who.photo}>

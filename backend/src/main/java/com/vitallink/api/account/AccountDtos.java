@@ -34,7 +34,14 @@ public final class AccountDtos {
     }
 
     /** {@code avatarUrl}: a short-lived link to the profile photo, or null. */
-    public record Me(UUID id, String email, String displayName, String timezone, String avatarUrl, Units units) {}
+    public record Me(
+            UUID id,
+            String email,
+            String displayName,
+            String timezone,
+            String avatarUrl,
+            Units units,
+            boolean onboarded) {}
 
     public record Account(
             String firstName,

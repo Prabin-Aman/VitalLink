@@ -8,7 +8,7 @@ patch versions of the tools work too. Package versions are pinned by `package-lo
 
 | Tool | Version | Needed for | Install (Windows) |
 |---|---|---|---|
-| **Node.js** (includes npm) | 20 or newer (built with 24.19, npm 11.17) | Web portal, mobile app, `packages/*`, frontend tests | https://nodejs.org (LTS installer) |
+| **Node.js** (includes npm) | 20 or newer (built with 24.19, npm 11.17) | Web portal, `packages/*`, frontend tests | https://nodejs.org (LTS installer) |
 | **Java JDK** | **25** (built with 25.0.4 LTS) | The backend API (Spring Boot) | Eclipse Temurin 25: https://adoptium.net |
 | **Docker** with Compose | Docker 29, Compose v5 | PostgreSQL and Mailpit for local runs | Docker Engine inside **WSL Ubuntu** (how this machine runs it), or Docker Desktop |
 | **WSL 2 + Ubuntu** | any current | Runs Docker on Windows without Docker Desktop | `wsl --install -d Ubuntu` in an admin PowerShell |
@@ -22,7 +22,6 @@ Optional:
 
 | Tool | Needed for |
 |---|---|
-| **Expo Go** app on a phone (Android / iOS) | Opening the mobile app on a device (`npm run mobile`) |
 | `psql`, `pg_dump`, `pg_restore`, `gpg`, `curl` | Only `backend/scripts/restore-drill.sh` (the backup restore drill) |
 | A Google Cloud OAuth client ID | "Continue with Google" on Sign In (`GOOGLE_CLIENT_ID` in `backend/.env`) |
 | An SMTP provider (free tier) | Real email in production (`SMTP_*`); locally Mailpit catches it |
@@ -95,25 +94,6 @@ Installed by `npm install` at the root (npm workspaces). Versions are what `pack
 | `vite-plugin-svgr` | 4.5.0 | Icons as React components (`?react` imports) |
 | `typescript` | 5.9.3 | Type checking |
 | `@types/react`, `@types/react-dom` | 19.2.18, 19.2.7 | React types |
-
-**`apps/mobile` — mobile app (Expo)**
-
-| Package | Version | Purpose |
-|---|---|---|
-| `expo` | 57.0.26 | Expo SDK 57 |
-| `react-native` | 0.86.3 | Native UI |
-| `react`, `react-dom` | 19.2.3 | UI (react-dom for the web build) |
-| `expo-router` | 57.0.24 | File-based navigation |
-| `expo-constants`, `expo-font`, `expo-linking`, `expo-status-bar` | 57.0.x | Expo modules |
-| `expo-document-picker` | 57.0.3 | Choosing a file to upload (entry sheets, in progress) |
-| `@expo/metro-runtime` | 57.0.16 | Metro bundler runtime (web) |
-| `react-native-web` | 0.21.3 | Running the app in a browser |
-| `react-native-safe-area-context` | 5.7.0 | Notch / safe areas |
-| `react-native-screens` | 4.26.2 | Native screen containers |
-| `react-native-svg` | 15.15.4 | Icons and charts |
-| `react-native-svg-transformer` | 1.5.3 | SVG files as components |
-| `@expo-google-fonts/inter`, `@expo-google-fonts/roboto-mono` | 0.4.2 | Fonts |
-| `typescript`, `@types/react` | per `package.json` | Type checking |
 
 **`packages/*`** — `@vitallink/api` (client, view-models, form rules), `@vitallink/tokens` (design tokens),
 `@vitallink/assets` (icons): workspace packages with no outside dependencies.

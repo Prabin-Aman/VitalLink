@@ -67,6 +67,7 @@ export type Contract = [
   Fits<Missing<T.Insight, S["Insight"]>>,
   Fits<Missing<T.FoodHit, S["FoodOut"]>>,
   Fits<Missing<T.WaterEntry, S["WaterOut"]>>,
+  Fits<Missing<T.Doctor, S["Doctor"]>>,
   Fits<Missing<T.Recipe, S["RecipeOut"]>>,
   Fits<Missing<T.Recipe["items"][number], S["RecipeItemOut"]>>,
   Fits<Missing<T.Recipe["per_serving"], S["Serving"]>>,

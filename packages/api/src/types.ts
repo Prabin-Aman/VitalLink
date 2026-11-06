@@ -14,6 +14,8 @@ export interface Me {
   avatar_url?: string | null;
   /** Settings › Units: distances in km (metric) or miles (imperial). */
   units?: "metric" | "imperial";
+  /** False until Create Account's setup steps are finished or left for later (Google sign-ups skip the form). */
+  onboarded?: boolean;
 }
 
 /** One water entry (GET /me/hydration: today's, newest first). */
@@ -439,7 +441,7 @@ export interface PrivacySettings {
 
 // ---------------------------------------------------------------- devices
 
-/** GET /me/sync: what the phone app uploaded (batches are kept 30 days). */
+/** GET /me/sync: what was uploaded through ingest (batches are kept 30 days). */
 export interface SyncPlatform {
   platform: "healthkit" | "health_connect" | "bluetooth";
   last_upload_at: ISODate;
@@ -726,6 +728,16 @@ export interface FoodHit {
 }
 
 /** Nutrition › Recipes (GET /me/recipes): per-serving macros are worked out from the foods. */
+/** A listing from the public NPI Registry. */
+export interface Doctor {
+  npi: string;
+  name: string;
+  credential: string | null;
+  specialty: string | null;
+  address: string | null;
+  phone: string | null;
+}
+
 export interface Recipe {
   id: string;
   name: string;

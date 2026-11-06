@@ -148,7 +148,6 @@ export function ProfileMenu({ name, initials, email, photo, className, labelClas
   };
   const items: { label: string; icon: IconName; onClick: () => void; danger?: boolean }[] = [
     { label: "Profile & settings", icon: "user-16", onClick: () => go("/settings") },
-    { label: "Privacy Centre", icon: "privacy-16", onClick: () => go("/privacy") },
     { label: "Emergency Medical ID", icon: "emergency-16", onClick: () => go("/emergency") },
   ];
   return (

@@ -23,7 +23,7 @@ jobs:
           node-version: "22"
           cache: npm
       - run: npm ci
-      - name: Typecheck (web and mobile, each with its own TypeScript)
+      - name: Typecheck (web)
         run: npm run typecheck
       - name: Unit tests (form rules, time zones, every view-model from the sample data)
         run: npm test

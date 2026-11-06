@@ -5,7 +5,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -68,6 +70,56 @@ public class IdentityAdmin {
                     && !confirmed.asString("").isBlank();
         } catch (java.io.IOException | RuntimeException e) {
             log.warn("Supabase user lookup failed for {}", subject, e);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+        return false;
+    }
+
+    /** How long an answer from {@link #hasSecondFactor} is kept: it's asked on nearly every password-only request. */
+    private static final long FACTOR_TTL_MS = 60_000;
+
+    private record FactorAnswer(boolean on, long at) {}
+
+    private final Map<UUID, FactorAnswer> factors = new ConcurrentHashMap<>();
+
+    /**
+     * Whether the user has a verified second factor (two-step verification is on). Fails open, unlike
+     * {@link #emailConfirmed}: this runs on every request of every user without a factor, so a Supabase outage
+     * must not lock them all out, and an outage can't issue the new token an attacker would need anyway.
+     */
+    public boolean hasSecondFactor(UUID subject) {
+        if (!configured()) {
+            return false;
+        }
+        long now = System.currentTimeMillis();
+        FactorAnswer known = factors.get(subject);
+        if (known != null && now - known.at() < FACTOR_TTL_MS) {
+            return known.on();
+        }
+        HttpRequest request = HttpRequest.newBuilder(URI.create(supabaseUrl + "/auth/v1/admin/users/" + subject))
+                .timeout(Duration.ofSeconds(4))
+                .header("apikey", serviceKey)
+                .header("Authorization", "Bearer " + serviceKey)
+                .GET()
+                .build();
+        try {
+            HttpResponse<String> res = http.send(request, HttpResponse.BodyHandlers.ofString());
+            if (res.statusCode() / 100 != 2) {
+                log.warn("Supabase factor lookup for {} answered HTTP {}", subject, res.statusCode());
+                return false;
+            }
+            boolean on = false;
+            for (JsonNode factor : JSON.readTree(res.body()).path("factors")) {
+                on |= "verified".equals(factor.path("status").asString(""));
+            }
+            if (factors.size() > 10_000) {
+                factors.clear();
+            }
+            factors.put(subject, new FactorAnswer(on, now));
+            return on;
+        } catch (java.io.IOException | RuntimeException e) {
+            log.warn("Supabase factor lookup failed for {}", subject, e);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

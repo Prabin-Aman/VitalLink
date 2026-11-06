@@ -151,4 +151,17 @@ class AccountTest extends ApiTest {
             assertThat(rs.getInt(1)).isZero();
         }
     }
+
+    /** Google sign-ups skip the form, so the account itself says whether the setup steps are still to come. */
+    @Test
+    void aNewAccountIsAskedForItsDetailsOnce() {
+        String u = user();
+        assertThat(get(u, "/v1/me").at("/onboarded").asBoolean()).isFalse();
+        assertThat(post(u, "/v1/me/onboarding/complete", null).status()).isEqualTo(204);
+        assertThat(get(u, "/v1/me").at("/onboarded").asBoolean()).isTrue();
+        assertThat(post(u, "/v1/me/onboarding/complete", null).status())
+                .as("again is fine")
+                .isEqualTo(204);
+        assertThat(get(u, "/v1/me").at("/onboarded").asBoolean()).isTrue();
+    }
 }

@@ -3,7 +3,7 @@ import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNod
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";
 import { Icon, tokenVar } from "../../components/Icon";
 import { AccentDot, Button, Chip, Logo } from "../../components/ui";
-import { forgotPassword, hasSession, keepLocalToken, resetNeedsToken, resetPassword, signIn, signInWithGoogle, supabase, supabaseGoogle } from "../../auth";
+import { endSession, forgotPassword, hasSession, keepLocalToken, resetNeedsToken, resetPassword, signIn, signInWithGoogle, supabase, supabaseGoogle, verifySignInCode } from "../../auth";
 import { useApi, useScreen } from "../../data";
 import s from "./SignIn.module.css";
 
@@ -170,7 +170,11 @@ function GoogleButton({ onToken, onProblem, remember }: { onToken: (credential: 
 export function SignIn() {
   const nav = useNavigate();
   const api = useApi();
-  const expired = (useLocation().state as { expired?: boolean } | null)?.expired;
+  const from = useLocation().state as { expired?: boolean; code?: boolean } | null;
+  const expired = from?.expired;
+  // Two-step verification: the password (or Google) is done, the authenticator code is next (proposed Figma 232:2789).
+  const [needCode, setNeedCode] = useState(!!from?.code);
+  const [code, setCode] = useState("");
   const [show, setShow] = useState(false);
   const [remember, setRemember] = useState(true);
   const [email, setEmail] = useState("");
@@ -202,11 +206,55 @@ export function SignIn() {
     setError(null);
     signIn(api, email.trim(), password, remember)
       .then(
+        (r) => (r === "needs-code" ? setNeedCode(true) : nav("/")),
+        (err: Error) => setError(err.message),
+      )
+      .finally(() => setBusy(false));
+  };
+
+  const verify = (e: FormEvent) => {
+    e.preventDefault();
+    if (!/^\d{6}$/.test(code.trim())) return setError("Enter the 6-digit code from your authenticator app.");
+    setBusy(true);
+    setError(null);
+    verifySignInCode(code.trim())
+      .then(
         () => nav("/"),
         (err: Error) => setError(err.message),
       )
       .finally(() => setBusy(false));
   };
+
+  if (needCode)
+    return (
+      <AuthLayout onSubmit={verify}>
+        <Heading title="Enter your code" sub="Open your authenticator app and enter the 6-digit code for VitalLink." />
+        <label className={s.field}>
+          <span className={s.label}>6-digit code</span>
+          <input className={s.input} name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={code} onChange={(e) => setCode(e.target.value)} autoFocus />
+        </label>
+        <Problem text={error} />
+        <Button type="submit" size="block" disabled={busy}>
+          {busy ? "Checking…" : "Verify and Sign In"}
+        </Button>
+        <p className={s.footer}>
+          Wrong account?{" "}
+          <button
+            type="button"
+            className={s.linkInline}
+            onClick={() => {
+              endSession();
+              setNeedCode(false);
+              setPassword("");
+              setCode("");
+              setError(null);
+            }}
+          >
+            Back to Sign In
+          </button>
+        </p>
+      </AuthLayout>
+    );
 
   return (
     <AuthLayout onSubmit={submit}>
@@ -257,14 +305,6 @@ export function SignIn() {
 
           <div className={s.social}>
             <GoogleButton onToken={google} onProblem={setError} remember={remember} />
-            <Button
-              variant="secondary"
-              size="block"
-              onClick={() => setError("Sign in with Apple needs Apple's paid developer programme, so VitalLink doesn't offer it. Use Google or your email.")}
-            >
-              <Icon name="user-17" color="iconDefault" />
-              Continue with Apple
-            </Button>
           </div>
 
           <p className={s.footer}>

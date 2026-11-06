@@ -41,6 +41,13 @@ public class AccountController {
         return service.me(me);
     }
 
+    @PostMapping("/onboarding/complete")
+    @Operation(summary = "Create Account's setup steps are finished or left for later, so they aren't asked again.")
+    @org.springframework.web.bind.annotation.ResponseStatus(org.springframework.http.HttpStatus.NO_CONTENT)
+    public void completeOnboarding(CurrentUser me) {
+        service.completeOnboarding(me);
+    }
+
     @GetMapping("/account")
     public Account account(CurrentUser me) {
         return service.account(me);

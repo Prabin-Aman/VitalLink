@@ -24,6 +24,8 @@ export function FormDialog({
   action,
   onClose,
   save,
+  stayOpen,
+  busyLabel = "Saving…",
   extra,
   children,
 }: {
@@ -34,6 +36,9 @@ export function FormDialog({
   action?: string;
   onClose: () => void;
   save?: () => Promise<void>;
+  /** `save` only reads (Search doctors): the dialog stays open to show what it found. */
+  stayOpen?: boolean;
+  busyLabel?: string;
   /** Buttons before the main one (Permissions' Disconnect); with no `action`, Done becomes primary. */
   extra?: ReactNode;
   children: ReactNode;
@@ -60,6 +65,7 @@ export function FormDialog({
     setError(null);
     try {
       await save();
+      if (stayOpen) return;
       if (api.isMock) setDemoDone(true);
       else {
         notifyChanged();
@@ -109,7 +115,7 @@ export function FormDialog({
           </Button>
           {action && (
             <Button type="submit" disabled={busy || demoDone}>
-              {busy ? "Saving…" : action}
+              {busy ? busyLabel : action}
             </Button>
           )}
         </div>

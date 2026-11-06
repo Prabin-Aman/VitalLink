@@ -174,6 +174,14 @@ export function checkBodyMetrics(f: BodyMetricsForm, units: "metric" | "imperial
   return { ok: true, body: out };
 }
 
+/** Search doctors: the registry needs a name or a specialty; the city is optional. */
+export function checkDoctorSearch(f: { name: string; specialty: string; city: string }): Checked<{ name: string; specialty: string; city: string }> {
+  const name = f.name.trim();
+  const specialty = f.specialty.trim();
+  if (name.length < 2 && specialty.length < 2) return fail("Enter a name or a specialty, at least 2 letters.");
+  return { ok: true, body: { name, specialty, city: f.city.trim() } };
+}
+
 export interface SignUpForm { first: string; last: string; email: string; phone: string; password: string; confirm: string; zip: string; dob: string; height: string }
 /** The sign-up body (POST /v1/auth/sign-up, or Supabase sign-up plus PATCH /me/account for the details). */
 export interface SignUpBody {
@@ -193,6 +201,14 @@ export function checkSignUp(f: SignUpForm, today: string): Checked<SignUpBody> {
   const needs = passwordNeeds(f.password);
   if (needs) return fail(`Password: ${needs}`);
   if (f.password !== f.confirm) return fail("The two passwords don't match.");
+  const details = checkAccountDetails(f, today);
+  if (!details.ok) return details;
+  return { ok: true, body: { email: f.email.trim().toLowerCase(), password: f.password, ...details.body } };
+}
+
+/** Name and the optional details: all of step 1 after Google sign-in, which has no email or password to choose. */
+export function checkAccountDetails(f: Pick<SignUpForm, "first" | "last" | "phone" | "zip" | "dob" | "height">, today: string): Checked<Omit<SignUpBody, "email" | "password">> {
+  if (!f.first.trim() || !f.last.trim()) return fail("Enter your first and last name.");
   const phone = f.phone.trim() ? toE164(f.phone) : null;
   if (f.phone.trim() && !phone) return fail("Enter a 10-digit mobile number, e.g. (214) 555-0148, or one starting with +.");
   if (f.zip.trim() && !/^\d{5}$/.test(f.zip.trim())) return fail("Enter a 5-digit ZIP code.");
@@ -202,8 +218,6 @@ export function checkSignUp(f: SignUpForm, today: string): Checked<SignUpBody> {
   return {
     ok: true,
     body: {
-      email: f.email.trim().toLowerCase(),
-      password: f.password,
       first_name: f.first.trim(),
       last_name: f.last.trim(),
       ...(phone ? { phone } : {}),
