@@ -175,6 +175,8 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   confirmation keeps the optional profile details in localStorage (`vl.signup.pending`) until the emailed link
   signs the person in, then PATCHes /me/account. "Signed in recently" (delete account) uses the token's `amr`
   timestamp, since Supabase refreshes `iat` hourly. Launch config `web-supabase` (:5175) runs the portal in Supabase mode.
+  Google sign-in: OAuth client ID `775096923930-s5ogureo5mm6n822lqft9be091istahi.apps.googleusercontent.com`
+  (public; goes in Supabase › Providers › Google with the client secret, which is never kept in this repo).
 - Rate limits: `core/web/RateLimiter` (60 ingest / 3,000 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
