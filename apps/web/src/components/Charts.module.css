@@ -89,11 +89,6 @@
   border-top: 1px solid var(--vl-border-strong);
 }
 
-.stepsCompact .stepsBars,
-.stepsCompact .stepsAxis {
-  gap: 10px;
-}
-
 /* Stacked day bars (Training load 130:150: plot 215, baseline 170, columns 16 apart) */
 .stack {
   display: flex;

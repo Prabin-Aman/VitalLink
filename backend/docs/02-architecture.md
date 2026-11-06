@@ -4,12 +4,7 @@
 
 ```mermaid
 flowchart LR
-  subgraph Phone
-    HK[HealthKit / Health Connect]
-    M[Mobile app<br/>Expo]
-  end
-  W[Web portal<br/>React]
-  HK -->|read on device| M
+  W[Web portal<br/>React, on Vercel]
 
   subgraph Render["Render (free, Virginia)"]
     API[VitalLink API<br/>Spring Boot modular monolith, Java 25]
@@ -21,26 +16,21 @@ flowchart LR
   end
   GH[GitHub Actions<br/>cron + CI]
 
-  M -->|sign in| AUTH
   W -->|sign in| AUTH
-  M -->|HTTPS + JWT| API
   W -->|HTTPS + JWT| API
   AUTH -. JWKS public keys .-> API
   API -->|session pooler :5432| DB
   API -->|sign URLs, verify objects| ST
-  M -. PUT / GET via signed URL .-> ST
-  W -. GET via signed URL .-> ST
+  W -. PUT / GET via signed URL .-> ST
   GH -->|POST /internal/jobs/nightly| API
   GH -->|weekly encrypted pg_dump| DB
 ```
 
-- Clients sign in with Supabase Auth and send the access token on every API call.
+- The portal signs in with Supabase Auth and send the access token on every API call.
 - Only the API talks to Postgres. The Supabase Data API is switched off ([security](06-security-and-consent.md)).
 - File bytes go straight between the client and Storage through signed URLs, never through the API.
-- The web portal never syncs. HealthKit and Health Connect are reachable only on the phone.
-- Medication and appointment **reminders are local notifications** scheduled on the phone. The
-  server's notification feed is a list the user reads in the app. No push service is needed, and no
-  health text reaches Apple, Google or Expo ([D9](10-open-decisions.md)).
+- A website can't read phone health stores, so Apple Health data arrives as the Health app's export file.
+- The server's notification feed is a list the user reads in the portal. There's no push service.
 
 ## Why a modular monolith
 

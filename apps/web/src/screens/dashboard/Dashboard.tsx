@@ -1,3 +1,4 @@
+// Dashboard: Desktop 1440 (Figma 12:2).
 import { CHART_RANGES, loadBloodPressureRange, loadDashboard, loadStepsRange, thousands } from "@vitallink/api";
 import { useCallback, useState } from "react";
 import { useNavigate } from "react-router-dom";

@@ -6,7 +6,6 @@ import type {
   MedicationDetail,
   ImportResult,
   IngestResult,
-  SyncStatus,
   AccountProfile,
   AppNotification,
   BodyTab,
@@ -184,7 +183,7 @@ export class VitalLinkClient {
   addReading = (metric: string, value: number, at: string) => this.send("POST", "/me/health/manual", { metric, value, at });
   /** POST /me/health/import: an Apple Health export or a CSV, readings from the last `days`. Null in mock mode. */
   importHealthFile = (file: Blob, days: number) => this.send<ImportResult>("POST", `/me/health/import?days=${days}`, file);
-  /** POST /me/health/ingest: 5-minute buckets (phone sync, or a Bluetooth device paired in the browser). */
+  /** POST /me/health/ingest: 5-minute buckets (a Bluetooth device paired in the browser). */
   ingest = (body: object) => this.send<IngestResult>("POST", "/me/health/ingest", body);
   /** Doctors from the public NPI Registry; mock mode filters a short sample. */
   searchDoctors = (q: { name: string; specialty: string; city: string }) => {
@@ -352,8 +351,6 @@ export class VitalLinkClient {
     return bp && bp.value2 != null ? { systolic: bp.value, diastolic: bp.value2 } : null;
   };
   devices = () => this.get<Device[]>("/me/devices", () => mock.devices);
-  /** GET /me/sync: uploads through ingest (Bluetooth; the phone sync panel left the web with the mobile app). */
-  sync = () => this.get<SyncStatus>("/me/sync", () => mock.sync);
   workouts = (days = 7) => this.get<Workout[]>(`/me/workouts?days=${days}`, () => mock.workouts);
   /** Every personal record (heaviest set per exercise, fastest 5 km and 10 km). */
   personalRecords = () => this.get<PersonalRecord[]>("/me/training/records", () => mock.training.records);

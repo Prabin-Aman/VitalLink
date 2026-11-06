@@ -1,3 +1,4 @@
+// What a screen shows while its data loads, or when loading fails.
 import type { Loadable } from "../data";
 import { tokenVar } from "../components/Icon";
 

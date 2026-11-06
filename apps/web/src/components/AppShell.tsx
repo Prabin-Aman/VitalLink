@@ -1,3 +1,4 @@
+// The signed-in page frame: sidebar, top bar and content area.
 import type { ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
 import { Icon, type IconName } from "./Icon";

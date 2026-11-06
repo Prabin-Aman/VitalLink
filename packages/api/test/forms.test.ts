@@ -23,7 +23,6 @@ import {
   checkUpload,
   checkWorkout,
   dateLabel,
-  dateOptions,
   dateTimeIn,
   foodEstimate,
   goalEditForm,
@@ -33,7 +32,6 @@ import {
   passwordNeeds,
   setSummary,
   timeIn,
-  timeOptions,
   targetsForm,
   titleFromFile,
   todayIn,
@@ -61,22 +59,6 @@ describe("time in the account's zone", () => {
     expect(todayIn(TZ, now)).toBe("2026-10-27");
     expect(timeIn(TZ, now)).toBe("23:55");
     expect(todayIn("Asia/Kathmandu", now)).toBe("2026-10-28");
-  });
-
-  it("lists dates and times for the mobile pickers", () => {
-    expect(dateLabel("2026-11-03")).toBe("3 Nov");
-    expect(dateLabel("2026-11-03", true)).toBe("Tue 3 Nov");
-    expect(addDays("2026-10-31", 1)).toBe("2026-11-01");
-    expect(dateOptions("2026-10-27", "2026-10-28", "2026-10-28")).toEqual([
-      { value: "2026-10-27", label: "Tue 27 Oct" },
-      { value: "2026-10-28", label: "Today · 28 Oct" },
-    ]);
-    const times = timeOptions(15, "08:40");
-    expect(times).toHaveLength(97);
-    expect(times.slice(34, 36)).toEqual([
-      { value: "08:30", label: "8:30 AM" },
-      { value: "08:40", label: "8:40 AM" },
-    ]);
   });
 
   it("round-trips an instant to the zone's date and time", () => {

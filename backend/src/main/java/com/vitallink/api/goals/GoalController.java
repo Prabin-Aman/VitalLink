@@ -25,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Goals: create, edit and pause them, plus progress, consistency and history. */
 @RestController
 @RequestMapping("/v1/me")
 @Tag(name = "goals")

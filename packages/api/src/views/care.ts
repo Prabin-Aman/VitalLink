@@ -3,9 +3,9 @@
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
 import { ago, dayMonth, dayMonthYear, daysFrom, height, languageName, monthYear, phone, relativeDay, timeOfDay, weekday } from "../format";
-import type { AppNotification, AvatarTone, Device, NotificationKind, Prescription, SyncPlatform, SyncUpload, Doctor } from "../types";
+import type { AppNotification, AvatarTone, Device, NotificationKind, Prescription, Doctor } from "../types";
 import type { Option } from "../forms";
-import type { ChipVM, StatVM } from "./shared";
+import type { ChipVM } from "./shared";
 
 export const initials = (name: string) =>
   name
@@ -65,14 +65,11 @@ export interface MedRowVM {
   actionKind: "take" | "history" | "refill";
   /** Mobile: "500 mg · twice daily · Taken 8:00 AM" */
   summary: string;
-  mobileAction: string;
 }
 
 export interface MedicationsVM {
   subtitle: string;
-  shortSubtitle: string;
   tints: TintStatVM[];
-  mobileStats: StatVM[];
   rows: MedRowVM[];
 }
 
@@ -102,19 +99,12 @@ export async function loadMedications(api: VitalLinkClient): Promise<Medications
 
   return {
     subtitle: `${active} active prescriptions · ${refills} refill${refills === 1 ? "" : "s"} due this week`,
-    shortSubtitle: `${active} active · ${refills} refill${refills === 1 ? "" : "s"} due`,
     tints: [
       { key: "active", label: "Active medications", value: String(active), bg: "bgSurface", fg: "textPrimary" },
       { key: "taken", label: "Taken today", value: String(taken), bg: "rangeNormalBg", fg: "rangeNormal" },
       { key: "upcoming", label: "Upcoming", value: String(upcomingToday), bg: "bgBrandSubtle", fg: "textBrand" },
       { key: "missed", label: "Missed", value: String(missed), bg: "rangeHighBg", fg: "rangeHigh" },
       { key: "refills", label: "Refills due", value: String(refills), bg: "rangeBorderlineBg", fg: "rangeBorderline" },
-    ],
-    mobileStats: [
-      { key: "taken", label: "Taken today", value: String(taken), unit: "", caption: `of ${active} medications`, accent: "rangeNormal" },
-      { key: "upcoming", label: "Upcoming", value: String(upcomingToday), unit: "", caption: "later today", accent: "goalOnTrack" },
-      { key: "missed", label: "Missed", value: String(missed), unit: "", caption: "yesterday", accent: "rangeHigh" },
-      { key: "refills", label: "Refills due", value: String(refills), unit: "", caption: "this week", accent: "rangeBorderline" },
     ],
     rows: m.prescriptions.map((p) => {
       const state = medState(p);
@@ -140,7 +130,6 @@ export async function loadMedications(api: VitalLinkClient): Promise<Medications
         action: state === "taken" ? "History" : state === "refill" ? "Request Refill" : "Mark Taken",
         actionKind: state === "taken" ? "history" : state === "refill" ? "refill" : "take",
         summary: [p.strength, p.frequency.toLowerCase(), p.dose.status === "due" ? due : next].join(" · "),
-        mobileAction: state === "taken" ? "History" : state === "refill" ? "Request refill" : "Mark taken",
       };
     }),
   };
@@ -156,14 +145,8 @@ export interface AppointmentVM {
   title: string;
   detail: string;
   name: string;
-  /** Mobile: "Cardiology · 10:30 AM" */
-  line1: string;
-  /** Mobile: "In person · Trinity Valley Medical Center" */
-  line2: string;
   status: ChipVM;
-  shortStatus: string;
   primary: string;
-  mobilePrimary: string;
   /** Google Maps search for an in-person visit ("Directions"); null for telehealth. */
   mapsUrl: string | null;
   /** Upcoming and not cancelled, so the user can cancel or reschedule it. */
@@ -182,7 +165,6 @@ export interface CalendarVM {
 
 export interface AppointmentsVM {
   subtitle: string;
-  shortSubtitle: string;
   items: AppointmentVM[];
   calendar: CalendarVM;
 }
@@ -217,7 +199,7 @@ export async function loadAppointments(api: VitalLinkClient): Promise<Appointmen
   const items = [...list]
     .sort((a, b) => a.starts_at.localeCompare(b.starts_at))
     .map((a): AppointmentVM => {
-      const [chip, short] = APPT_CHIP[a.status];
+      const [chip] = APPT_CHIP[a.status];
       const time = timeOfDay(a.starts_at, tz);
       const mode = a.mode === "telehealth" ? "Telehealth" : "In person";
       const group = a.status === "cancelled" ? "Cancelled" : a.status === "completed" || a.starts_at < now ? "Past" : "Upcoming";
@@ -229,12 +211,8 @@ export async function loadAppointments(api: VitalLinkClient): Promise<Appointmen
         title: `${a.clinician} · ${a.specialty}`,
         detail: `${time} · ${mode} · ${a.location}`,
         name: a.clinician,
-        line1: `${a.specialty} · ${time}`,
-        line2: `${mode} · ${a.location.replace(/, Dallas$/, "")}`,
         status: chip,
-        shortStatus: short,
         primary: a.mode === "telehealth" ? "Join Telehealth" : "Directions",
-        mobilePrimary: a.mode === "telehealth" ? "Join call" : "Directions",
         mapsUrl: a.mode === "telehealth" ? null : `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(a.location)}`,
         canCancel: group === "Upcoming" && a.status !== "cancelled",
         startsAt: a.starts_at,
@@ -249,7 +227,6 @@ export async function loadAppointments(api: VitalLinkClient): Promise<Appointmen
   };
   return {
     subtitle: `${upcoming.length} upcoming${next ? ` · next visit ${rel(next.starts_at)} at ${timeOfDay(next.starts_at, tz)}` : ""}`,
-    shortSubtitle: `${upcoming.length} upcoming${next ? ` · next ${rel(next.starts_at).split(" ")[0]}` : ""}`,
     items,
     calendar: {
       title: monthYear(now, tz),
@@ -273,10 +250,7 @@ export interface ConversationVM extends PersonVM {
 }
 
 export interface MessagesVM {
-  shortSubtitle: string;
   conversations: ConversationVM[];
-  /** Mobile lists unread first. */
-  mobileOrder: ConversationVM[];
 }
 
 export async function loadMessages(api: VitalLinkClient): Promise<MessagesVM> {
@@ -295,11 +269,8 @@ export async function loadMessages(api: VitalLinkClient): Promise<MessagesVM> {
       unread: c.unread,
       messages: c.messages.map((m) => ({ id: m.id, mine: m.from_me, body: m.body, time: timeOfDay(m.at, me.timezone), attachment: m.attachment?.name ?? null })),
     }));
-  const unread = conversations.filter((c) => c.unread).length;
   return {
-    shortSubtitle: `${unread} unread · secure and logged`,
     conversations,
-    mobileOrder: [...conversations].sort((a, b) => Number(b.unread) - Number(a.unread)),
   };
 }
 
@@ -312,14 +283,12 @@ export interface NotificationVM {
   when: string;
   title: string;
   body: string;
-  shortBody: string;
   action: string;
   unread: boolean;
 }
 
 export interface NotificationsVM {
   subtitle: string;
-  shortSubtitle: string;
   items: NotificationVM[];
 }
 
@@ -352,7 +321,6 @@ export async function loadNotifications(api: VitalLinkClient): Promise<Notificat
   const unread = list.filter((n) => !n.read).length;
   return {
     subtitle: `${unread} unread · alerts about your training, health and record access.`,
-    shortSubtitle: `${unread} unread`,
     items: [...list]
       .sort((a, b) => b.at.localeCompare(a.at))
       .map((n: AppNotification) => ({
@@ -362,7 +330,6 @@ export async function loadNotifications(api: VitalLinkClient): Promise<Notificat
         when: ago(n.at, now),
         title: n.title,
         body: n.body,
-        shortBody: n.short_body ?? n.body,
         action: n.action,
         unread: !n.read,
       })),
@@ -372,13 +339,11 @@ export async function loadNotifications(api: VitalLinkClient): Promise<Notificat
 // ---------------------------------------------------------------- family
 
 export interface FamilyVM {
-  shortSubtitle: string;
   members: (PersonVM & { id: string; caption: string; selected: boolean })[];
   viewing: null | {
     person: PersonVM;
     title: string;
     detail: string;
-    shortDetail: string;
     tints: TintStatVM[];
     conditions: { label: string; color: ColorToken }[];
     access: { label: string; shortLabel: string; granted: boolean }[];
@@ -391,12 +356,10 @@ export async function loadFamily(api: VitalLinkClient): Promise<FamilyVM> {
   const list = need(data, "Family");
   const tz = me.timezone;
   const shared = list.find((m) => m.access && m.summary) ?? null;
-  const others = list.filter((m) => m.access !== null || m.relation !== "You").length;
   const v = shared && shared.access && shared.summary ? { m: shared, a: shared.access, s: shared.summary } : null;
   const first = (n: string) => n.split(" ")[0];
   const date = (iso: string) => dayMonthYear(iso, tz).replace(/^0/, "");
   return {
-    shortSubtitle: `${others} profiles · permissions they control`,
     members: list.map((m) => ({
       ...person(m.name, m.tone),
       id: m.id,
@@ -407,7 +370,6 @@ export async function loadFamily(api: VitalLinkClient): Promise<FamilyVM> {
       person: person(v.m.name, v.m.tone),
       title: `Viewing: ${v.m.name}`,
       detail: `${v.m.relation} · ${v.m.age} · you have ${v.a.level} access granted ${date(v.a.granted_at)}`,
-      shortDetail: `${v.m.relation} · ${v.a.level} access granted ${date(v.a.granted_at)}`,
       tints: [
         { key: "hr", label: "Resting heart rate", value: v.s.resting_hr === null ? "Not shared" : `${v.s.resting_hr} BPM`, bg: "bgEnergySubtle", fg: "textEnergy" },
         { key: "conditions", label: "Active conditions", value: v.s.medications === null ? "Not shared" : String(v.s.conditions.filter((c) => c.severity === "chronic").length), bg: "bgSurface", fg: "textPrimary" },
@@ -426,9 +388,8 @@ export async function loadFamily(api: VitalLinkClient): Promise<FamilyVM> {
 export interface EmergencyVM {
   name: string;
   meta: string;
-  shortMeta: string;
-  fields: { key: string; label: string; value: string; color: ColorToken; mobile: boolean; shortValue: string }[];
-  contacts: (PersonVM & { title: string; caption: string; mobileCaption: string; phone: string })[];
+  fields: { key: string; label: string; value: string; color: ColorToken }[];
+  contacts: (PersonVM & { title: string; caption: string; phone: string })[];
 }
 
 export async function loadEmergency(api: VitalLinkClient): Promise<EmergencyVM> {
@@ -437,7 +398,6 @@ export async function loadEmergency(api: VitalLinkClient): Promise<EmergencyVM> 
   return {
     name: e.name,
     meta: [e.age, e.sex, e.city].filter((x) => x !== null && x !== "").join(" · "),
-    shortMeta: [e.age, e.sex].filter((x) => x !== null && x !== "").join(" · "),
     fields: [
       field("allergies", "Allergies", e.allergies.join(" · "), "rangeHigh"),
       field("conditions", "Conditions", e.conditions.join(" · "), "textInverse"),
@@ -454,7 +414,6 @@ export async function loadEmergency(api: VitalLinkClient): Promise<EmergencyVM> 
         ...person(c.name, tone),
         title: c.primary ? `${c.name}  ·  Primary` : c.name,
         caption: `${c.relation} · ${shown}`,
-        mobileCaption: [c.relation, c.primary ? "Primary" : null, shown].filter(Boolean).join(" · "),
         phone: shown,
       };
     }),
@@ -471,60 +430,22 @@ export interface DeviceVM {
   data: string;
   /** Each kind of data it sends (Permissions, Figma 211:1647). */
   dataTypes: string[];
-  shortData: string;
   status: ChipVM;
-}
-
-/** Phone sync panel (proposed, Figma 212:3117): one per phone platform that has uploaded. */
-export interface PhoneSyncVM {
-  title: string;
-  caption: string;
-  status: ChipVM;
-  summary: string;
-  uploads: { key: string; when: string; detail: string }[];
 }
 
 export interface DevicesVM {
   subtitle: string;
-  shortSubtitle: string;
   devices: DeviceVM[];
-  /** Empty until the phone app has uploaded (batches are kept 30 days). */
-  phones: PhoneSyncVM[];
-}
-
-const PLATFORM: Record<SyncPlatform["platform"], string> = { healthkit: "iPhone · Apple Health", health_connect: "Android · Health Connect", bluetooth: "Bluetooth" };
-const plural = (n: number, one: string) => `${n.toLocaleString("en-US")} ${one}${n === 1 ? "" : "s"}`;
-
-/** "216 readings · 36 new · 144 unchanged" */
-export const uploadDetail = (u: SyncUpload) =>
-  [plural(u.submitted, "reading"), u.inserted && `${u.inserted.toLocaleString("en-US")} new`, u.updated && `${u.updated.toLocaleString("en-US")} updated`, u.unchanged && u.unchanged !== u.submitted && `${u.unchanged.toLocaleString("en-US")} unchanged`]
-    .filter(Boolean)
-    .join(" · ") + (u.unchanged === u.submitted ? " · nothing new" : "");
-
-function phoneSync(p: SyncPlatform, recent: SyncUpload[], now: string, tz: string): PhoneSyncVM {
-  // A phone that hasn't uploaded for a day has probably not opened the app (or lost permission).
-  const fresh = Date.parse(now) - Date.parse(p.last_upload_at) < 24 * 3600_000;
-  return {
-    title: PLATFORM[p.platform],
-    caption: `VitalLink app · last upload ${ago(p.last_upload_at, now)}`,
-    status: fresh ? { label: "Connected", fg: "rangeNormal", bg: "rangeNormalBg" } : { label: "No recent upload", fg: "rangeBorderline", bg: "rangeBorderlineBg" },
-    summary: `${plural(p.uploads_week, "upload")} this week · ${plural(p.readings_week, "reading")} · ${p.changed_week.toLocaleString("en-US")} new or updated`,
-    uploads: recent
-      .filter((u) => u.platform === p.platform)
-      .slice(0, 5)
-      .map((u) => ({ key: String(u.id), when: `${relativeDay(u.at, now, tz)} · ${timeOfDay(u.at, tz)}`, detail: uploadDetail(u) })),
-  };
 }
 
 const KIND_LABEL: Record<Device["kind"], string> = { wearable: "Wearable", home_monitor: "Home monitor", continuous: "Continuous", phone: "Phone" };
 
 export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
-  const [me, data, sync] = await Promise.all([api.me(), api.devices(), api.sync()]);
+  const [me, data] = await Promise.all([api.me(), api.devices()]);
   const list = need(data, "Connected Devices");
   const tz = me.timezone;
   const now = api.now();
   const connected = list.filter((d) => d.status === "connected").length;
-  const overdue = list.length - connected;
   const latest = list.reduce((a, d) => (d.last_sync_at > a ? d.last_sync_at : a), "");
   const synced = (d: Device) => {
     // Home monitors report a reading time; streaming devices report recency.
@@ -534,10 +455,7 @@ export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
   };
   const mins = Math.round((Date.parse(now) - Date.parse(latest)) / 60000);
   return {
-    // Bluetooth devices paired in the browser upload too, but they show as device cards, not as a phone.
-    phones: sync.platforms.filter((p) => p.platform !== "bluetooth").map((p) => phoneSync(p, sync.recent, now, tz)),
     subtitle: `${connected} devices connected · last sync ${mins} minute${mins === 1 ? "" : "s"} ago`,
-    shortSubtitle: `${connected} syncing · ${overdue} overdue`,
     devices: list.map((d) => ({
       id: d.id,
       name: d.name,
@@ -545,7 +463,6 @@ export async function loadDevices(api: VitalLinkClient): Promise<DevicesVM> {
       icon: d.icon,
       caption: `${KIND_LABEL[d.kind]} · ${synced(d)}`,
       data: d.data.join(" · "),
-      shortData: (d.short_data ?? d.data).join(" · "),
       status: d.status === "connected" ? { label: "Connected", fg: "rangeNormal", bg: "rangeNormalBg" } : { label: "Sync overdue", fg: "rangeBorderline", bg: "rangeBorderlineBg" },
     })),
   };
@@ -580,7 +497,6 @@ export function doctorRow(d: Doctor): DoctorRowVM {
 export interface SettingsVM {
   person: PersonVM;
   memberLine: string;
-  memberSince: string;
   /** The month and year alone, for Settings › Account. */
   memberDate: string;
   email: string;
@@ -601,7 +517,6 @@ export async function loadSettings(api: VitalLinkClient): Promise<SettingsVM> {
   return {
     person: person(name, "brand"),
     memberLine: `Member since ${since}${a.city ? ` · ${a.city}` : ""}`,
-    memberSince: `Member since ${since}`,
     memberDate: since,
     email: a.email,
     fields: [

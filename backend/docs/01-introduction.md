@@ -7,11 +7,11 @@ watch, workouts, meals, goals, medications, appointments and documents. It turns
 dashboard and plain-language insights. The person can also share chosen parts with someone they
 trust, such as a doctor or a family member, for a limited time.
 
-The backend is the single server both clients use. Its jobs:
+The backend is the single server behind the web portal. Its jobs:
 
 1. **Hold the data.** It stores everything the clients show, owned by the user it describes.
-2. **Accept sync.** It takes batches of 5-minute aggregates from HealthKit or Health Connect, without
-   duplicates, and corrects them when late watch data arrives.
+2. **Accept readings.** It takes Apple Health exports, CSV files, Bluetooth uploads and typed readings as
+   5-minute aggregates, without duplicates, and updates them when newer data arrives.
 3. **Compute.** It produces totals, series, weekly load, streaks, personal records, nutrition totals,
    goal progress, the readiness score and nightly insights.
 4. **Guard sharing.** It decides every cross-user read through the consent engine and records every
@@ -22,7 +22,7 @@ The backend is the single server both clients use. Its jobs:
 
 | Actor | What they do | Interface |
 |---|---|---|
-| **Owner** (consumer) | Syncs, logs, reads their own data, shares and revokes | Mobile app, web portal |
+| **Owner** (consumer) | Imports, logs, reads their own data, shares and revokes | Web portal |
 | **Viewer** (consumer) | Reads what an owner shared with them, such as a family member or a doctor using an ordinary account | Same apps, "Shared with me" / Family |
 | **Scheduler** | Triggers the nightly job | GitHub Actions, shared secret |
 
@@ -46,7 +46,7 @@ FR-1 to FR-12 come from the reviewed design. FR-13 onward cover screens built si
 | ID | The backend must | Module |
 |---|---|---|
 | FR-1 | Create the account on first sign-in; keep profile and settings (units, theme, language, goals) | account |
-| FR-2 | Accept batched 5-minute aggregates from HealthKit / Health Connect without duplicates; upsert late corrections | health |
+| FR-2 | Accept batched 5-minute aggregates (Apple Health export, CSV, Bluetooth) without duplicates; upsert late corrections | health |
 | FR-3 | Serve any metric as a series by hour, day, week or month in the user's time zone | health |
 | FR-4 | Build the daily dashboard: steps, energy, sleep, resting HR, readiness score | health |
 | FR-5 | Log workouts with sets; weekly load, personal records, training plan and next session | training |

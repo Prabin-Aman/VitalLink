@@ -19,7 +19,6 @@ export interface DashboardVM {
   greeting: string;
   firstName: string;
   initials: string;
-  fullName: string;
   dateLabel: string;
   score: number | null;
   scoreLabel: string;
@@ -160,7 +159,6 @@ export async function loadDashboard(api: VitalLinkClient): Promise<DashboardVM> 
   return {
     greeting: greeting(now, tz),
     firstName: name.split(" ")[0],
-    fullName: name,
     initials: name.split(" ").map((s) => s[0]).join("").slice(0, 2).toUpperCase(),
     dateLabel: longDate(now, tz),
     score: dash.health_score,

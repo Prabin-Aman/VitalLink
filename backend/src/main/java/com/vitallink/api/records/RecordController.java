@@ -32,6 +32,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Medical records, their files through signed links, and lab results. */
 @RestController
 @RequestMapping("/v1/me")
 @Tag(name = "records")

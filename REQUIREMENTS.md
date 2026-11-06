@@ -1,19 +1,21 @@
 # What you need to run VitalLink
 
-Everything here is free. The versions are the ones the project is built and tested with (31 Oct 2026); newer
+Everything here is free. The versions are the ones the project is built and tested with (Nov 2026); newer
 patch versions of the tools work too. Package versions are pinned by `package-lock.json` (npm) and
 `backend/pom.xml` (Maven), so installing never needs to pick versions by hand.
 
 ## 1. Tools to install
 
-| Tool | Version | Needed for | Install (Windows) |
-|---|---|---|---|
-| **Node.js** (includes npm) | 20 or newer (built with 24.19, npm 11.17) | Web portal, `packages/*`, frontend tests | https://nodejs.org (LTS installer) |
-| **Java JDK** | **25** (built with 25.0.4 LTS) | The backend API (Spring Boot) | Eclipse Temurin 25: https://adoptium.net |
-| **Docker** with Compose | Docker 29, Compose v5 | PostgreSQL and Mailpit for local runs | Docker Engine inside **WSL Ubuntu** (how this machine runs it), or Docker Desktop |
-| **WSL 2 + Ubuntu** | any current | Runs Docker on Windows without Docker Desktop | `wsl --install -d Ubuntu` in an admin PowerShell |
-| **Git** | any current | Cloning and committing | https://git-scm.com |
-| **Python** | 3.12 or newer (built with 3.14) | Only the helper scripts in `scripts/` (icons, screenshots) | https://python.org |
+| Tool | Version | Needed for |
+|---|---|---|
+| **Git** | any current | Getting the code |
+| **Node.js** (includes npm) | 20 or newer (built with 24.19) | Web portal, `packages/*`, frontend tests |
+| **Java JDK** | **25** (built with 25.0.4) | The backend API |
+| **Docker** with Compose | Docker 29, Compose v5 | PostgreSQL and Mailpit for local runs |
+| **Python** (optional) | 3.12 or newer (built with 3.14) | Only the helper scripts in `scripts/` |
+
+Install commands for each system are in **README.md › Install and run**. On Windows, Docker can be Docker Desktop, or
+Docker Engine inside WSL Ubuntu (`wsl --install -d Ubuntu`).
 
 Not needed: **Maven** (the backend uses the Maven wrapper `mvnw` / `mvnw.cmd`, which downloads Maven 3.9.16
 on first use) and a separate **PostgreSQL** install (it runs in Docker).
@@ -26,28 +28,16 @@ Optional:
 | A Google Cloud OAuth client ID | "Continue with Google" on Sign In (`GOOGLE_CLIENT_ID` in `backend/.env`) |
 | An SMTP provider (free tier) | Real email in production (`SMTP_*`); locally Mailpit catches it |
 
-## 2. One-time setup
+## 2. Setup
+
+Follow **README.md › Install and run**, for Windows, macOS or Linux.
+
+The Python scripts are optional. To use the screenshot tool:
 
 ```bash
-npm install                      # from the repo root only: installs every npm package below
+pip install -r scripts/requirements.txt
+python -m playwright install chromium
 ```
-```powershell
-copy backend\.env.example backend\.env
-```
-```powershell
-copy apps\web\.env.example apps\web\.env.local
-```
-
-Fill in the passwords in `backend\.env`; `apps\web\.env.local` points the portal at the local API.
-
-```bash
-pip install -r scripts/requirements.txt     # only for the screenshot script
-```
-```bash
-python -m playwright install chromium       # only for the screenshot script
-```
-
-Then follow **README.md › Run** (start Docker, the API, the portal).
 
 ## 3. Docker images (pulled automatically by `docker compose up`)
 
@@ -88,6 +78,7 @@ Installed by `npm install` at the root (npm workspaces). Versions are what `pack
 |---|---|---|
 | `react`, `react-dom` | 19.2.3 | UI |
 | `react-router-dom` | 6.30.6 | Routing |
+| `@supabase/supabase-js` | 2.118.0 | Sign-in in production |
 | `@fontsource/inter`, `@fontsource/roboto-mono` | 5.3.0 | Fonts, served locally |
 | `vite` | 5.4.21 | Dev server and build |
 | `@vitejs/plugin-react` | 4.7.0 | React support for Vite |
@@ -104,11 +95,10 @@ Installed by `npm install` at the root (npm workspaces). Versions are what `pack
 |---|---|
 | `playwright` | `scripts/shoot.py` (screenshots of every screen) |
 
-`scripts/write-icons.py` and `scripts/spa_serve.py` use only the Python standard library.
-On Windows run Python scripts with `PYTHONUTF8=1` set (see CLAUDE.md).
+`scripts/write-icons.py` uses only the Python standard library.
+On Windows, set `PYTHONUTF8=1` before running Python scripts.
 
 ## 7. Accounts
 
-None are needed to run locally. Deployment needs the group's **Supabase** (free) and **Render** (free)
-projects; Google sign-in needs a free **Google Cloud** OAuth client ID. **Sign in with Apple** is not offered
-because it needs Apple's paid developer programme.
+None are needed to run locally. The live app uses free plans of **Supabase** (database, sign-in, files), **Render**
+(API), **Vercel** (website) and **Brevo** (email), plus a free **Google Cloud** OAuth client for Google sign-in.

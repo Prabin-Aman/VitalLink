@@ -1,3 +1,4 @@
+// Every route in the portal, and the signed-in shell that decides who may see them.
 import { ApiError, loadShell } from "@vitallink/api";
 import { Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { AppShell } from "./components/AppShell";

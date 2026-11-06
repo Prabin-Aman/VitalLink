@@ -1,3 +1,4 @@
+// Saving files from the browser: data exports, CSVs and templates.
 import type { VitalLinkClient } from "@vitallink/api";
 
 /** Saves a blob as a file through a temporary link. */

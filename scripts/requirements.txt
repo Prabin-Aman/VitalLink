@@ -1,4 +1,10 @@
-# Python packages for scripts/ (optional). Install with: pip install -r scripts/requirements.txt
-# then: python -m playwright install chromium
-# write-icons.py and spa_serve.py need only the standard library.
+# Optional Python packages for the helper scripts. The app itself doesn't need Python.
+#
+# Needs Python 3.12 or newer. Install from the repository root:
+#   Windows:       py -m pip install -r scripts\requirements.txt
+#                  py -m playwright install chromium
+#   macOS, Linux:  python3 -m pip install -r scripts/requirements.txt
+#                  python3 -m playwright install chromium
+#
+# write-icons.py needs only the standard library. shoot.py needs Playwright.
 playwright>=1.48

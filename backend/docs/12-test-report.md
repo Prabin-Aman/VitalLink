@@ -15,7 +15,6 @@ Ubuntu with a Postgres service container on every push that touches `backend/`.
 | Formatting | `./mvnw spotless:check` | Clean |
 | Frontend contract | `npm run typecheck` (web + mobile, incl. `contract.ts` against the generated OpenAPI types), `npm run web:build` | Pass |
 | Live portal | Web portal against the API with the demo account | All 24 pages render live data; only Messages says "isn't available yet" (D1) |
-| Live mobile app | Expo web build (`:8081`) against the API with the demo account | All 18 tab and Profile screens render live data (Messages: D1); Mark Taken saves through a cross-origin PUT |
 
 ## 12.2 Test suites
 
@@ -109,7 +108,7 @@ so "today at 9:00" is never in the future, whatever time the suite runs.
 
 - Real Supabase Auth and Storage (no project yet): the clients are tested against a fake; check the
   first deploy with the system test pointed at a staging project.
-- Phone sync from HealthKit and Health Connect (phase 9, needs devices).
+- A real iPhone export and a real Bluetooth device: both were tested with generated stand-ins.
 - Load tests ran locally (12.1), not yet against Render's free instance (0.1 CPU); rerun LoadCheck there
   after the first deploy.
 - Visual comparison of every live screen against Figma (the screens were compared in mock mode; live

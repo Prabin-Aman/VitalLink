@@ -30,6 +30,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Foods, meals, water and nutrition targets. */
 @RestController
 @RequestMapping("/v1")
 @Tag(name = "nutrition")

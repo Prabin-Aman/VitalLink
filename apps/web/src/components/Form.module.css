@@ -183,22 +183,7 @@ select.control {
   max-height: 200px;
   overflow: auto;
 }
-.result {
-  display: flex;
-  justify-content: space-between;
-  gap: 12px;
-  padding: 10px 14px;
-  border: none;
-  background: transparent;
-  color: var(--vl-text-primary);
-  text-align: left;
-  cursor: pointer;
-}
-.result:hover,
-.result:focus-visible {
-  background: var(--vl-bg-subtle);
-  outline: none;
-}
+
 
 .error {
   color: var(--vl-text-critical);
@@ -257,10 +242,6 @@ dl.items {
   display: flex;
   gap: 8px;
   margin-right: auto;
-}
-/* Delete / Delete Record: a tertiary button in text/critical (Figma 214:2165). */
-.extra .dangerText {
-  color: var(--vl-text-critical);
 }
 
 /* Scan a barcode (Figma 221:2145): the camera preview, bg/inverse with radius/lg. */

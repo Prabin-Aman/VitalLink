@@ -1,3 +1,4 @@
+// Small design-system parts used everywhere: Logo, Button, Chip, Avatar and friends.
 import { TONE_BG, type AvatarTone, type ChipVM, type MetricCardVM } from "@vitallink/api";
 import type { ColorToken } from "@vitallink/tokens";
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";

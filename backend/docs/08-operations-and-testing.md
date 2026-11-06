@@ -1,5 +1,7 @@
 # 8. Operations and testing
 
+> **Note (Nov 2026):** the mobile app was removed and phone sync cancelled. Parts below that mention them are historical. See [the index](README.md).
+
 ## 8.1 Environments
 
 | Environment | Runs on | Database | Auth | Purpose |

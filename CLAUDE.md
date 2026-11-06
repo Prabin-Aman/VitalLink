@@ -19,12 +19,12 @@ packages/assets  icons/*.svg (stroke="currentColor", one file per shape+size, e.
 packages/api     types.ts (hand-written; contract.ts checks it against openapi.gen.ts, `npm run api:types`), client.ts (VitalLinkClient; no baseUrl = mock mode), mock.ts + mock-data/*.ts (Figma
                  sample data), format.ts, forms.ts (form rules), bluetooth.ts, views/*.ts one file per area
                  (shared, dashboard, activity, health, fitness, workout-tabs, nutrition-tabs, care, records,
-                 privacy, library, search) → loadX(api) view-models with display strings (some mobile-only fields remain)
+                 privacy, library, search) → loadX(api) view-models with display strings
 apps/web         React 19 + Vite 5 + React Router 6 + CSS modules + vite-plugin-svgr (?react imports)
                  components/kit.tsx = shared page parts (PageHeader, PillTabs, StatCard, Panel, BarRow, Split…)
                  screens/<area>/ (dashboard, health, fitness, records, care, sharing, inbox, library, settings,
                  public); forms/ = dialogs. STATUS.md lists what's built and what's missing
-scripts/         write-icons.py (icons + the Icon registry), icon-masters.json, shoot.py, spa_serve.py
+scripts/         write-icons.py (icons + the Icon registry), icon-masters.json, shoot.py
 backend/         Java 25 + Spring Boot 4.1 API (Maven wrapper), docs/ 01–12; see "Backend" below
 ```
 
@@ -73,6 +73,10 @@ Web shell: sidebar 260, top bar 64, content px32 pt28 gap24. Below 1280px it fol
 (19 — Responsive Variants, 147:5476): 72px icon sidebar, content px24, Split/Dashboard rails drop under the
 main column as 282px cards (`@media (max-width: 1279px)` in each module). Layout checks: `web-mock` launch
 config (sample data on :5174), so a sweep of every route doesn't hit the API's rate limit.
+
+## Documentation
+README.md (start here), STATUS.md, apps/web/README.md, packages/api/README.md, backend/README.md, backend/docs/README.md.
+Keep them current when behaviour changes.
 
 ## Status
 Done (Oct 2026, every frame in the Figma file, compared against Figma screenshots): web portal (all 14 sidebar
@@ -155,9 +159,9 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   fifth at once (an audit entry needs a second connection; else the pool deadlocks), queues the rest 15 s,
   then 503 `busy`; `ErrorHandler` maps bad query encoding and NUL/out-of-range input to 422 and unique
   races to 409. Lists keyed by user-entered names use the id or position.
-- Production setup (2 Nov 2026): Supabase project `gfjiaihdnzyvffonyzar` (us-east-1; migrations V1–V19 applied,
+- Production setup (2 Nov 2026): Supabase project `gfjiaihdnzyvffonyzar` (us-east-1; migrations V1–V20 applied,
   private `records` bucket; user tokens ES256 via JWKS); web on Vercel `https://vital-link-flax.vercel.app`
-  (`vercel.json` rewrites every path to index.html); API on Render not created yet. Supabase sign-up with email
+  (`vercel.json` rewrites every path to index.html); API on Render `https://vitallink-9p4d.onrender.com`; email through Brevo. Supabase sign-up with email
   confirmation keeps the optional profile details in localStorage (`vl.signup.pending`) until the emailed link
   signs the person in, then PATCHes /me/account. "Signed in recently" (delete account) uses the token's `amr`
   timestamp, since Supabase refreshes `iat` hourly. Launch config `web-supabase` (:5175) runs the portal in Supabase mode.
@@ -176,7 +180,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   opens Book Appointment filled in. The route avoids the guardrail's banned word "provider" and is a read-only
   directory lookup. Two-step and Change email were checked against a fake Supabase in the browser
   (`web-supabase-mock` launch config), not a real project. Google sign-ups take their name from `given_name`/
-  `family_name` or `full_name`. The Apple button is gone on web (mobile still has it).
+  `family_name` or `full_name`. The Apple button is gone.
 - Apple Health (Nov 2026): HealthKit has no web API and no native app exists now, so data arrives as the Health
   app's export.zip through Connected Devices › Add › Import (`POST /me/health/import`, exempt from the 2 MB body limit,
   up to 300 MB, streamed; JDK entity caps are lifted because every record's `device` attribute is full of `&lt;` and
@@ -189,11 +193,10 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
 - Rate limits: `core/web/RateLimiter` (60 ingest / 3,000 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
   `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
-- Frontend writes: Mark Taken (web + mobile), Settings Save/theme, notifications read, appointment Cancel
+- Frontend writes: Mark Taken, Settings Save/theme, notifications read, appointment Cancel
   and Directions, device Disconnect, Document Viewer Download, Export Data, Goal History, and the nine web
   entry forms (Add Reading, Log Food, Log Workout, New Goal, Add Medication, Book Appointment, Reschedule,
-  Upload Document, Edit Emergency Info) designed on Figma page 195:2 "15 — Proposed · Entry forms" (web
-  dialogs + mobile sheets; owner review pending). Rules/bodies in `packages/api/src/forms.ts`, parts in
+  Upload Document, Edit Emergency Info) designed on Figma page 195:2 "15 — Proposed · Entry forms" (owner review pending). Rules/bodies in `packages/api/src/forms.ts`, parts in
   `apps/web/src/components/Form.tsx`, dialogs in `apps/web/src/forms/`; a save calls `notifyChanged()` so
   every screen on view reloads.
 - Web tabs/sections designed on 195:2 "Web · Proposed tabs and sections" and built: Workouts › History,
@@ -218,10 +221,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   209:1575; PATCH /me/records/{id} note ≤200; the record's note wins over the lab panel's).
   Privacy › access history Details (Figma 211:1577 Access details: the row's facts and the share it went
   through, with Stop sharing while live; access-log rows carry `share_id`/`share_active`) and Connected
-  Devices › Permissions (211:1647: what the device sends, Disconnect). Phone connectivity on Connected
-  Devices (proposed 212:3117 phone sync panel, 212:3400 Add a device): `GET /me/sync` (from `ingest_batches`)
-  shows each phone platform's last upload, weekly counts and recent uploads; Sync now / Check again fetch
-  again (the web can't reach the phone). Add a device (213:1667) offers three ways: Phone app (212:3400 steps),
+  Devices › Permissions (211:1647: what the device sends, Disconnect). `GET /me/sync` still exists on the API, with no screen. Add a device (213:1667) offers two ways:
   Import health data (213:1701: `POST /me/health/import`, Apple export.zip/xml or CSV `start,metric,value`,
   `backend …/health/HealthImport.java`; Apple data stored as `healthkit` so it merges with sync) and Pair a
   Bluetooth device (213:1754: Web Bluetooth in Chrome/Edge, standard GATT profiles decoded in

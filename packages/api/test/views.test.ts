@@ -157,21 +157,3 @@ describe("Privacy › Access details and Devices › Permissions", () => {
   });
 });
 
-describe("Connected Devices › phone sync", () => {
-  it("summarises the phone's uploads", async () => {
-    const v = await api.loadDevices(client);
-    expect(v.phones).toHaveLength(1);
-    const p = v.phones[0];
-    expect(p.title).toBe("iPhone · Apple Health");
-    expect(p.caption).toBe("VitalLink app · last upload 4 min ago");
-    expect(p.status.label).toBe("Connected");
-    expect(p.summary).toBe("6 uploads this week · 1,296 readings · 412 new or updated");
-    expect(p.uploads.map((u) => u.when)).toEqual(["Today · 8:41 AM", "Today · 7:02 AM", "Yesterday · 9:15 PM"]);
-    expect(p.uploads[1].detail).toBe("180 readings · 36 new · 144 unchanged");
-  });
-
-  it("says when an upload changed nothing", () => {
-    expect(api.uploadDetail({ id: 1, at: "", platform: "healthkit", submitted: 3, inserted: 0, updated: 0, unchanged: 3 })).toBe("3 readings · nothing new");
-    expect(api.uploadDetail({ id: 1, at: "", platform: "healthkit", submitted: 1, inserted: 0, updated: 1, unchanged: 0 })).toBe("1 reading · 1 updated");
-  });
-});

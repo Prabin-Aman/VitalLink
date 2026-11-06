@@ -191,3 +191,5 @@ backend/
 - **Everything free.** Free tiers only.
 - **Every shared read is consent-checked and audited.** Every `/users/{user_id}/…` route takes a
   `ConsentGate`, and none of them writes (guardrail tests).
+
+Design docs and the test report: [docs/README.md](docs/README.md).

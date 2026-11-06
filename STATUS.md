@@ -1,74 +1,40 @@
-# VitalLink: what's built and what's missing (6 Nov 2026)
+# VitalLink: what's built and what's missing (Nov 2026)
 
-The web portal and the Java API are feature-complete for everything in the Figma file. Every web screen
-reads and writes the live API; every save is a row in PostgreSQL. What's left falls into the groups below,
-roughly in the order it unblocks other work.
+The web portal and Java API are live, and every screen except Messages reads and writes real data.
 
-## 1. Blocked on accounts or owner decisions
+## Needs the owner's decision
 
-| Item | Why it's blocked | Unblocks |
-|---|---|---|
-| Group **Supabase** and **Render** accounts (D15) | Nobody has created them yet | Real sign-in, deployment, file storage in production, the nightly job and backups |
-| **Supabase sign-in** in the apps | Needs the Supabase project. Until then the web portal signs in with local email/password accounts (local and test only) | Production sign-in, email verification, Settings › Account / Security / Language, changing the email, phone app sign-in |
-| **Messages** (D1) | Clinician messaging isn't decided (consumers only) | The Messages screen still shows sample threads in mock mode and "isn't available yet" live |
-| **Dependent profiles**: "Emma, 9" (D3) | A child without an account is a new concept | Family for children |
-| Other open decisions (D2, D4–D14, D16) | Defaults applied, owner sign-off pending | See `backend/docs/10-open-decisions.md` |
-
-## 1b. Sign-in
-
-- Local email/password accounts, Forgot password (email via Mailpit locally) and Sign in with Google work.
-  **Google needs a free OAuth client ID** from Google Cloud Console in `GOOGLE_CLIENT_ID` (backend/.env).
-- **Sign in with Apple isn't offered**: it needs Apple's paid developer programme ($99/year).
-- Real email in production needs an SMTP provider's free tier (`SMTP_*`).
-
-## 2. Web: the API exists, the screen doesn't use it yet
-
-Done on 31 Oct: lab results entry, mood/stress/energy/mindful check-ins, nutrition targets, custom foods,
-dose history with undo, record a refill, and the Emergency ID's organ donor / hospital / notes.
-
-Also done on 31 Oct (Figma 221:2114–221:2205): Settings › Security › Change password, Hydration › Today's
-entries with Remove, Edit an emergency contact, Nutrition › Scan Barcode (Open Food Facts) and Settings ›
-Units (km or miles for distance and pace on Activity and Workouts; weights stay in kg).
-
-Nutrition › Recipes (Figma 222:2104, 222:2330, 222:2417): build a dish from foods with servings, per-serving
-macros, Log servings as a meal, edit, delete (`/me/recipes`, V18).
-
-Nothing on web is waiting on an existing API any more.
-
-## 3. Web: needs a design and/or a backend first
-
-| Button / tab | What it needs |
+| Item | Question |
 |---|---|
-| Nothing left on web | Settings › Account, two-step verification and Search Doctors were built on 6 Nov 2026 |
+| **Messages (D1)** | Messaging clinicians may conflict with consumers-only. Live mode says "isn't available yet". Build it or remove the page? |
+| **Dependent profiles (D3)** | A child without an account is a new concept. |
+| **Hospitals on Privacy** | The "Hospitals with access" card comes from the design, and conflicts with consumers-only. Likely to remove. |
+| **"HIPAA-aligned" on Sign In** | Misleading for a non-HIPAA consumer app. |
+| **Other decisions (D2, D4 to D14, D16)** | Defaults applied, sign-off pending: [10-open-decisions.md](backend/docs/10-open-decisions.md). |
 
-## 4. Mobile: removed
+## Not tested for real
 
-The Expo app was deleted on owner's request (Nov 2026; it's in git history before that). Phase 9 phone sync went
-with it: HealthKit is only reachable from a native iOS app, so Apple Health data arrives through the export file.
-Figma's mobile pages and the mobile view-model fields in `packages/api` are still there.
+- **File upload on the live site**, which also proves the Supabase secret key works.
+- **A real Apple Health export.** Tested with a generated 2.5 million record file at Render's memory limit, not with a
+  real iPhone export or on Render's slower CPU.
+- **Bluetooth pairing:** tested with a simulated device.
+- **Barcode camera:** the browser's BarcodeDetector, not tried on a phone.
+- **Live load:** `LoadCheck` and `backend/scripts/restore-drill.sh` have only run locally.
 
-## 5. Not verified on real hardware or at real scale
+## Known limits
 
-- **Barcode camera** uses the browser's BarcodeDetector (Chrome on Android/macOS); on Windows desktop
-  Chrome the digits are typed. The camera path hasn't been tried on a phone.
-- **Bluetooth pairing** was tested with a stand-in `navigator.bluetooth`; try a real strap or cuff in Chrome.
-- **Apple Health import** was tested with a generated 2.5 million record export (37 MB zip, 934 MB XML) at Render's
-  heap size, in about 30 s on a fast machine. Not yet tried with a real iPhone export or on Render's 0.1 CPU.
-- `LoadCheck` and `scripts/restore-drill.sh` have only run locally, not against the real Supabase project.
+- **Slow first load:** Render's free plan sleeps after about 15 idle minutes, and waking took 65 s when measured.
+- **Database space:** Supabase's free plan allows 500 MB, and imported readings use it quickly.
+- **Consents aren't recorded:** Create Account's Terms, reminders and research boxes aren't saved anywhere.
+- **Android health data:** only CSV or typed readings.
+- **No automatic Apple Health sync:** an iPhone Shortcut is the free option if it's wanted.
 
-## 6. Repository housekeeping
+## Leftovers
 
-- `DESIGN.md` describes Anthropic's website design, not VitalLink: keep as reference or remove?
-- `design-ref/` is an empty folder (git doesn't track it).
+- `deploy-check` and `nightly` on GitHub need their repository secrets.
+- Figma still has the mobile pages, and older web frames still show the old sidebar and the Apple button.
+- A few response types in `packages/api/src/types.ts` carry fields only the mobile app read.
 
-## Where things live
+## Removed on purpose
 
-```
-apps/web/src/screens/   one folder per area: dashboard, health, fitness, records, care, sharing,
-                        inbox, library, settings, public (+ ScreenState, Lists.module.css)
-apps/web/src/forms/     dialogs: Health, Fitness, Care, Record, Share, Device, Edit
-packages/api/src/views/ view-models, one file per area: shared, dashboard, activity, health, fitness,
-                        workout-tabs, nutrition-tabs, care, records, privacy, library, search
-packages/api/src/       client.ts, types.ts, forms.ts (form rules), bluetooth.ts, format.ts, mock*
-backend/                Spring Boot API: see backend/README.md and backend/docs/01–13
-```
+The mobile app and phone sync, Spanish, Sign in with Apple, and share links.

@@ -1,4 +1,4 @@
-// Display formatting shared by web and mobile. All times render in the user's zone.
+// Display formatting for the screens. All times render in the user's zone.
 
 const fmt = (tz: string, opts: Intl.DateTimeFormatOptions) =>
   new Intl.DateTimeFormat("en-US", { timeZone: tz, ...opts });
@@ -41,7 +41,6 @@ export const greeting = (iso: string, tz: string) => {
 
 export const thousands = (n: number) => Math.round(n).toLocaleString("en-US");
 
-export const metresToMiles = (m: number) => (m / 1609.344).toFixed(1);
 
 /** "3h 12m"; under an hour "48 min" (or "48m" when `compact`). */
 export const hoursMinutes = (minutes: number, compact = false) => {
@@ -129,7 +128,6 @@ export const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s
 /** "92.5 kg" — one decimal only when needed. */
 export const kg = (v: number) => `${Number.isInteger(v) ? v : v.toFixed(1)} kg`;
 
-export const percent = (fraction: number) => `${Math.round(fraction * 100)}%`;
 
 /** "1994-04-17" (a calendar date, no time zone) → "17/04/1994". */
 export const calendarDate = (ymd: string) => {

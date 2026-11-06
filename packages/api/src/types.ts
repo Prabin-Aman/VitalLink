@@ -441,29 +441,6 @@ export interface PrivacySettings {
 
 // ---------------------------------------------------------------- devices
 
-/** GET /me/sync: what was uploaded through ingest (batches are kept 30 days). */
-export interface SyncPlatform {
-  platform: "healthkit" | "health_connect" | "bluetooth";
-  last_upload_at: ISODate;
-  uploads_week: number;
-  readings_week: number;
-  changed_week: number;
-  devices: number;
-}
-export interface SyncUpload {
-  id: number;
-  at: ISODate;
-  platform: SyncPlatform["platform"];
-  submitted: number;
-  inserted: number;
-  updated: number;
-  unchanged: number;
-}
-export interface SyncStatus {
-  platforms: SyncPlatform[];
-  recent: SyncUpload[];
-}
-
 /** POST /me/health/import: what a file added (see backend HealthImport). */
 export interface ImportResult {
   format: "apple" | "csv";

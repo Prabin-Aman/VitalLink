@@ -1,3 +1,4 @@
+// Privacy Centre (Figma page 4:12), shown inside Settings: who can see your data, access history and revoking.
 import { loadPrivacy, type AccessCardVM, type AccessRowVM } from "@vitallink/api";
 import type { ColorToken } from "@vitallink/tokens";
 import { tokenVar } from "../../components/Icon";

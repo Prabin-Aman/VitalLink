@@ -1,5 +1,7 @@
 # 9. Build plan
 
+> **Note (Nov 2026):** the mobile app was removed and phone sync cancelled. Parts below that mention them are historical. See [the index](README.md).
+
 **Status (23 Oct 2026).** Phases 1–8 are built, in Java (see [11-java-stack.md](11-java-stack.md)).
 
 | Phase | Status |

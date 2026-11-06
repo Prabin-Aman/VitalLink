@@ -22,7 +22,6 @@ export interface AccessRowVM {
   purpose: string;
   when: string;
   status: ChipVM;
-  shortStatus: string;
   /** Access details dialog (Figma 211:1577). */
   details: {
     subtitle: string;
@@ -137,7 +136,7 @@ export async function loadPrivacy(api: VitalLinkClient): Promise<PrivacyVM> {
     cards,
     summary,
     log: log.map((e) => {
-      const [chip, short] = statusChip(e.status);
+      const [chip] = statusChip(e.status);
       return {
         who: e.actor,
         detail: e.actor_detail,
@@ -145,7 +144,6 @@ export async function loadPrivacy(api: VitalLinkClient): Promise<PrivacyVM> {
         purpose: e.purpose,
         when: shortDateTime(e.at, me.timezone),
         status: chip,
-        shortStatus: short,
         details: accessDetails(e, shares, me.timezone),
       };
     }),

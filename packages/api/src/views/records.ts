@@ -1,5 +1,5 @@
 // Records view-models: Medical Records (143:1538), Lab Results (61:53),
-// Document Viewer (143:1955) and mobile Records (145:343).
+// Document Viewer (143:1955).
 import type { ColorToken } from "@vitallink/tokens";
 import { need, NotAvailableError, type VitalLinkClient } from "../client";
 import { calendarDate, dayMonth, dayMonthYear, daysFrom, longDayMonthYear } from "../format";
@@ -29,8 +29,6 @@ export interface RecordRowVM {
   sourceColor: ColorToken;
   typeLabel: string;
   date: string;
-  /** Mobile: "Lab result · 11 Sep 2026" (+ " · shared"). */
-  mobileLine: string;
   shared: boolean;
   /** Opens the Document Viewer. */
   href: string;
@@ -38,7 +36,6 @@ export interface RecordRowVM {
 
 export interface RecordsVM {
   subtitle: string;
-  shortSubtitle: string;
   total: number;
   types: { key: RecordType; label: string; count: number }[];
   rows: RecordRowVM[];
@@ -53,7 +50,6 @@ export async function loadRecords(api: VitalLinkClient): Promise<RecordsVM> {
   const total = Object.values(r.counts).reduce((a, b) => a + b, 0);
   return {
     subtitle: `${total} records · you own and control every one of them`,
-    shortSubtitle: `${total} records · all owned by you`,
     total,
     types: (Object.keys(TYPE_LABEL) as RecordType[]).map((k) => ({ key: k, label: TYPE_LABEL[k][0], count: r.counts[k] })),
     rows: r.recent.map((x) => {
@@ -66,7 +62,6 @@ export async function loadRecords(api: VitalLinkClient): Promise<RecordsVM> {
         sourceColor: x.shared_with ? "goalOnTrack" : "textTertiary",
         typeLabel: TYPE_LABEL[x.type][1],
         date: date(x.date, tz),
-        mobileLine: `${TYPE_LABEL[x.type][1]} · ${date(x.date, tz)}`,
         shared: !!x.shared_with,
         href: `/records/${x.id}`,
       };

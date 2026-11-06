@@ -15,8 +15,6 @@ export interface BarRowVM {
   key: string;
   label: string;
   value: string;
-  /** Mobile wording where it differs. */
-  shortValue: string;
   fraction: number;
   color: ColorToken;
 }
@@ -58,9 +56,7 @@ export interface SessionRowVM {
 export interface WorkoutsVM {
   lifetime: string;
   subtitle: string;
-  shortSubtitle: string;
   stats: StatVM[];
-  mobileStats: StatVM[];
   load: LoadDayVM[];
   legend: LegendVM[];
   sessions: SessionRowVM[];
@@ -126,18 +122,11 @@ export async function loadWorkouts(api: VitalLinkClient): Promise<WorkoutsVM> {
   return {
     lifetime: thousands(t.total_sessions),
     subtitle: `${sessionsLine} this week · ${streakLine} · synced from ${w.source}`,
-    shortSubtitle: `${sessionsLine} · ${streakLine}`,
     stats: [
       sessions,
       stat("time", "Training time", time, "", "this week", "fitnessCardio"),
       stat("volume", "Total volume", volume, "kg", "lifted this week", "fitnessStrength"),
       stat("energy", "Active energy", thousands(w.active_kcal), "kcal", "this week", "dataActivity"),
-      streak,
-    ],
-    mobileStats: [
-      sessions,
-      stat("time", "Time", time, "", "this week", "fitnessCardio"),
-      stat("volume", "Volume", volume, "kg", "lifted", "fitnessStrength"),
       streak,
     ],
     load: w.load.map((day, i) => {
@@ -155,7 +144,7 @@ export async function loadWorkouts(api: VitalLinkClient): Promise<WorkoutsVM> {
       groups: t.muscles.groups.map((g) => {
         const fraction = Math.min(1, g.sets / FULL_SETS);
         const value = `${g.sets} sets`;
-        return { key: g.group, label: g.group, value, shortValue: value, fraction, color: balanceColor(fraction) };
+        return { key: g.group, label: g.group, value, fraction, color: balanceColor(fraction) };
       }),
       note: t.muscles.note,
     },
@@ -187,14 +176,12 @@ export interface MealVM {
   id: string;
   title: string;
   items: string;
-  shortItems: string;
   kcal: string;
   macros: string;
 }
 
 export interface NutritionVM {
   subtitle: string;
-  shortSubtitle: string;
   stats: StatVM[];
   ring: { fraction: number; value: string; goal: string; remaining: string };
   split: { label: string; fraction: number; color: ColorToken }[];
@@ -208,16 +195,6 @@ export interface NutritionVM {
 }
 
 const litres = (ml: number) => (ml / 1000).toFixed(1);
-
-/** Items that fit the mobile row (~26 characters), as in frame 134:216. */
-const shortList = (items: string[]) => {
-  const out: string[] = [];
-  for (const it of items) {
-    if (out.length && [...out, it].join(", ").length > 26) break;
-    out.push(it);
-  }
-  return out.join(", ");
-};
 
 export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> {
   const [me, data] = await Promise.all([api.me(), api.nutrition()]);
@@ -235,7 +212,6 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
     key,
     label,
     value: `${v} g of ${g} g`,
-    shortValue: `${v} / ${g} g`,
     fraction: Math.min(1, v / g),
     color,
   });
@@ -247,7 +223,6 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
 
   return {
     subtitle: `${longDate(n.date, tz)} · ${kcal} of ${goal} kcal · ${thousands(left)} remaining`,
-    shortSubtitle: `${kcal} of ${goal} kcal · ${thousands(left)} left`,
     stats: [
       { key: "kcal", label: "Calories", value: kcal, unit: `/ ${goal}`, caption: `${thousands(left)} remaining`, accent: "dataNutrition" },
       { key: "protein", label: "Protein", value: String(n.protein_g), unit: "g", caption: `goal ${n.goals.protein_g} g`, accent: "macroProtein" },
@@ -277,7 +252,6 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
         id: m.id,
         title: `${m.name} · ${timeOfDay(m.eaten_at, tz)}`,
         items: items[0].toUpperCase() + items.slice(1),
-        shortItems: shortList(m.items),
         kcal: `${m.kcal} kcal`,
         macros: `${m.protein_g}P · ${m.carbs_g}C · ${m.fat_g}F`,
       };
@@ -303,9 +277,7 @@ export async function loadNutrition(api: VitalLinkClient): Promise<NutritionVM> 
 export interface GoalRowVM {
   id: string;
   title: string;
-  shortTitle: string;
   caption: string;
-  shortCaption: string;
   fraction: number;
   color: ColorToken;
   status: string;
@@ -313,9 +285,7 @@ export interface GoalRowVM {
 
 export interface GoalsVM {
   subtitle: string;
-  shortSubtitle: string;
   stats: StatVM[];
-  mobileStats: StatVM[];
   goals: GoalRowVM[];
   consistency: { weeks: boolean[][]; caption: string };
   recent: { title: string; when: string }[];
@@ -352,7 +322,6 @@ export async function loadGoals(api: VitalLinkClient): Promise<GoalsVM> {
 
   return {
     subtitle: `${active} active goals · ${data.achieved_this_month} achieved this month · ${atRisk} at risk`,
-    shortSubtitle: `${active} active · ${onTrack} on track · ${atRisk} at risk`,
     stats: [
       stat("active", "Active goals", String(active), "", `across ${areas} areas`, "goalOnTrack"),
       s.onTrack,
@@ -360,15 +329,12 @@ export async function loadGoals(api: VitalLinkClient): Promise<GoalsVM> {
       s.achieved,
       stat("streak", "Longest streak", String(data.longest_streak.days), "days", data.longest_streak.label, "goalAchieved"),
     ],
-    mobileStats: [s.onTrack, s.atRisk, s.achieved, stat("streak", "Streak", String(data.longest_streak.days), "days", data.longest_streak.label, "goalAchieved")],
     goals: data.goals.map((g) => {
       const [status, color] = STATUS[g.status];
       return {
         id: g.id,
         title: g.title,
-        shortTitle: g.short_title,
         caption: `${g.area} · ${g.detail}`,
-        shortCaption: g.short_detail,
         fraction: Math.max(0, Math.min(1, g.progress)),
         color,
         status,

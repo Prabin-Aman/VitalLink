@@ -1,5 +1,7 @@
 # 7. Key flows
 
+> **Note (Nov 2026):** the mobile app was removed and phone sync cancelled. Parts below that mention them are historical. See [the index](README.md).
+
 ## 7.1 Sign-in and first request
 
 ```mermaid

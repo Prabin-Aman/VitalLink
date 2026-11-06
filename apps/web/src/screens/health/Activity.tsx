@@ -1,3 +1,4 @@
+// My Health › Activity (Figma page 4:12).
 import { loadActivity, type WorkoutType } from "@vitallink/api";
 import { useState } from "react";
 import { StepsChart } from "../../components/Charts";

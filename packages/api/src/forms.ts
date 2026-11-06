@@ -1,5 +1,5 @@
 // Entry forms (Figma page "15 — Proposed · Entry forms"): option lists, validation and request bodies.
-// Screens only bind inputs; every rule about what the API accepts lives here, shared by web and mobile.
+// Screens only bind inputs; every rule about what the API accepts lives here.
 import { dayMonth, type Units } from "./format";
 import type { FoodHit, GoalDetail, GoalMetricOption, MedicationDetail, NutritionTargets, Targets } from "./types";
 
@@ -54,7 +54,6 @@ export const dateTimeIn = (iso: string, tz: string) => {
   return { date: `${w.y}-${two(w.mo)}-${two(w.d)}`, time: `${two(w.h)}:${two(w.mi)}` };
 };
 
-// Mobile has no native date/time inputs in this app (no picker library), so its sheets offer these lists.
 const DOW = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const MON = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const utcDay = (date: string) => {
@@ -70,18 +69,7 @@ export const dateLabel = (date: string, withWeekday = false) => {
 /** "YYYY-MM-DD" n days after `date` (negative goes back). */
 export const addDays = (date: string, n: number) => new Date(utcDay(date).getTime() + n * 86400000).toISOString().slice(0, 10);
 /** Every date from `from` to `to`, both included; labelled with the weekday, and "Today" for `today`. */
-export function dateOptions(from: string, to: string, today: string): Option[] {
-  const out: Option[] = [];
-  for (let d = from; d <= to && out.length < 400; d = addDays(d, 1)) out.push({ value: d, label: d === today ? `Today · ${dateLabel(d)}` : dateLabel(d, true) });
-  return out;
-}
 /** Times through the day every `step` minutes, plus `keep` (a prefilled value off the step) in order. */
-export function timeOptions(step = 15, keep?: string): Option[] {
-  const values = Array.from({ length: (24 * 60) / step }, (_, i) => `${two(Math.floor((i * step) / 60))}:${two((i * step) % 60)}`);
-  if (keep && !values.includes(keep)) values.push(keep);
-  return values.sort().map((v) => ({ value: v, label: timeLabel(v) }));
-}
-
 const num = (s: string) => {
   const t = s.replace(/,/g, "").trim();
   return t === "" ? null : Number(t);
@@ -729,10 +717,6 @@ export function checkPhoto(file: { type: string; size: number } | null): Checked
   if (file.size > 2 * 1024 * 1024) return fail("That photo is over 2 MB. Choose a smaller one.");
   return { ok: true, body: true };
 }
-
-export const LANGUAGES: Option[] = [
-  { value: "en-US", label: "English (US)" },
-];
 
 /** "178 cm", "178", "5 ft 10 in", "5'10\"", "5' 10" → centimetres (one decimal); null when it isn't a height. */
 export function parseHeight(text: string, units: "metric" | "imperial"): number | null {

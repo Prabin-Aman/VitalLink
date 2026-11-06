@@ -28,6 +28,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Workouts, training plans, the exercise catalogue and personal records. */
 @RestController
 @RequestMapping("/v1")
 @Tag(name = "training")

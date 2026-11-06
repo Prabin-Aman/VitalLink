@@ -60,10 +60,3 @@
 .add:hover {
   background: var(--vl-bg-surface);
 }
-
-/* Phone sync panel (proposed 212:3117): full width above the device cards. */
-.phoneActions {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}

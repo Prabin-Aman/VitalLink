@@ -1,3 +1,4 @@
+// Sign in (Figma 24:2), Forgot password (216:122, 216:208), Choose a new password (216:294) and the two-step code step (232:2789).
 import { loadDashboard, passwordNeeds, VitalLinkClient } from "@vitallink/api";
 import { useCallback, useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
 import { Link, useLocation, useNavigate, useSearchParams } from "react-router-dom";

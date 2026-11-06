@@ -1,3 +1,4 @@
+// The API client for React: the provider, useApi, and useScreen for loading a view-model.
 import { VitalLinkClient } from "@vitallink/api";
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import { accessToken, hasSession } from "./auth";

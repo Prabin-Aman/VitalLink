@@ -14,15 +14,12 @@ export interface ArticleVM {
   tag: ChipVM;
   title: string;
   meta: string;
-  shortMeta: string;
 }
 
 export interface LibraryVM {
   categories: string[];
   featured: { slug: string; overline: string; title: string; summary: string; meta: string };
-  featuredMobile: { overline: string; title: string; meta: string };
   trending: ArticleVM[];
-  trendingMobile: ArticleVM[];
 }
 
 const CATEGORY_TONE: Record<string, [ColorToken, ColorToken]> = {
@@ -47,11 +44,9 @@ export async function loadLibrary(api: VitalLinkClient): Promise<LibraryVM> {
       tag: { label: a.category.toUpperCase(), fg, bg },
       title: a.title,
       meta: `Medically reviewed · ${a.minutes} min read`,
-      shortMeta: `Medically reviewed · ${a.minutes} min`,
     };
   };
   const f = l.featured;
-  const fm = l.featured_mobile;
   return {
     categories: l.categories,
     featured: {
@@ -61,9 +56,7 @@ export async function loadLibrary(api: VitalLinkClient): Promise<LibraryVM> {
       summary: f.summary ?? "",
       meta: `Medically reviewed${f.reviewer ? ` by ${f.reviewer}` : ""} · ${f.minutes} min read`,
     },
-    featuredMobile: { overline: `FEATURED · ${fm.category.toUpperCase()}`, title: fm.title, meta: `Medically reviewed · ${fm.minutes} min read` },
     trending: l.trending.filter((a) => a.title !== f.title).slice(0, 6).map(article),
-    trendingMobile: l.trending.filter((a) => a.id !== fm.id).map(article),
   };
 }
 

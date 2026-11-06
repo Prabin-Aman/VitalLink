@@ -1,5 +1,5 @@
 // Connected Devices › Add (proposed, Figma 213:1667) and its two ways in: Import health data (213:1701) and
-// Pair a Bluetooth device (213:1754). The Phone app row is gone with the mobile app (owner, Nov 2026).
+// Pair a Bluetooth device (213:1754).
 import {
   BLE_KINDS,
   bleIngest,

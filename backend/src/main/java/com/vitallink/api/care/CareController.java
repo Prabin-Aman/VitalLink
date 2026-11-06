@@ -38,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Medications and doses, appointments, conditions, the emergency profile and contacts, and doctor search. */
 @RestController
 @RequestMapping("/v1/me")
 @Tag(name = "care")

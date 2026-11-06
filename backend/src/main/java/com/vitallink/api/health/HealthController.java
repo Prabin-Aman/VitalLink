@@ -39,6 +39,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/** Readings: ingest, file import, manual entry, series, dashboard and devices. */
 @RestController
 @RequestMapping("/v1/me")
 @Tag(name = "health")

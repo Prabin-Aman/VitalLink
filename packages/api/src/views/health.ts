@@ -1,4 +1,4 @@
-// My Health view-models, one per tab (web 77:512 … 81:834; mobile 86:56, 87:374).
+// My Health view-models, one per tab (web 77:512 … 81:834).
 import type { ColorToken } from "@vitallink/tokens";
 import { need, type VitalLinkClient } from "../client";
 import { ago, dayMonth, daysFrom, hoursMinutes, longDate, thousands, timeOfDay, weekday } from "../format";
@@ -134,39 +134,12 @@ const DAYS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
 
 export interface HealthOverviewVM {
   subtitle: string;
-  shortSubtitle: string;
-  /** Mobile 86:56: three shorter sections with abbreviated labels. */
-  mobileSections: { title: string; to: string; cards: MetricCardVM[] }[];
   rings: { label: string; value: string; goal: string; fraction: number; color: ColorToken }[];
   ringsSource: string;
   sections: { title: string; sources: string; cards: MetricCardVM[] }[];
   sources: { name: string; data: string; color: ColorToken }[];
   insights: InsightVM[];
 }
-
-const SHORT_LABEL: Record<string, string> = {
-  walking_distance: "Distance",
-  flights: "Flights",
-  resting_hr: "Resting HR",
-  hrv: "HRV",
-  respiratory_rate: "Resp. Rate",
-  pickups: "Pickups",
-};
-const SHORT_WHEN: Record<string, string> = { Overnight: "O/night", "Just now": "Now" };
-const shortAssessment = (s: string) => s.replace("Above average", "Above avg").replace(/(\d+) min$/, "$1m");
-
-const MOBILE_SECTIONS = [
-  { title: "Activity", to: "/health/activity", metrics: ["steps", "walking_distance", "flights", "active_energy"] },
-  { title: "Heart & respiratory", to: "/health", metrics: ["resting_hr", "hrv", "spo2", "respiratory_rate"] },
-  { title: "Sleep & digital", to: "/health/digital", metrics: ["sleep", "deep_sleep", "screen_time", "pickups"] },
-];
-
-const shortCard = (m: MetricCardVM): MetricCardVM => ({
-  ...m,
-  shortLabel: SHORT_LABEL[m.key] ?? m.label,
-  when: SHORT_WHEN[m.when] ?? m.when.replace(/^(\d+) min ago$/, "$1m"),
-  chip: { ...m.chip, label: shortAssessment(m.chip.label) },
-});
 
 export async function loadHealthOverview(api: VitalLinkClient): Promise<HealthOverviewVM> {
   const [me, data] = await Promise.all([api.me(), api.healthOverview()]);
@@ -178,11 +151,9 @@ export async function loadHealthOverview(api: VitalLinkClient): Promise<HealthOv
   const ring = (label: string, [v, g]: [number, number], unit: string, color: ColorToken) => ({ label, value: String(v), goal: `/ ${g} ${unit}`, fraction: Math.min(1, v / g), color });
   return {
     subtitle: `${longDate(now, tz)} · syncing from Apple Watch, iPhone and ${monitors} home monitors`,
-    shortSubtitle: `Syncing from Apple Watch & iPhone · ${ago(o.rings.synced_at, now)}`,
     rings: [ring("MOVE", o.rings.move, "kcal", "dataActivity"), ring("EXERCISE", o.rings.exercise, "min", "dataHeartRate"), ring("STAND", o.rings.stand, "hr", "dataBloodOxygen")],
     ringsSource: `Synced from ${o.rings.source} · ${ago(o.rings.synced_at, now).replace(" min ", " minutes ")}`,
     sections: o.sections.map((s) => ({ title: s.title, sources: s.sources, cards: s.metrics.map((k) => byKey.get(k)).filter((r): r is Reading => !!r).map((r) => card(r, now, tz)) })),
-    mobileSections: MOBILE_SECTIONS.map((s) => ({ title: s.title, to: s.to, cards: s.metrics.map((k) => byKey.get(k)).filter((r): r is Reading => !!r).map((r) => shortCard(card(r, now, tz))) })),
     sources: o.sources.map((s) => ({ name: s.name, data: s.data, color: s.ok ? "rangeNormal" : "rangeBorderline" })),
     insights: o.insights.map(insight),
   };
@@ -526,12 +497,8 @@ export async function loadMental(api: VitalLinkClient): Promise<MentalVM> {
 // ---------------------------------------------------------------- digital wellbeing
 
 export interface DigitalVM {
-  /** Mobile 87:374 stats and copy. */
-  mobileStats: StatVM[];
-  shortDeepSleep: string;
   average: string;
   change: string;
-  shortChange: string;
   days: { label: string; total: string; segments: { value: number; color: ColorToken }[] }[];
   legend: LegendVM[];
   stats: StatVM[];
@@ -553,19 +520,10 @@ export async function loadDigital(api: VitalLinkClient): Promise<DigitalVM> {
   const total = d.categories.reduce((a, c) => a + c.minutes, 0) || 1;
   const ds = d.deep_sleep ?? { heavy_min: 0, light_min: 0, heavy_nights: 0, light_nights: 0 };
   const longest = stat(R, { metric: "longest_use" }, now, tz);
-  const short = (metric: string, label?: string, accent?: ColorToken): StatVM => {
-    const x = stat(R, { metric, label, accent }, now, tz);
-    return { ...x, caption: R.find((r) => r.metric === metric)?.short_assessment ?? x.caption };
-  };
   const longestAt = R.find((r) => r.metric === "longest_use")?.at;
   return {
-    mobileStats: [short("pickups", "Pickups", "rangeBorderline"), short("notifications"), short("late_use"), short("first_pickup")],
-    shortDeepSleep: d.deep_sleep
-      ? `On your ${WORDS[ds.heavy_nights] ?? ds.heavy_nights} heaviest late-use nights, deep sleep averaged ${hoursMinutes(ds.heavy_min).replace(" min", " minutes")}. On the ${WORDS[ds.light_nights] ?? ds.light_nights} lightest, ${hoursMinutes(ds.light_min)}.`
-      : "Needs two weeks of sleep and screen-time data.",
     average: hoursMinutes(d.average_min),
     change: `daily average · ${d.change_min < 0 ? "down" : "up"} ${Math.abs(d.change_min)} min from last week`,
-    shortChange: `${d.change_min < 0 ? "down" : "up"} ${Math.abs(d.change_min)} min`,
     days: d.week.map((x, i) => ({
       label: DAYS[i],
       total: `${(x.day_h + x.late_h).toFixed(1)}h`,

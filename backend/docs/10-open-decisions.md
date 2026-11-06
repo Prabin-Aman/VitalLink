@@ -1,5 +1,7 @@
 # 10. Open decisions
 
+> **Note (Nov 2026):** the mobile app was removed and phone sync cancelled. Parts below that mention them are historical. See [the index](README.md).
+
 Each item says what the conflict is, what's recommended, and which phase it blocks. The design docs
 already assume the recommendation, so if the owner chooses differently, the noted sections change.
 

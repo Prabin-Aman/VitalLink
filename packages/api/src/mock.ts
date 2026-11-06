@@ -18,7 +18,7 @@ import type {
   Share,
   Workout,
 } from "./types";
-import { account, appointments, conversations, devices, doctors, emergency, family, library, medicationsOverview, notifications, sync } from "./mock-data/care";
+import { account, appointments, conversations, devices, doctors, emergency, family, library, medicationsOverview, notifications } from "./mock-data/care";
 import { goalsOverview, nutrition, training } from "./mock-data/fitness";
 import { bodyTab, digitalTab, healthOverview, heartTab, mentalTab, respiratoryTab, sleepTab, vitalsTab } from "./mock-data/health";
 import { labPanels, recordsOverview } from "./mock-data/records";
@@ -267,7 +267,6 @@ export const mock = {
   ] as Recipe[],
   emergency,
   devices,
-  sync,
   library,
   account,
   recordsOverview,

@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** The My Health overview and its seven tabs. */
 @RestController
 @RequestMapping("/v1/me/health")
 @Tag(name = "health")

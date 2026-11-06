@@ -96,19 +96,18 @@ export function BPChart({ systolic, diastolic, width = 324, height = 150 }: { sy
 
 /**
  * My Health › Activity steps chart: bars with value labels, a goal line and day labels.
- * `compact` is the mobile variant (150px plot, 38px bars).
  */
-export function StepsChart({ bars, goal, goalLabel, compact }: { bars: BarVM[]; goal: number; goalLabel: string; compact?: boolean }) {
-  const base = compact ? 118 : 170; // px from plot top to bar baseline
+export function StepsChart({ bars, goal, goalLabel }: { bars: BarVM[]; goal: number; goalLabel: string; }) {
+  const base = 170; // px from plot top to bar baseline
   const max = 14000;
   const h = (v: number) => (Math.min(v, max) / max) * base;
   return (
-    <div className={compact ? `${s.steps} ${s.stepsCompact}` : s.steps} role="img" aria-label={`Steps: ${bars.map((b) => `${b.label} ${b.valueLabel}`).join(", ")}; goal ${goalLabel}`}>
+    <div className={s.steps} role="img" aria-label={`Steps: ${bars.map((b) => `${b.label} ${b.valueLabel}`).join(", ")}; goal ${goalLabel}`}>
       <div className={s.goalLine} style={{ top: base - h(goal) }} />
       <div className={s.stepsBars} style={{ height: base }}>
         {bars.map((b) => (
           <div key={b.label} className={s.stepsCol}>
-            {!compact && <span className={`${s.valueLabel} vl-caption`}>{b.valueLabel}</span>}
+            <span className={`${s.valueLabel} vl-caption`}>{b.valueLabel}</span>
             <div className={s.stepsBar} style={{ height: h(b.value), background: tokenVar(b.metGoal ? "dataActivity" : "bgBrandMuted") }} />
           </div>
         ))}
@@ -116,14 +115,14 @@ export function StepsChart({ bars, goal, goalLabel, compact }: { bars: BarVM[]; 
       <div className={s.stepsAxis}>
         {bars.map((b) => (
           <span key={b.label} className="vl-caption">
-            {compact ? b.shortLabel : b.label}
+            {b.label}
           </span>
         ))}
       </div>
       {/* Figma labels the goal line in-plot, where it collides with bar values; a legend can't collide. */}
       <div className={`${s.goalKey} vl-caption`}>
         <span className={s.goalSwatch} aria-hidden />
-        {compact ? `Goal ${Math.round(goal / 1000)}k` : `Goal ${goalLabel}`}
+        {`Goal ${goalLabel}`}
       </div>
     </div>
   );
