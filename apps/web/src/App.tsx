@@ -15,7 +15,6 @@ import { LabResults } from "./screens/records/LabResults";
 import { Article } from "./screens/library/Article";
 import { Library } from "./screens/library/Library";
 import { Medications } from "./screens/care/Medications";
-import { Messages } from "./screens/inbox/Messages";
 import { Notifications } from "./screens/inbox/Notifications";
 import { Settings } from "./screens/settings/Settings";
 import { SettingsFrame } from "./screens/settings/SettingsFrame";
@@ -99,7 +98,6 @@ export function App() {
         <Route path="library" element={<Library />} />
         <Route path="library/:slug" element={<Article />} />
         <Route path="family" element={<Family />} />
-        <Route path="messages" element={<Messages />} />
         <Route path="notifications" element={<Notifications />} />
         <Route path="emergency" element={<Emergency />} />
         <Route path="devices" element={<SettingsFrame current="Connected Devices"><Devices /></SettingsFrame>} />

@@ -269,21 +269,10 @@ A website can't read data from a phone, so it arrives in three ways, all under S
 - **Bluetooth:** pair a strap, cuff, scale, oximeter or glucose meter in Chrome or Edge.
 - **CSV file or typed readings.**
 
-## Project rules
-
-- **Consumers only:** no hospital, clinic or provider interface.
-- **No blood features** such as blood type, donors or blood banks. Blood pressure, glucose and oxygen are fine.
-- **Free plans only.**
-- **Figma is the source of truth:** new UI is designed there first.
-- **Text people see:** English only, no em dashes.
-- **Code:** no raw colours, sizes or fonts in components; icons are generated, never redrawn; screens do no
-  formatting, because view-models produce the display strings.
-
 ## Documentation
 
 | Document | Contents |
 |---|---|
-| [STATUS.md](STATUS.md) | What's built, what's missing, what's untested |
 | [apps/web/README.md](apps/web/README.md) | Website structure and how to add a screen |
 | [packages/api/README.md](packages/api/README.md) | Client, view-models, form rules, sample data |
 | [backend/README.md](backend/README.md) | Running, configuring and deploying the API |

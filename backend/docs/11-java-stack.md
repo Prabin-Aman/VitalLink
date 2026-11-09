@@ -1,9 +1,6 @@
 # 11. Java stack: packages, libraries and tools
 
-The backend was first built in Python (FastAPI) through phase 5b. On 23 Oct 2026 the owner decided the
-backend must be **Java**. The service was ported to Spring Boot with the same database schema, the same
-API paths and JSON shapes, and every Python test was ported before the Python code was removed. The
-remaining phases (care, goals, records, phase 8) were then built in Java.
+The backend is one Spring Boot service written in Java 25.
 
 Everything below is free and open source. Versions are the ones the build resolves today (`./mvnw
 dependency:list`).

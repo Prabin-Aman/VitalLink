@@ -1,16 +1,12 @@
 # VitalLink backend
 
-**Status (23 Oct 2026): every planned module is built, in Java.** One Spring Boot service (a modular
+One Spring Boot service (a modular
 monolith) serves the web portal: accounts with export and delete, the health core
 (sync ingest, series, dashboard, devices, My Health overview and seven tabs), sharing with the consent
 engine and the append-only audit log, training, nutrition, care (medications and doses, appointments,
 conditions, the emergency medical ID), goals and streaks, records with stored files and lab panels,
 notifications, the health library, the family view, and the nightly job. 239 tests run against a real
-Postgres (80.4% of lines covered). Every frontend call is live except Messages (decision D1).
-
-The backend was built in Python (FastAPI) through phase 5b and ported to Java on 23 Oct 2026 with the
-same schema, paths and JSON; see [docs/11-java-stack.md](docs/11-java-stack.md). The Render and
-Supabase accounts don't exist yet.
+Postgres (80.4% of lines covered). Every frontend screen reads live data.
 
 The plan builds on the reviewed design doc
 ["VitalLink Backend System Design"](https://claude.ai/code/artifact/d83166e0-f781-45e9-80e8-d0f399be60cf)
@@ -139,11 +135,8 @@ provider or admin interface anywhere.
 | 6 | [Security & consent](docs/06-security-and-consent.md) | Consent rules, Supabase lockdown, threats, privacy commitments |
 | 7 | [Key flows](docs/07-flows.md) | Sequence diagrams: sign-in, sync, sharing, upload, doses, nightly job |
 | 8 | [Operations & testing](docs/08-operations-and-testing.md) | Environments, CI/CD, jobs, observability, capacity, tests |
-| 9 | [Build plan](docs/09-build-plan.md) | Phases, exit criteria and status |
-| 10 | [Open decisions](docs/10-open-decisions.md) | Choices the owner must make |
 | 11 | [Java stack](docs/11-java-stack.md) | Every package, library, plugin and tool, with versions and why |
 | 12 | [Test report](docs/12-test-report.md) | What each test suite covers, results and coverage |
-| 13 | [Phase 10 review](docs/13-review.md) | Security, schema and incident review: findings and fixes |
 
 Diagrams are Mermaid, so GitHub and VS Code render them inline.
 

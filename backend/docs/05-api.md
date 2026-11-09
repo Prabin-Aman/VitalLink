@@ -24,7 +24,7 @@ contract for one endpoint below) names a field the schema doesn't have.
 
 ## 5.2 Endpoints that are live (built and called by the client)
 
-As of 23 Oct 2026 every client call is live except `conversations()` (decision D1). The table lists
+Every client call used by a screen is live. The table lists
 the calls built first; 5.3 lists the rest with their paths.
 
 | Client call | Method and path | Returns (`types.ts`) |
@@ -67,7 +67,6 @@ Each row replaced one `client.pending()` call; only `conversations()` is still p
 | `goalsOverview()` | `GET /me/goals/overview` | `GoalsOverview` | goals |
 | `medicationsOverview()` | `GET /me/medications` | `MedicationsOverview` | care |
 | `appointments()` | `GET /me/appointments?from=&to=` | `Appointment[]` | care |
-| `conversations()` | — | blocked on [D1](10-open-decisions.md) | — |
 | `notifications()` | `GET /me/notifications` | `AppNotification[]` | notifications |
 | `family()` | `GET /me/family` | `FamilyMember[]` | sharing |
 | `emergencyProfile()` | `GET /me/emergency-profile` | `EmergencyProfile` | care |
@@ -155,7 +154,7 @@ send `null` for blocks without data; the view-models show "—" for those.
 | `POST /me/records/{id}/upload` | Signed upload URL (5 min); status → pending |
 | `POST /me/records/{id}/confirm` | Server stats the object (size, type); status → attached |
 | `GET /me/records/{id}/download` | Signed download URL (5 min), attached only |
-| `POST, GET /me/labs`; `GET, PUT, DELETE /me/labs/{id}` | Lab panels with results (manual entry, [D6](10-open-decisions.md)); blood-group results refused |
+| `POST, GET /me/labs`; `GET, PUT, DELETE /me/labs/{id}` | Lab panels with results (manual entry, D6); blood-group results refused |
 | `GET /me/labs/latest-result` | Latest result for the dashboard card |
 
 ### Care

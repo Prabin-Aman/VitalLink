@@ -81,8 +81,7 @@ records and care, and sharing, notifications and library are new.
 | **notifications** | Feed, mark read, generation from events and the nightly job, retention | `notifications` | none (others call it) |
 | **library** | Categories, featured, trending, article body; Markdown in `src/main/resources/library/`, loaded at startup | `article_categories`, `articles`, `library_features` | none |
 
-`messages` (clinician messaging) and `dependents` (child profiles) are **not modules** until
-decisions D1 and D3 are made.
+Clinician messaging and child profiles are out of scope, so they have no modules.
 
 ## Shared core
 

@@ -1,7 +1,5 @@
 # 8. Operations and testing
 
-> **Note (Nov 2026):** the mobile app was removed and phone sync cancelled. Parts below that mention them are historical. See [the index](README.md).
-
 ## 8.1 Environments
 
 | Environment | Runs on | Database | Auth | Purpose |
@@ -107,7 +105,7 @@ screen-time → lower deep-sleep pattern, so the insight engine finds something 
 
 ## 8.8 Failure modes: ingest, nightly job, record files
 
-From the phase 10 review (docs/13). "Detect" means what someone sees without opening the code.
+"Detect" means what someone sees without opening the code.
 
 | Failure | Detect | Recover |
 |---|---|---|

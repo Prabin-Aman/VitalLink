@@ -19,8 +19,7 @@ Everything the web portal knows about the API. It has no React in it, so its rul
 
 - **Screens don't format.** A new display string belongs in a view-model.
 - **Form rules live in `forms.ts`.** A `checkX` function returns `{ ok: true, body }` or `{ ok: false, error }`.
-- **Live mode never shows sample numbers.** A call the API can't serve yet says "isn't available yet". Today that's
-  only `conversations()`.
+- **Live mode never shows sample numbers.** A call the API can't serve says so on screen.
 
 ## When the API changes
 

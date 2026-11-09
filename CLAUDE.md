@@ -79,7 +79,7 @@ README.md (start here), STATUS.md, apps/web/README.md, packages/api/README.md, b
 Keep them current when behaviour changes.
 
 ## Status
-Done (Oct 2026, every frame in the Figma file, compared against Figma screenshots): web portal (all 14 sidebar
+Done (Oct 2026, every frame in the Figma file, compared against Figma screenshots): web portal (all 13 sidebar
 items, 9 My Health tabs, Lab Results, Document Viewer, Create Account, public homepage at /welcome). Mock data drives everything. Sign-in (`apps/web/src/auth.ts`): Supabase Auth when `VITE_SUPABASE_URL` +
 `VITE_SUPABASE_PUBLISHABLE_KEY` are set (production, Vercel), else the API's local email/password accounts.
 Backend (Java) is complete through phase 8 and every screen except Messages reads live data (23 Oct 2026).

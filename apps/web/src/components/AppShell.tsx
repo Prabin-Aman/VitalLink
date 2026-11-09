@@ -20,7 +20,6 @@ const NAV: { label: string; icon: IconName; to: string }[] = [
   { label: "Appointments", icon: "appointments-18", to: "/appointments" },
   { label: "Health Library", icon: "library-18", to: "/library" },
   { label: "Family", icon: "family-18", to: "/family" },
-  { label: "Messages", icon: "messages-18", to: "/messages" },
   { label: "Notifications", icon: "notifications-18", to: "/notifications" },
   { label: "Emergency Profile", icon: "emergency-18", to: "/emergency" },
   { label: "Settings", icon: "settings-18", to: "/settings" },

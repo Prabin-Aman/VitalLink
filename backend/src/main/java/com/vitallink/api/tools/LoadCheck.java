@@ -17,7 +17,7 @@ import java.util.UUID;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
- * Checks the phase 10 performance targets against a running API (docs/09):
+ * Checks the performance targets against a running API (docs/09):
  *
  * <ul>
  *   <li>a 5,000-bucket ingest batch in under 2 s;

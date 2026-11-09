@@ -78,8 +78,8 @@ Supabase service key lives only in Render secrets.
 | SQL injection | ORM / bound parameters only; a lint rule bans `text()` with f-strings |
 | Scheduler endpoint abuse | Separate secret, `hmac.compare_digest`; not reachable with a user token |
 | Health data in logs | Request and response bodies never logged; logs hold request id, route, status, timing, user id |
-| Health data through push providers | No remote push in v1. Reminders are local notifications on the phone. If remote push is added, payloads are generic ("You have a new update") and details load in the app ([D9](10-open-decisions.md)) |
-| Emergency ID read by strangers | No public endpoint. The QR code holds the emergency text itself and is generated on the phone ([D2](10-open-decisions.md)) |
+| Health data through push providers | No remote push in v1. Reminders are local notifications on the phone. If remote push is added, payloads are generic ("You have a new update") and details load in the app  |
+| Emergency ID read by strangers | No public endpoint. The QR code holds the emergency text itself and is generated on the phone  |
 | Secrets in the repo | Render / GitHub secrets only; `.env` git-ignored; GitHub secret scanning on |
 | Interception | HTTPS only (Render and Supabase) |
 

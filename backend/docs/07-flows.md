@@ -1,7 +1,5 @@
 # 7. Key flows
 
-> **Note (Nov 2026):** the mobile app was removed and phone sync cancelled. Parts below that mention them are historical. See [the index](README.md).
-
 ## 7.1 Sign-in and first request
 
 ```mermaid
@@ -23,39 +21,7 @@ sequenceDiagram
 The app fires several requests at once on first launch. Insert-if-absent lets them all succeed.
 The API never sees a password.
 
-## 7.2 Device sync (phone only)
-
-```mermaid
-sequenceDiagram
-  participant Store as HealthKit / Health Connect
-  participant Phone
-  participant API
-  participant DB
-  Phone->>Store: changes since saved anchor
-  Store-->>Phone: new, late and deleted samples
-  Phone->>Store: merged statistics for the affected 5-min buckets
-  Phone->>API: POST /me/health/ingest {key, platform, devices, buckets}
-  API->>DB: SELECT ingest_batches by (user, key)
-  alt same key seen
-    API-->>Phone: 202 first result, replayed true (or 409 if hash differs)
-  else new
-    API->>API: validate metric, range, bucket alignment, not > 5 min in future
-    API->>DB: upsert buckets (new value wins), upsert devices, insert batch row
-    API-->>Phone: 202 inserted / updated / unchanged
-  end
-  Phone->>Phone: save anchor only after 202
-```
-
-- **Merged statistics, not raw samples.** iPhone + Watch both count the same steps. HealthKit
-  statistics queries and Health Connect aggregate reads merge sources, so nothing doubles.
-- **Upsert, don't skip.** Late watch data and user deletions change a bucket that was already sent.
-  The new value replaces the old one.
-- **Anchor after success.** A failed upload retries with the same key. More than 5,000 buckets → 413,
-  and the phone splits the batch.
-- **Workouts** sync through `POST /me/workouts` with `source` + `external_id`, so a re-sync updates
-  the workout instead of duplicating it.
-
-## 7.3 Sharing and a shared read
+## 7.2 Sharing and a shared read
 
 ```mermaid
 sequenceDiagram
@@ -86,7 +52,7 @@ sequenceDiagram
 
 Revocation applies on the viewer's next request, because nothing is cached between requests.
 
-## 7.4 Family view
+## 7.3 Family view
 
 ```mermaid
 sequenceDiagram
@@ -108,7 +74,7 @@ Each family card is a real read of someone's data, so it gets an access-log entr
 (`authorised` or `limited`). That's intended. Unlike the removed "access check" endpoint, each read
 here returns data.
 
-## 7.5 Document upload
+## 7.4 Document upload
 
 ```mermaid
 sequenceDiagram
@@ -128,7 +94,7 @@ sequenceDiagram
 
 Uploads still pending after 24 h are deleted by the nightly job. Downloads are signed for 5 minutes.
 
-## 7.6 Taking a dose
+## 7.5 Taking a dose
 
 ```mermaid
 sequenceDiagram
@@ -145,7 +111,7 @@ sequenceDiagram
 The phone re-schedules local notifications whenever `GET /me/medications` or
 `GET /me/appointments` returns something new. Reminders need no server push and work offline.
 
-## 7.7 Nightly job
+## 7.6 Nightly job
 
 ```mermaid
 sequenceDiagram

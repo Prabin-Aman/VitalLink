@@ -36,7 +36,7 @@ signs up as an ordinary consumer and sees exactly what a family member would.
 | Consumers only | No provider portal, no inbound clinical data feeds, no admin console. Content (library, catalogues) ships as seed files in the repo. |
 | No blood features | No blood-type, donor or blood-bank tables, enums or endpoints. Blood-group lab analytes are rejected. Blood-era Figma leftovers stay out of the schema. |
 | Everything free | Supabase free (500 MB DB, 1 GB storage, 5 GB egress), Render free (512 MB RAM, sleeps after 15 min), GitHub Actions. No paid push, SMS or email providers. |
-| Figma is the source of truth | Response shapes match `packages/api/src/types.ts`, which was built from the frames. A field with no frame needs a design decision first ([open decisions](10-open-decisions.md)). |
+| Figma is the source of truth | Response shapes match `packages/api/src/types.ts`, which was built from the frames. A field with no frame needs a design decision first (open decisions). |
 | Not HIPAA, but regulated | FTC Health Breach Notification Rule applies: any unauthorised disclosure is a breach, and users must be told within 60 days. |
 
 ## Functional requirements
@@ -67,8 +67,7 @@ FR-1 to FR-12 come from the reviewed design. FR-13 onward cover screens built si
 | FR-20 | Family view: people who shared with me, with a summary limited to granted scopes | sharing |
 | FR-21 | Health library: categories, featured and trending articles from seeded content | library |
 
-Not in scope: messaging with clinicians and dependent (child) profiles. Both depend on owner
-decisions D1 and D3 in [open decisions](10-open-decisions.md).
+Not in scope: messaging with clinicians and dependent (child) profiles.
 
 ## Non-functional requirements
 

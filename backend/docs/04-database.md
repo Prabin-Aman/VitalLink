@@ -3,12 +3,6 @@
 One Supabase Postgres database with **35 tables** in a private schema, `vitallink`. The design doc
 had 18. The new ones serve the screens built since then.
 
-**Build status (27 Oct 2026):** 34 tables exist, created by Flyway migrations V1–V16
-(`backend/src/main/resources/db/migration`). V1–V6 are the same SQL as the Python build's Alembic
-migrations 0001–0006. Two planned tables are not built: `goal_progress` (progress is computed on read)
-and `insights` (insights are computed when a screen asks). Section 4.10 lists where the build differs
-from the original plan.
-
 ## 4.0 As built (migrations V1–V16)
 
 ```mermaid
@@ -195,7 +189,7 @@ erDiagram
 | `audit_log` | Append-only. A trigger raises on `UPDATE` and `DELETE`, and `TRUNCATE` is revoked. No free text: reasons are an enum, so nothing personal needs scrubbing after an account is deleted. | `(subject_user_id, at DESC)`, `(actor_user_id, at DESC)` | Never deleted |
 
 Two things the Figma file has are left out on purpose. `grantee_kind` has no `hospital` (consumers
-only) and no `app` (no third parties). See [D4](10-open-decisions.md).
+only) and no `app` (no third parties).
 
 ## 4.4 Health
 
@@ -555,7 +549,7 @@ erDiagram
 | `emergency_contacts` | `phone` E.164; at most one primary (partial UK `(user_id) WHERE is_primary`); at most 5 per user (service) | `(user_id)`, partial UK | CASCADE |
 
 `organ_donor` (yes / no / undecided) stays because the Emergency frame shows it. It's an organ-donor
-preference, not a blood feature ([D13](10-open-decisions.md)).
+preference, not a blood feature .
 
 ## 4.7 Notifications and library
 
@@ -603,7 +597,7 @@ erDiagram
 |---|---|---|---|
 | `notifications` | UK `(user_id, dedupe_key)`, so a repeated event or a re-run nightly job never duplicates; deleted after 90 days | `(user_id, created_at DESC)`, `(user_id) WHERE read_at IS NULL` | CASCADE |
 | `article_categories` | Seeded; no blood category (the Figma "Cat / Blood" layer is a leftover) | PK | RESTRICT |
-| `articles` | `minutes > 0`; `trending_rank` unique when set. Content lives as Markdown in `src/main/resources/library/` and is loaded at startup; there is no admin UI. `reviewer` is set only for a real, consenting reviewer ([D14](10-open-decisions.md)). | UK slug; `(category_code)` | RESTRICT on category |
+| `articles` | `minutes > 0`; `trending_rank` unique when set. Content lives as Markdown in `src/main/resources/library/` and is loaded at startup; there is no admin UI. `reviewer` is set only for a real, consenting reviewer . | UK slug; `(category_code)` | RESTRICT on category |
 | `library_features` | One featured article per placement | PK | CASCADE from article |
 
 The library is the same for everyone and records **no per-user reads**. "Trending" is editorial
@@ -667,8 +661,8 @@ creating a new type, so values are added only when a screen needs them.
 | Exercise PRs | Epley one-rep max | Best weight lifted (and reps) | Matches the Figma "92.5 kg × 5" record format |
 | `consents.created_at` | Not listed | Present | The decision explains a refusal using the newest grant |
 | Ids | UUIDv7 everywhere | UUIDv7, except seeded foods (uuid5 of the name) | Stable ids across fresh databases |
-| `goal_progress` | Upserted nightly and on write | Not built: progress is computed on every read | Always current; the data is small enough |
-| `insights` | Nightly correlations stored with evidence | Not built: My Health computes a few insights on read (deep sleep vs late phone use, resting HR vs 90 days, move streak, short sleep) | No stale insights; no statistics library needed |
+| `goal_progress` | Upserted nightly and on write | Progress is computed on every read | Always current; the data is small enough |
+| `insights` | Nightly correlations stored with evidence | My Health computes a few insights on read (deep sleep vs late phone use, resting HR vs 90 days, move streak, short sleep) | No stale insights; no statistics library needed |
 | `goals.metric_id` | FK to `metrics` | `metric` text, checked against the API's goal metric list | Goals also track nutrition totals and workouts, which aren't health metrics |
 | `goals.lifecycle` | active, paused, achieved, abandoned | Same, plus `baseline` for target goals | Progress needs a starting point |
 | `lab_results.ref_low/ref_high` | Nullable | Required, `ref_low < ref_high` | The screens always show a range |

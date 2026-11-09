@@ -1,6 +1,6 @@
 # 12. Test report
 
-Run on 27 Oct 2026 (after the phase 10 review, docs/13) on Windows 11, Java 25, Postgres 16 (Docker in WSL). CI runs the same suites on
+Run on 27 Oct 2026 on Windows 11, Java 25, Postgres 16 (Docker in WSL). CI runs the same suites on
 Ubuntu with a Postgres service container on every push that touches `backend/`.
 
 ## 12.1 Summary
@@ -43,7 +43,7 @@ through MockMvc, against a real Postgres. Each test makes its own accounts, so t
 | `RateLimiterTest` | 2 | With a fixed clock: the call over the limit is refused with 429 `rate_limited` and the seconds to the next window, while other calls and other users keep their own counts; a new hour starts a fresh count |
 | `CorsTest` | 4 | A preflight from each listed origin (comma-separated `CORS_ORIGIN`) is allowed; any other origin gets 403 and no allow header; responses expose `Content-Disposition`, `Retry-After` and `X-Request-ID` to the apps |
 | `OpenApiTest` | 2 | The OpenAPI document uses the names the API sends (no camelCase anywhere), and the caller and consent gate are not documented as parameters while shared routes declare `user_id` |
-| `ReviewFixesTest` | 7 | The phase 10 fixes (docs/13): replacing a file keeps the old one until the new one is confirmed; an abandoned replacement is dropped and the original kept; the upload cleanup never undoes a confirm committing meanwhile (two connections); deleted files stay queued until the nightly job deletes them; long sign-up names are cut to 60; a lab panel can't point at another user's record; the API's limits hold in the schema |
+| `ReviewFixesTest` | 7 | Fixes from the security review: replacing a file keeps the old one until the new one is confirmed; an abandoned replacement is dropped and the original kept; the upload cleanup never undoes a confirm committing meanwhile (two connections); deleted files stay queued until the nightly job deletes them; long sign-up names are cut to 60; a lab panel can't point at another user's record; the API's limits hold in the schema |
 | `StressFixesTest` | 5 | What the 1 Nov stress test broke (12.5): 12 parallel plans leave one active; 40 shares at once all succeed (each audit entry needs a second connection, which used to exhaust the pool); the same share 10 times at once is one 201 and nine 409s; a NUL character in text is 422, not 500; 12 parallel first requests for a new account all succeed |
 | `SecondFactorTest` | 2 | A password-only token is refused with `mfa_required` when the account has a verified factor; a token with the code, or an account without a factor, passes |
 | `DoctorSearchTest` | 5 | Reading NPI Registry answers: the practice address and primary specialty, names out of capitals; only people practising in the city; trainees left out; everyday words mapped to registry terms; Texas only |
@@ -104,7 +104,7 @@ so "today at 9:00" is never in the future, whatever time the suite runs.
   name (Records shares, Emergency contacts, Goals › Recently achieved); Lab Results with no labs said
   "Couldn't load this page" and now shows an empty state with Add Results.
 
-## 12.6 Not covered yet
+## 12.6 Test scope
 
 - Real Supabase Auth and Storage (no project yet): the clients are tested against a fake; check the
   first deploy with the system test pointed at a staging project.

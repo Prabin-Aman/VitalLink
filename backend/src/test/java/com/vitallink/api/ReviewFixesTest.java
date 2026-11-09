@@ -17,7 +17,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 
-/** Regression tests for the phase 10 review's findings (docs/13-review.md); each failed before its fix. */
+/** Regression tests for the security review's findings; each failed before its fix. */
 class ReviewFixesTest extends ApiTest {
 
     static final byte[] OLD = "%PDF-1.7\n% the original report\n".getBytes(StandardCharsets.US_ASCII);
