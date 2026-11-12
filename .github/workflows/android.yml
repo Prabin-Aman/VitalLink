@@ -31,7 +31,7 @@ jobs:
         run: |
           set -o pipefail
           if ! gradle -p android testDebugUnitTest assembleDebug --console=plain 2>&1 | tee build.log; then
-            grep -E '^e: |error:|FAILED|What went wrong|Could not|> ' build.log | head -40 | while IFS= read -r line; do
+            grep -E -A4 '^e: |error:|FAILED|What went wrong|Could not|Dependency |requires ' build.log | grep -v '^--' | head -45 | while IFS= read -r line; do
               echo "::error title=android build::${line//%/%25}"
             done
             exit 1

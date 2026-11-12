@@ -5,13 +5,13 @@ plugins {
 
 android {
     namespace = "com.vitallink.helper"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.vitallink.helper"
         // Health Connect needs Android 8 (API 26) or later; on Android 14+ it's part of the system.
         minSdk = 26
-        targetSdk = 35
+        targetSdk = 36
         versionCode = 1
         versionName = "1.0"
         // The production API; the app lets the person change it (e.g. http://10.0.2.2:8000 on the emulator).
