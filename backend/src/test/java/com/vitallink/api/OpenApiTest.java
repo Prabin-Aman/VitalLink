@@ -31,7 +31,7 @@ class OpenApiTest extends ApiTest {
     void tokenDerivedArgumentsAreNotParameters() {
         JsonNode doc = get(null, "/openapi.json").body();
         assertThat(doc.at("/components/schemas").propertyNames())
-                .doesNotContain("CurrentUser", "ConsentGate", "Claims");
+                .doesNotContain("CurrentUser", "ConsentGate", "Claims", "PhoneCaller");
         assertThat(doc.at("/paths/~1v1~1me/get/parameters").isMissingNode()).isTrue();
         assertThat(doc.at("/paths/~1v1~1users~1{user_id}~1health~1dashboard/get/parameters/0/name")
                         .asString())

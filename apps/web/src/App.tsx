@@ -8,6 +8,7 @@ import { Activity } from "./screens/health/Activity";
 import { Appointments } from "./screens/care/Appointments";
 import { CreateAccount } from "./screens/public/CreateAccount";
 import { Devices } from "./screens/care/Devices";
+import { GoogleCallback } from "./screens/care/GoogleCallback";
 import { DocumentViewer } from "./screens/records/DocumentViewer";
 import { Emergency } from "./screens/care/Emergency";
 import { Family } from "./screens/sharing/Family";
@@ -101,6 +102,7 @@ export function App() {
         <Route path="notifications" element={<Notifications />} />
         <Route path="emergency" element={<Emergency />} />
         <Route path="devices" element={<SettingsFrame current="Connected Devices"><Devices /></SettingsFrame>} />
+        <Route path="devices/google/callback" element={<SettingsFrame current="Connected Devices"><GoogleCallback /></SettingsFrame>} />
         <Route path="privacy" element={<SettingsFrame current="Privacy"><Privacy /></SettingsFrame>} />
         <Route path="settings" element={<Settings />} />
         <Route path="*" element={<NotBuilt />} />

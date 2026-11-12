@@ -95,7 +95,7 @@ git --version && node -v && java -version && docker compose version
 ### 2. Get the code
 
 ```bash
-git clone https://github.com/Prabin-Aman/VitalLink.git
+git clone https://github.com/zeutonx/VitalLink.git
 cd VitalLink
 npm install
 ```

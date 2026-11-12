@@ -41,6 +41,7 @@ public class WebConfig implements WebMvcConfigurer {
     private final ConsentGates gates;
     private final RateLimiter limits;
     private final IdentityAdmin identities;
+    private final com.vitallink.api.health.PhoneLinks phones;
 
     public WebConfig(
             Settings settings,
@@ -48,8 +49,10 @@ public class WebConfig implements WebMvcConfigurer {
             AccountService accounts,
             ConsentGates gates,
             RateLimiter limits,
-            IdentityAdmin identities) {
+            IdentityAdmin identities,
+            com.vitallink.api.health.PhoneLinks phones) {
         this.identities = identities;
+        this.phones = phones;
         this.limits = limits;
         this.gates = gates;
         this.settings = settings;
@@ -69,6 +72,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addArgumentResolvers(List<HandlerMethodArgumentResolver> resolvers) {
         resolvers.add(new CallerResolver());
+        resolvers.add(new PhoneResolver());
         resolvers.add(new GateResolver());
     }
 
@@ -108,6 +112,23 @@ public class WebConfig implements WebMvcConfigurer {
         public Object resolveArgument(
                 MethodParameter p, ModelAndViewContainer m, NativeWebRequest web, WebDataBinderFactory b) {
             return caller(web.getNativeRequest(HttpServletRequest.class));
+        }
+    }
+
+    /** A linked Android phone ({@code Authorization: Phone <token>}): upload routes only, counted as ingest. */
+    private final class PhoneResolver implements HandlerMethodArgumentResolver {
+        @Override
+        public boolean supportsParameter(MethodParameter p) {
+            return p.getParameterType() == com.vitallink.api.health.PhoneCaller.class;
+        }
+
+        @Override
+        public Object resolveArgument(
+                MethodParameter p, ModelAndViewContainer m, NativeWebRequest web, WebDataBinderFactory b) {
+            HttpServletRequest request = web.getNativeRequest(HttpServletRequest.class);
+            var phone = phones.caller(request.getHeader("Authorization"));
+            limits.check(phone.me().claims().subject(), request.getRequestURI().equals("/v1/phone/ingest"));
+            return phone;
         }
     }
 

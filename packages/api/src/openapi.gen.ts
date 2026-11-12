@@ -54,6 +54,40 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/phone/link": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The Android app exchanges a code for an upload token (no account token). 400 invalid_code. */
+        post: operations["link"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/phone/ingest": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Health Connect readings from the Android app, as 5-minute buckets (same body as /me/health/ingest). */
+        post: operations["ingest"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/workouts": {
         parameters: {
             query?: never;
@@ -188,6 +222,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/phones/code": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** A one-time code (10 minutes) to type into the Android app. A new code replaces the last. */
+        post: operations["code"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/onboarding/complete": {
         parameters: {
             query?: never;
@@ -316,7 +367,7 @@ export interface paths {
         get?: never;
         put?: never;
         /** Batch of 5-minute aggregates from HealthKit or Health Connect (≤ 5,000), upserted. */
-        post: operations["ingest"];
+        post: operations["ingest_1"];
         delete?: never;
         options?: never;
         head?: never;
@@ -383,6 +434,57 @@ export interface paths {
         put?: never;
         /** Up to 5 contacts; the first one, or one marked primary, becomes the primary contact. */
         post: operations["addContact"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/connections/google-health/sync": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Pull readings since the last sync (with a day of overlap). The nightly job does this too. */
+        post: operations["sync"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/connections/google-health/start": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The Google consent page to open (read-only activity, body measurements and sleep). */
+        post: operations["start"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/connections/google-health/finish": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The code and state Google returned; stores the grant and syncs the last 30 days. */
+        post: operations["finish"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1003,6 +1105,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/phone/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Whose account this phone token uploads to (Authorization: Phone <token>). */
+        get: operations["status"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me": {
         parameters: {
             query?: never;
@@ -1079,7 +1198,7 @@ export interface paths {
             cookie?: never;
         };
         /** Phone sync status: last upload per platform and the 10 most recent uploads (30 days). */
-        get: operations["sync"];
+        get: operations["sync_1"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1155,6 +1274,22 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/phones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["list_3"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/nutrition/day": {
         parameters: {
             query?: never;
@@ -1180,7 +1315,7 @@ export interface paths {
             cookie?: never;
         };
         /** The feed, newest first. */
-        get: operations["list_3"];
+        get: operations["list_4"];
         put?: never;
         post?: never;
         delete?: never;
@@ -1441,6 +1576,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/connections": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Device clouds the person can connect, and whether each is connected. */
+        get: operations["list_5"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/access-log": {
         parameters: {
             query?: never;
@@ -1639,6 +1791,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/me/phones/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Unlink a phone: its token stops working. Readings it uploaded stay. */
+        delete: operations["remove"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/meals/{id}": {
         parameters: {
             query?: never;
@@ -1681,7 +1850,25 @@ export interface paths {
         get?: never;
         put?: never;
         post?: never;
+        /** Forget a device. Google Health: also stops syncing and revokes the grant; an Android phone: also voids its upload token. */
         delete: operations["forgetDevice"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/connections/google-health": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Stop syncing and revoke the grant. Readings already stored are kept. */
+        delete: operations["disconnect"];
         options?: never;
         head?: never;
         patch?: never;
@@ -1806,6 +1993,50 @@ export interface components {
             decimals?: number;
             /** @enum {string} */
             interpretation?: "normal" | "borderline" | "abnormal";
+        };
+        PhoneLinkIn: {
+            code: string;
+            device_name?: string;
+        };
+        PhoneLinkOut: {
+            token?: string;
+            email?: string;
+        };
+        BucketIn: {
+            metric: string;
+            /** Format: date-time */
+            start: string;
+            /** Format: double */
+            value: number;
+            /** Format: int32 */
+            samples?: number;
+        };
+        DeviceIn: {
+            external_id: string;
+            name: string;
+            /** @enum {string} */
+            kind: "phone" | "wearable" | "home_monitor" | "continuous";
+            metrics?: string[];
+        };
+        IngestIn: {
+            /** Format: uuid */
+            idempotency_key: string;
+            platform: string;
+            devices?: components["schemas"]["DeviceIn"][];
+            buckets: components["schemas"]["BucketIn"][];
+        };
+        IngestOut: {
+            /** Format: int64 */
+            batch_id?: number;
+            /** Format: int32 */
+            submitted?: number;
+            /** Format: int32 */
+            inserted?: number;
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            unchanged?: number;
+            replayed?: boolean;
         };
         SetIn: {
             exercise: string;
@@ -2078,6 +2309,11 @@ export interface components {
             /** Format: int32 */
             fat_g?: number;
         };
+        PhoneCodeOut: {
+            code?: string;
+            /** Format: date-time */
+            expires_at?: string;
+        };
         ReadIn: {
             ids?: string[];
             all?: boolean;
@@ -2182,42 +2418,6 @@ export interface components {
             at?: string;
             assessment?: string;
         };
-        BucketIn: {
-            metric: string;
-            /** Format: date-time */
-            start: string;
-            /** Format: double */
-            value: number;
-            /** Format: int32 */
-            samples?: number;
-        };
-        DeviceIn: {
-            external_id: string;
-            name: string;
-            /** @enum {string} */
-            kind: "phone" | "wearable" | "home_monitor" | "continuous";
-            metrics?: string[];
-        };
-        IngestIn: {
-            /** Format: uuid */
-            idempotency_key: string;
-            platform: string;
-            devices?: components["schemas"]["DeviceIn"][];
-            buckets: components["schemas"]["BucketIn"][];
-        };
-        IngestOut: {
-            /** Format: int64 */
-            batch_id?: number;
-            /** Format: int32 */
-            submitted?: number;
-            /** Format: int32 */
-            inserted?: number;
-            /** Format: int32 */
-            updated?: number;
-            /** Format: int32 */
-            unchanged?: number;
-            replayed?: boolean;
-        };
         ImportOut: {
             format?: string;
             /** Format: int32 */
@@ -2309,6 +2509,29 @@ export interface components {
             relation?: string;
             phone?: string;
             primary?: boolean;
+        };
+        SyncOut: {
+            service?: string;
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+            /** Format: int32 */
+            readings?: number;
+            /** Format: int32 */
+            inserted?: number;
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            unchanged?: number;
+            problems?: string[];
+        };
+        ConnectStartOut: {
+            url?: string;
+        };
+        ConnectFinishIn: {
+            code: string;
+            state: string;
         };
         ConditionIn: {
             label: string;
@@ -2738,6 +2961,9 @@ export interface components {
             /** @enum {string} */
             range?: "normal" | "borderline" | "high" | "low" | "no-data";
         };
+        PhoneStatusOut: {
+            email?: string;
+        };
         SyncPlatform: {
             platform?: string;
             /** Format: date-time */
@@ -2801,6 +3027,15 @@ export interface components {
             };
             recent?: components["schemas"]["HealthRecord"][];
             shares?: components["schemas"]["RecordShare"][];
+        };
+        PhoneOut: {
+            /** Format: uuid */
+            id?: string;
+            name?: string;
+            /** Format: date-time */
+            linked_at?: string;
+            /** Format: date-time */
+            last_upload_at?: string;
         };
         Notification: {
             /** Format: uuid */
@@ -2969,6 +3204,19 @@ export interface components {
             status?: string;
             data?: string[];
             short_data?: string[];
+        };
+        ConnectionOut: {
+            service?: string;
+            name?: string;
+            available?: boolean;
+            connected?: boolean;
+            /** Format: date-time */
+            connected_at?: string;
+            /** Format: date-time */
+            last_sync_at?: string;
+            /** Format: date-time */
+            synced_through?: string;
+            last_error?: string;
         };
         AccessLogEntry: {
             /** Format: date-time */
@@ -3191,6 +3439,54 @@ export interface operations {
                     [name: string]: unknown;
                 };
                 content?: never;
+            };
+        };
+    };
+    link: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PhoneLinkIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneLinkOut"];
+                };
+            };
+        };
+    };
+    ingest: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["IngestIn"];
+            };
+        };
+        responses: {
+            /** @description Accepted */
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["IngestOut"];
+                };
             };
         };
     };
@@ -3492,6 +3788,26 @@ export interface operations {
             };
         };
     };
+    code: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneCodeOut"];
+                };
+            };
+        };
+    };
     completeOnboarding: {
         parameters: {
             query?: never;
@@ -3718,7 +4034,7 @@ export interface operations {
             };
         };
     };
-    ingest: {
+    ingest_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -3876,6 +4192,70 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Contact"];
+                };
+            };
+        };
+    };
+    sync: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncOut"];
+                };
+            };
+        };
+    };
+    start: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectStartOut"];
+                };
+            };
+        };
+    };
+    finish: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConnectFinishIn"];
+            };
+        };
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SyncOut"];
                 };
             };
         };
@@ -5157,6 +5537,26 @@ export interface operations {
             };
         };
     };
+    status: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneStatusOut"];
+                };
+            };
+        };
+    };
     me: {
         parameters: {
             query?: never;
@@ -5277,7 +5677,7 @@ export interface operations {
             };
         };
     };
-    sync: {
+    sync_1: {
         parameters: {
             query?: never;
             header?: never;
@@ -5379,6 +5779,26 @@ export interface operations {
             };
         };
     };
+    list_3: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneOut"][];
+                };
+            };
+        };
+    };
     day: {
         parameters: {
             query?: {
@@ -5401,7 +5821,7 @@ export interface operations {
             };
         };
     };
-    list_3: {
+    list_4: {
         parameters: {
             query?: {
                 unread?: boolean;
@@ -5742,6 +6162,26 @@ export interface operations {
             };
         };
     };
+    list_5: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ConnectionOut"][];
+                };
+            };
+        };
+    };
     accessLog: {
         parameters: {
             query?: {
@@ -5999,6 +6439,26 @@ export interface operations {
             };
         };
     };
+    remove: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
     deleteMeal: {
         parameters: {
             query?: never;
@@ -6046,6 +6506,24 @@ export interface operations {
             path: {
                 id: string;
             };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    disconnect: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
             cookie?: never;
         };
         requestBody?: never;

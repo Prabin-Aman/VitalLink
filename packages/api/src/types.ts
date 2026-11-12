@@ -455,6 +455,45 @@ export interface ImportResult {
   to: ISODate | null;
 }
 
+/** GET /me/connections: a device cloud (Google Health) and whether it's connected. */
+export interface Connection {
+  service: "google_health";
+  name: string;
+  /** False when the server has no Google Health client configured. */
+  available: boolean;
+  connected: boolean;
+  connected_at: ISODate | null;
+  last_sync_at: ISODate | null;
+  synced_through: ISODate | null;
+  last_error: string | null;
+}
+
+/** POST /me/connections/google-health/finish and …/sync: one pull from the device cloud. */
+export interface ConnectionSync {
+  service: string;
+  from: ISODate;
+  to: ISODate;
+  readings: number;
+  inserted: number;
+  updated: number;
+  unchanged: number;
+  problems: string[];
+}
+
+/** POST /me/phones/code: type it into the Android app (VitalLink Sync) within 10 minutes. */
+export interface PhoneCode {
+  code: string;
+  expires_at: ISODate;
+}
+
+/** GET /me/phones: Android phones linked through Health Connect. */
+export interface Phone {
+  id: string;
+  name: string;
+  linked_at: ISODate;
+  last_upload_at: ISODate | null;
+}
+
 /** POST /me/health/ingest response. */
 export interface IngestResult {
   batch_id: number;

@@ -3,7 +3,8 @@
 Group capstone (The University of Texas at Arlington, Group 2: Amrit Gautam, Dinesh Chaudhary, Shreenibash Shrestha,
 Sudip Ghorasaini; owner Abhinaash). Consumer health & fitness web portal for the Dallas area. The Expo mobile app
 was deleted at the owner's request (Nov 2026; in git history).
-Owner prefers concise, direct, actionable answers.
+Owner prefers concise, direct, actionable answers. Git: `origin` = https://github.com/zeutonx/VitalLink (the owner's
+renamed account, 12 Nov 2026); `prabin` = https://github.com/Prabin-Aman/VitalLink.
 
 ## Hard constraints (never break)
 - **Consumers only.** No hospital/clinic/provider interface of any kind.
@@ -181,6 +182,19 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   directory lookup. Two-step and Change email were checked against a fake Supabase in the browser
   (`web-supabase-mock` launch config), not a real project. Google sign-ups take their name from `given_name`/
   `family_name` or `full_name`. The Apple button is gone.
+- Google Health (12 Nov 2026, owner chose it over Withings/Polar/Oura): Fitbit and Pixel Watch through the Google
+  Health API (the Fitbit Web API shut down 2 Nov 2026). `health/GoogleHealth`, `ConnectionsController`
+  (`/me/connections/google-health/start|finish|sync`, DELETE), V21 `device_connections` (refresh token sealed by
+  `core/security/Sealer`, CONNECTION_KEY; local/test derive from DEV_JWT_SECRET), source `google_health`, nightly
+  sync. Web: Add a device › "Fitbit or Pixel Watch" (no Figma frame), callback page `/devices/google/callback`.
+  Needs GOOGLE_HEALTH_CLIENT_SECRET + CONNECTION_KEY on Render, the Google Health API enabled and the callback URL
+  added to the OAuth client. Checked against a fake Google in `GoogleHealthTest`, not the real API.
+- Android helper (12 Nov 2026, owner's request): `android/` "VitalLink Sync", Kotlin, Health Connect → 5-minute
+  buckets (`Buckets.kt` mirrors the server's import rules and catalogue ranges) → `POST /v1/phone/ingest`. Linking:
+  Connected Devices › Add › Android phone shows a code (`POST /me/phones/code`, 10 min, one use) → the app calls
+  `POST /v1/phone/link` and gets an upload-only token (`Authorization: Phone <token>`, `PhoneCaller`, V22
+  `phone_links`, hashes only). The phone's device card is named by the link id, so Disconnect unlinks it. No Android
+  SDK on this machine: `.github/workflows/android.yml` runs the unit tests and builds the debug APK (artifact).
 - Apple Health (Nov 2026): HealthKit has no web API and no native app exists now, so data arrives as the Health
   app's export.zip through Connected Devices › Add › Import (`POST /me/health/import`, exempt from the 2 MB body limit,
   up to 300 MB, streamed; JDK entity caps are lifted because every record's `device` attribute is full of `&lt;` and

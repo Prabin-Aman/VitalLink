@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">VitalLink Sync</string>
+    <string name="privacy">VitalLink Sync reads the health data you allow in Health Connect (activity, heart, blood pressure, blood glucose, oxygen, temperature, body measurements and sleep) and sends it to your VitalLink account so you can see it on the VitalLink website.\n\nIt only reads; it never changes or deletes anything in Health Connect. Readings go only to the VitalLink server you linked, over an encrypted connection, as 5-minute totals and averages. Nothing is sold or used for ads.\n\nTo stop, remove the phone in VitalLink (Settings, Connected Devices) or turn off the permissions in Health Connect. Readings already sent stay in your account until you delete them or the account.</string>
+</resources>

@@ -39,6 +39,12 @@ vitallink:
   web-url: ${WEB_URL:http://localhost:5173}
   mail-from: ${MAIL_FROM:VitalLink <no-reply@vitallink.local>}
   google-client-id: ${GOOGLE_CLIENT_ID:}
+  # Google Health (Fitbit, Pixel Watch): the same OAuth client as sign-in, plus its secret. CONNECTION_KEY
+  # (32 bytes, base64) seals the stored refresh tokens; local/test derive one from DEV_JWT_SECRET.
+  google-health:
+    client-id: ${GOOGLE_HEALTH_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
+    client-secret: ${GOOGLE_HEALTH_CLIENT_SECRET:}
+  connection-key: ${CONNECTION_KEY:}
   cors-origin: ${CORS_ORIGIN:http://localhost:5173}
   supabase-url: ${SUPABASE_URL:}
   jwt-audience: authenticated

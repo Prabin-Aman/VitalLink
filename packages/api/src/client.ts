@@ -5,6 +5,10 @@ import type {
   HealthRecord,
   MedicationDetail,
   ImportResult,
+  Connection,
+  ConnectionSync,
+  Phone,
+  PhoneCode,
   IngestResult,
   AccountProfile,
   AppNotification,
@@ -183,6 +187,22 @@ export class VitalLinkClient {
   addReading = (metric: string, value: number, at: string) => this.send("POST", "/me/health/manual", { metric, value, at });
   /** POST /me/health/import: an Apple Health export or a CSV, readings from the last `days`. Null in mock mode. */
   importHealthFile = (file: Blob, days: number) => this.send<ImportResult>("POST", `/me/health/import?days=${days}`, file);
+  /** Device clouds (Google Health). Mock mode: not set up, so the option says so. */
+  connections = () =>
+    this.get<Connection[]>("/me/connections", () => [
+      { service: "google_health", name: "Fitbit (Google Health)", available: false, connected: false, connected_at: null, last_sync_at: null, synced_through: null, last_error: null },
+    ]);
+  /** The Google consent page to open; null in mock mode. */
+  startGoogleHealth = () => this.send<{ url: string }>("POST", "/me/connections/google-health/start", {});
+  /** What Google sent back to /devices/google/callback; stores the grant and syncs 30 days. */
+  finishGoogleHealth = (code: string, state: string) => this.send<ConnectionSync>("POST", "/me/connections/google-health/finish", { code, state });
+  syncGoogleHealth = () => this.send<ConnectionSync>("POST", "/me/connections/google-health/sync", {});
+  disconnectGoogleHealth = () => this.send("DELETE", "/me/connections/google-health");
+  /** Android phones linked with the VitalLink Sync app (Health Connect); none in mock mode. */
+  phones = () => this.get<Phone[]>("/me/phones", () => []);
+  /** A one-time code for the app; null in mock mode. */
+  phoneCode = () => this.send<PhoneCode>("POST", "/me/phones/code", {});
+  removePhone = (id: string) => this.send("DELETE", `/me/phones/${id}`);
   /** POST /me/health/ingest: 5-minute buckets (a Bluetooth device paired in the browser). */
   ingest = (body: object) => this.send<IngestResult>("POST", "/me/health/ingest", body);
   /** Doctors from the public NPI Registry; mock mode filters a short sample. */

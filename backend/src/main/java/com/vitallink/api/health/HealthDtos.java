@@ -164,4 +164,51 @@ public final class HealthDtos {
             String status,
             List<String> data,
             List<String> shortData) {}
+
+    /** A device cloud the person can connect (Google Health). `available` is false when the server isn't set up. */
+    public record ConnectionOut(
+            String service,
+            String name,
+            boolean available,
+            boolean connected,
+            OffsetDateTime connectedAt,
+            OffsetDateTime lastSyncAt,
+            OffsetDateTime syncedThrough,
+            String lastError) {}
+
+    /** POST …/start: the consent page to open. */
+    public record ConnectStartOut(String url) {}
+
+    /** POST …/finish: what Google sent back to the web portal's callback page. */
+    public record ConnectFinishIn(
+            @NotBlank @Size(max = 2048) String code,
+            @NotBlank @Size(max = 1024) String state) {}
+
+    /** One sync: the period pulled, buckets stored, and data types that couldn't be read. */
+    public record SyncOut(
+            String service,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            int readings,
+            int inserted,
+            int updated,
+            int unchanged,
+            List<String> problems) {}
+
+    /** POST /me/phones/code: type this into the Android app within 10 minutes. */
+    public record PhoneCodeOut(String code, OffsetDateTime expiresAt) {}
+
+    /** POST /v1/phone/link (the Android app, no account token). */
+    public record PhoneLinkIn(
+            @NotBlank @Size(max = 20) String code,
+            @Size(max = 80) String deviceName) {}
+
+    /** The app keeps `token`; it can only upload readings. `email` shows whose account the phone sends to. */
+    public record PhoneLinkOut(String token, String email) {}
+
+    /** A linked phone, for Connected Devices. */
+    public record PhoneOut(UUID id, String name, OffsetDateTime linkedAt, OffsetDateTime lastUploadAt) {}
+
+    /** GET /v1/phone/status: the account a phone token sends to. */
+    public record PhoneStatusOut(String email) {}
 }

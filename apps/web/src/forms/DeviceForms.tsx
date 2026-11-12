@@ -1,6 +1,8 @@
-// Connected Devices › Add (proposed, Figma 213:1667) and its two ways in: Import health data (213:1701) and
-// Pair a Bluetooth device (213:1754).
+// Connected Devices › Add (proposed, Figma 213:1667) and its ways in: Import health data (213:1701), Pair a
+// Bluetooth device (213:1754) and Google Health (Fitbit, Pixel Watch; no Figma frame, built from the same rows).
+// Google sends the browser back to /devices/google/callback (screens/care/GoogleCallback.tsx).
 import {
+  ago,
   BLE_KINDS,
   bleIngest,
   bleProfile,
@@ -16,17 +18,72 @@ import {
   timeOfDay,
   type BleKind,
   type BleReading,
+  type Connection,
+  type ConnectionSync,
   type ImportResult,
+  type Phone,
+  type PhoneCode,
 } from "@vitallink/api";
 import { useEffect, useRef, useState } from "react";
 import { Choices, DropZone, FormDialog, FormProblem, ItemList, KeyValueList, must, Note, useZone } from "../components/Form";
+import { Txt } from "../components/kit";
 import { Button } from "../components/ui";
-import { useApi } from "../data";
+import { notifyChanged, useApi } from "../data";
 import { saveFile } from "../download";
 
-export type DeviceDialog = "add" | "import" | "bluetooth";
+export type DeviceDialog = "add" | "import" | "bluetooth" | "android";
 
 export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPick: (d: DeviceDialog) => void }) {
+  const api = useApi();
+  const [google, setGoogle] = useState<Connection | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [result, setResult] = useState<string | null>(null);
+  useEffect(() => {
+    api.connections().then((cs) => setGoogle(cs.find((c) => c.service === "google_health") ?? null), () => setGoogle(null));
+  }, [api]);
+
+  const connect = async () => {
+    setBusy(true);
+    try {
+      const r = await api.startGoogleHealth();
+      if (r) window.location.assign(r.url);
+      else setResult("Connecting Google Health needs the live server; sample data can't connect.");
+    } catch (e) {
+      setResult((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+  const sync = async () => {
+    setBusy(true);
+    try {
+      const r = await api.syncGoogleHealth();
+      if (r) {
+        setResult(syncSummary(r));
+        notifyChanged();
+      }
+    } catch (e) {
+      setResult((e as Error).message);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const googleCaption = !google
+    ? "Checking…"
+    : !google.available
+      ? "Not set up on this server yet"
+      : google.last_error
+        ? google.last_error
+        : google.connected && google.last_sync_at
+          ? `Connected · last synced ${ago(google.last_sync_at, api.now())} · syncs every night`
+          : "Steps, heart rate, sleep and weight, through your Google account";
+  const googleAction = google?.available
+    ? google.connected && !google.last_error
+      ? { onRemove: busy ? undefined : sync, removeLabel: "Sync now" }
+      : { onRemove: busy ? undefined : connect, removeLabel: google.connected ? "Connect again" : "Connect" }
+    : {};
+
   return (
     <FormDialog overline="Connected Devices › Add" title="Add a device" subtitle="Choose how its readings reach VitalLink." onClose={onClose}>
       <ItemList
@@ -34,11 +91,75 @@ export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPi
         empty=""
         add={null}
         items={[
+          { key: "google", title: "Fitbit or Pixel Watch", caption: googleCaption, ...googleAction },
+          { key: "android", title: "Android phone", caption: "Health Connect: Samsung Health, Google Fit and other Android apps, through the VitalLink Sync app", onRemove: () => onPick("android"), removeLabel: "Link phone" },
           { key: "import", title: "Apple Health or a file", caption: "An Apple Health export (export.zip) or a CSV of readings", onRemove: () => onPick("import"), removeLabel: "Import file" },
           { key: "bluetooth", title: "Bluetooth", caption: "Strap, cuff, scale, oximeter or glucose meter · Chrome or Edge", onRemove: () => onPick("bluetooth"), removeLabel: "Pair device" },
         ]}
       />
-      <Note>VitalLink only reads from your devices; it never changes their settings.</Note>
+      {result && <Note>{result}</Note>}
+      <Note>VitalLink only reads from your devices; it never changes their settings. Google Health access is read-only, and you can stop it any time with Disconnect.</Note>
+    </FormDialog>
+  );
+}
+
+/** "Added 1,234 readings. Not read: …" for a Google Health sync. */
+export function syncSummary(r: ConnectionSync): string {
+  const added = r.inserted + r.updated;
+  const head = added === 0 ? "Up to date: no new readings" : `Added ${added.toLocaleString("en-US")} readings`;
+  return r.problems.length ? `${head}. Not read: ${r.problems.slice(0, 3).join("; ")}.` : `${head}.`;
+}
+
+// ---------------------------------------------------------------- Android phone (Health Connect)
+
+/** Shows a one-time code for the VitalLink Sync app and the phones already linked (no Figma frame). */
+export function AndroidPhoneDialog({ onClose }: { onClose: () => void }) {
+  const api = useApi();
+  const tz = useZone();
+  const [code, setCode] = useState<PhoneCode | null>(null);
+  const [phones, setPhones] = useState<Phone[]>([]);
+  const [problem, setProblem] = useState<string | null>(null);
+  const reload = () => api.phones().then(setPhones, () => setPhones([]));
+  useEffect(() => {
+    reload();
+  }, [api]);
+  const newCode = () => {
+    setProblem(null);
+    api.phoneCode().then(
+      (c) => (c ? setCode(c) : setProblem("Linking a phone needs the live server; sample data can't link.")),
+      (e: Error) => setProblem(e.message),
+    );
+  };
+  const remove = (p: Phone) => {
+    if (!confirm(`Remove ${p.name}? It stops sending readings; readings already sent stay.`)) return;
+    api.removePhone(p.id).then(() => {
+      reload();
+      notifyChanged();
+    }, (e: Error) => setProblem(e.message));
+  };
+  return (
+    <FormDialog overline="Connected Devices › Android phone" title="Link an Android phone" subtitle="Send Health Connect data from your phone with the VitalLink Sync app." onClose={onClose}>
+      <Note>
+        1. Install VitalLink Sync on the phone (the APK from the project's Android build). 2. Open it and type the code below. 3. Tap Allow access and choose what to share. It then syncs about every 3 hours.
+      </Note>
+      {code && tz ? (
+        <KeyValueList label="Link code" rows={[{ label: "Code", value: <Txt s="h5">{code.code}</Txt> }, { label: "Works until", value: timeOfDay(code.expires_at, tz) }]} />
+      ) : null}
+      <span>
+        <Button variant={code ? "secondary" : "primary"} onClick={newCode}>{code ? "Get a new code" : "Get a code"}</Button>
+      </span>
+      {problem && <Note>{problem}</Note>}
+      <ItemList
+        label="Linked phones"
+        empty="No phones linked yet."
+        add={null}
+        items={phones.map((p) => ({
+          key: p.id,
+          title: p.name,
+          caption: p.last_upload_at ? `Last sent ${ago(p.last_upload_at, api.now())}` : "Linked, nothing sent yet",
+          onRemove: () => remove(p),
+        }))}
+      />
     </FormDialog>
   );
 }

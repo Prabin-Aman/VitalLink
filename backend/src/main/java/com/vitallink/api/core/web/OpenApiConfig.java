@@ -24,7 +24,9 @@ public class OpenApiConfig {
 
     static {
         // Filled in from the token by WebConfig's resolvers, not sent by the client.
-        SpringDocUtils.getConfig().addRequestWrapperToIgnore(CurrentUser.class, ConsentGate.class, Claims.class);
+        SpringDocUtils.getConfig()
+                .addRequestWrapperToIgnore(
+                        CurrentUser.class, ConsentGate.class, Claims.class, com.vitallink.api.health.PhoneCaller.class);
     }
 
     /**

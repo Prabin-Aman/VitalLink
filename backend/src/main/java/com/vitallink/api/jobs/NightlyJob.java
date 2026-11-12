@@ -7,6 +7,7 @@ import com.vitallink.api.care.CareService;
 import com.vitallink.api.core.Clock;
 import com.vitallink.api.goals.GoalDtos.TrackedGoal;
 import com.vitallink.api.goals.GoalService;
+import com.vitallink.api.health.GoogleHealth;
 import com.vitallink.api.health.HealthDtos.DeviceOut;
 import com.vitallink.api.health.HealthService;
 import com.vitallink.api.notifications.NotificationService;
@@ -50,6 +51,8 @@ public class NightlyJob {
     private final HealthService health;
     private final NotificationService notifications;
     private final RecordService records;
+    private final GoogleHealth google;
+    private final com.vitallink.api.health.PhoneLinks phones;
 
     public NightlyJob(
             JdbcClient jdbc,
@@ -58,7 +61,9 @@ public class NightlyJob {
             CareService care,
             HealthService health,
             NotificationService notifications,
-            RecordService records) {
+            RecordService records,
+            GoogleHealth google,
+            com.vitallink.api.health.PhoneLinks phones) {
         this.jdbc = jdbc;
         this.tx = new TransactionTemplate(manager);
         this.goals = goals;
@@ -66,6 +71,8 @@ public class NightlyJob {
         this.health = health;
         this.notifications = notifications;
         this.records = records;
+        this.google = google;
+        this.phones = phones;
     }
 
     record User(UUID id, String timezone) {}
@@ -91,6 +98,25 @@ public class NightlyJob {
         summary.put("users", users.size());
         summary.put("users_failed", failed);
         summary.put("notifications_created", notified);
+        // Google Health: pull what each connected person's devices uploaded since the last sync. A revoked grant
+        // or a Google outage is the person's card to show, not a job failure.
+        int synced = 0;
+        int syncFailed = 0;
+        if (google.configured()) {
+            Map<UUID, String> zones = new java.util.HashMap<>();
+            users.forEach(u -> zones.put(u.id(), u.timezone()));
+            for (UUID id : google.connectedUsers()) {
+                try {
+                    tx.executeWithoutResult(s -> google.sync(id, zones.getOrDefault(id, "UTC")));
+                    synced++;
+                } catch (RuntimeException e) {
+                    syncFailed++;
+                    log.warn("nightly google health sync failed for user {}: {}", id, e.getMessage());
+                }
+            }
+        }
+        summary.put("google_health_synced", synced);
+        summary.put("google_health_failed", syncFailed);
         // Each cleanup in its own transaction and try: one failing step doesn't skip the rest.
         List<String> stepsFailed = new java.util.ArrayList<>();
         step(summary, stepsFailed, "notifications_deleted", notifications::deleteOld);
@@ -105,6 +131,7 @@ public class NightlyJob {
                         WHERE revoked_at IS NULL AND expires_at < now() - interval '30 days'
                         """).update());
         step(summary, stepsFailed, "abandoned_uploads", records::cleanAbandonedUploads);
+        step(summary, stepsFailed, "phone_codes_expired", phones::deleteExpiredCodes);
         step(summary, stepsFailed, "stored_files_deleted", records::drainFileDeletions);
         summary.put("steps_failed", stepsFailed);
         summary.put("ms", System.currentTimeMillis() - started);

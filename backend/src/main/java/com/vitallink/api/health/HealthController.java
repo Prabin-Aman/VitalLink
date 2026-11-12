@@ -47,10 +47,14 @@ public class HealthController {
 
     private final HealthService service;
     private final AccountService accounts;
+    private final GoogleHealth google;
+    private final PhoneLinks phones;
 
-    public HealthController(HealthService service, AccountService accounts) {
+    public HealthController(HealthService service, AccountService accounts, GoogleHealth google, PhoneLinks phones) {
         this.service = service;
         this.accounts = accounts;
+        this.google = google;
+        this.phones = phones;
     }
 
     /** Comma-separated metric codes, at most 20. */
@@ -134,8 +138,14 @@ public class HealthController {
     }
 
     @DeleteMapping("/devices/{id}")
+    @Operation(
+            summary = "Forget a device. Google Health: also stops syncing and revokes the grant; an Android phone: also"
+                    + " voids its upload token.")
     public ResponseEntity<Void> forgetDevice(CurrentUser me, @PathVariable UUID id) {
-        service.forgetDevice(me, id);
+        if (!google.disconnectIfDevice(me.id(), id)) {
+            phones.unlinkDevice(me.id(), id);
+            service.forgetDevice(me, id);
+        }
         return ResponseEntity.noContent().build();
     }
 }

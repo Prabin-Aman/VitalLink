@@ -348,7 +348,8 @@ class SharingTest extends ApiTest {
             "/v1/auth/config",
             "/v1/auth/forgot-password",
             "/v1/auth/reset-password",
-            "/v1/auth/google");
+            "/v1/auth/google",
+            "/v1/phone/link");
 
     @Test
     void everyApiRouteIdentifiesTheCaller() {
@@ -356,7 +357,8 @@ class SharingTest extends ApiTest {
             if (info.getPatternValues().stream().anyMatch(p -> p.startsWith("/v1/") && !PUBLIC.contains(p))) {
                 assertThat(Arrays.stream(method.getMethodParameters())
                                 .anyMatch(p -> p.getParameterType() == com.vitallink.api.account.CurrentUser.class
-                                        || p.getParameterType() == ConsentGate.class))
+                                        || p.getParameterType() == ConsentGate.class
+                                        || p.getParameterType() == com.vitallink.api.health.PhoneCaller.class))
                         .as(info + " has no signed-in caller")
                         .isTrue();
             }
