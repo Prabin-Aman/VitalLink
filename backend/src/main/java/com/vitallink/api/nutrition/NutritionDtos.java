@@ -40,7 +40,9 @@ public final class NutritionDtos {
             double proteinG,
             double carbsG,
             double fatG,
-            double fibreG) {}
+            double fibreG,
+            /** seeded (VitalLink's list), user (your own) or usda (USDA FoodData Central). */
+            String source) {}
 
     /** A user's own food, per 100 g. */
     public record FoodIn(

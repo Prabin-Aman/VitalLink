@@ -741,6 +741,8 @@ export interface FoodHit {
   carbs_g: number;
   fat_g: number;
   fibre_g: number;
+  /** seeded (VitalLink's list), user (your own) or usda (USDA FoodData Central). Absent in older sample data. */
+  source?: "seeded" | "user" | "usda";
 }
 
 /** Nutrition › Recipes (GET /me/recipes): per-serving macros are worked out from the foods. */

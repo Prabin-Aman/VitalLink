@@ -49,10 +49,16 @@ public class NutritionService {
     private final HealthService health;
 
     private final OpenFoodFacts openFoodFacts;
+    private final FoodDataCentral usda;
 
     public NutritionService(
-            JdbcClient jdbc, AccountService accounts, HealthService health, OpenFoodFacts openFoodFacts) {
+            JdbcClient jdbc,
+            AccountService accounts,
+            HealthService health,
+            OpenFoodFacts openFoodFacts,
+            FoodDataCentral usda) {
         this.openFoodFacts = openFoodFacts;
+        this.usda = usda;
         this.jdbc = jdbc;
         this.accounts = accounts;
         this.health = health;
@@ -68,21 +74,72 @@ public class NutritionService {
                 rs.getDouble("protein_g"),
                 rs.getDouble("carbs_g"),
                 rs.getDouble("fat_g"),
-                rs.getDouble("fibre_g"));
+                rs.getDouble("fibre_g"),
+                rs.getString("source"));
     }
 
-    /** Seeded foods and the caller's own, by name. The catalogue is small, so a plain ILIKE is enough. */
+    /** Below this many matches of its own, the search also asks USDA FoodData Central. */
+    static final int ASK_USDA_BELOW = 10;
+
+    static final int SEARCH_LIMIT = 25;
+
+    /**
+     * The caller's own foods, VitalLink's list and USDA foods found before, by name; with fewer than 10 of those,
+     * also USDA FoodData Central. A USDA food is stored once (by its FDC id) as a shared catalogue row, so meals and
+     * recipes can point at it and the next search finds it without asking USDA.
+     */
     public List<FoodOut> searchFoods(CurrentUser me, String q) {
         String pattern = "%" + q.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%";
-        return jdbc.sql("""
+        List<FoodOut> local = jdbc.sql("""
                         SELECT * FROM vitallink.foods
-                        WHERE name ILIKE :p ESCAPE '\\' AND (source = 'seeded' OR owner_user_id = :u)
-                        ORDER BY length(name), name LIMIT 25
+                        WHERE name ILIKE :p ESCAPE '\\' AND (source IN ('seeded', 'usda') OR owner_user_id = :u)
+                        ORDER BY source = 'usda', length(name), name LIMIT 25
                         """)
                 .param("p", pattern)
                 .param("u", me.id())
                 .query(NutritionService::foodOut)
                 .list();
+        if (local.size() >= ASK_USDA_BELOW || !usda.configured()) {
+            return local;
+        }
+        List<FoodOut> out = new ArrayList<>(local);
+        Set<UUID> seen = new java.util.HashSet<>();
+        local.forEach(f -> seen.add(f.id()));
+        for (FoodDataCentral.Food f : usda.search(q)) {
+            if (out.size() >= SEARCH_LIMIT) {
+                break;
+            }
+            FoodOut saved = saveUsda(f);
+            if (seen.add(saved.id())) {
+                out.add(saved);
+            }
+        }
+        return out;
+    }
+
+    /** A USDA food as a shared catalogue row; the latest USDA values win. */
+    FoodOut saveUsda(FoodDataCentral.Food f) {
+        return jdbc.sql("""
+                        INSERT INTO vitallink.foods
+                          (id, name, source, serving_g, kcal, protein_g, carbs_g, fat_g, fibre_g, fdc_id)
+                        VALUES (:id, :name, 'usda', :serving, :kcal, :protein, :carbs, :fat, :fibre, :fdc)
+                        ON CONFLICT (fdc_id) WHERE fdc_id IS NOT NULL DO UPDATE
+                          SET name = EXCLUDED.name, serving_g = EXCLUDED.serving_g, kcal = EXCLUDED.kcal,
+                              protein_g = EXCLUDED.protein_g, carbs_g = EXCLUDED.carbs_g, fat_g = EXCLUDED.fat_g,
+                              fibre_g = EXCLUDED.fibre_g
+                        RETURNING *
+                        """)
+                .param("id", com.vitallink.api.core.Ids.uuid7())
+                .param("name", f.name())
+                .param("serving", f.servingG())
+                .param("kcal", f.kcal())
+                .param("protein", f.proteinG())
+                .param("carbs", f.carbsG())
+                .param("fat", f.fatG())
+                .param("fibre", f.fibreG())
+                .param("fdc", f.fdcId())
+                .query(NutritionService::foodOut)
+                .single();
     }
 
     /**
@@ -229,7 +286,8 @@ public class NutritionService {
                 .collect(Collectors.toSet());
         Map<UUID, Map<String, Object>> foods = new HashMap<>();
         if (!foodIds.isEmpty()) {
-            jdbc.sql("SELECT * FROM vitallink.foods WHERE id IN (:ids) AND (source = 'seeded' OR owner_user_id = :u)")
+            jdbc.sql(
+                            "SELECT * FROM vitallink.foods WHERE id IN (:ids) AND (source IN ('seeded', 'usda') OR owner_user_id = :u)")
                     .param("ids", List.copyOf(foodIds))
                     .param("u", me.id())
                     .query()

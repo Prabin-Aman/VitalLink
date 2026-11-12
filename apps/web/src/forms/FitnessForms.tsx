@@ -98,7 +98,7 @@ function LogFood({ tz, onClose, start }: { tz: string; onClose: () => void; star
             setQuery(v);
             setFood(null);
           }}
-          helper={api.isMock ? "Food search needs your account; the demo has no food list." : "From your foods and the VitalLink food list."}
+          helper={api.isMock ? "Food search needs your account; the demo has no food list." : "From your foods, the VitalLink food list and USDA FoodData Central."}
         />
         {hits && (
           <div className={s.results} role="listbox" aria-label="Foods">
@@ -113,7 +113,9 @@ function LogFood({ tz, onClose, start }: { tz: string; onClose: () => void; star
               hits.slice(0, 8).map((h) => (
                 <button key={h.id} type="button" role="option" aria-selected={false} className={s.result} onClick={() => pick(h)}>
                   <span className="vl-body-m">{h.brand ? `${h.name} · ${h.brand}` : h.name}</span>
-                  <span className={cx("vl-caption", s.helper)}>{Math.round(h.kcal)} kcal / 100 g</span>
+                  <span className={cx("vl-caption", s.helper)}>
+                    {Math.round(h.kcal)} kcal / 100 g{h.source === "usda" ? " · USDA" : h.source === "user" ? " · Yours" : ""}
+                  </span>
                 </button>
               ))
             )}

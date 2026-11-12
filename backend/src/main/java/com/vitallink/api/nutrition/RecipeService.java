@@ -182,7 +182,7 @@ public class RecipeService {
         List<UUID> ids = items.stream().map(RecipeItemIn::foodId).distinct().toList();
         long known = jdbc.sql("""
                         SELECT count(*) FROM vitallink.foods
-                        WHERE id IN (:ids) AND (source = 'seeded' OR owner_user_id = :u)
+                        WHERE id IN (:ids) AND (source IN ('seeded', 'usda') OR owner_user_id = :u)
                         """)
                 .param("ids", ids)
                 .param("u", me.id())
@@ -221,7 +221,7 @@ public class RecipeService {
         Map<UUID, List<Row>> items = new HashMap<>();
         jdbc.sql("""
                         SELECT i.recipe_id, i.quantity_g, f.id, f.name, f.brand, f.serving_g,
-                               f.kcal, f.protein_g, f.carbs_g, f.fat_g, f.fibre_g
+                               f.kcal, f.protein_g, f.carbs_g, f.fat_g, f.fibre_g, f.source
                         FROM vitallink.recipe_items i
                         JOIN vitallink.recipes r ON r.id = i.recipe_id
                         JOIN vitallink.foods f ON f.id = i.food_id
@@ -248,7 +248,8 @@ public class RecipeService {
                                     rs.getDouble("protein_g"),
                                     rs.getDouble("carbs_g"),
                                     rs.getDouble("fat_g"),
-                                    rs.getDouble("fibre_g")),
+                                    rs.getDouble("fibre_g"),
+                                    rs.getString("source")),
                             g,
                             Num.roundInt(m[0]));
                     return items.computeIfAbsent(recipe, k -> new ArrayList<>()).add(new Row(recipe, item, m));

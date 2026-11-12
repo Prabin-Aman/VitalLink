@@ -45,6 +45,9 @@ vitallink:
     client-id: ${GOOGLE_HEALTH_CLIENT_ID:${GOOGLE_CLIENT_ID:}}
     client-secret: ${GOOGLE_HEALTH_CLIENT_SECRET:}
   connection-key: ${CONNECTION_KEY:}
+  # Food search also asks USDA FoodData Central (free data.gov key, 1,000 requests an hour). Unset = VitalLink's
+  # own food list only. DEMO_KEY works for a quick local try (30 an hour).
+  usda-api-key: ${USDA_API_KEY:}
   cors-origin: ${CORS_ORIGIN:http://localhost:5173}
   supabase-url: ${SUPABASE_URL:}
   jwt-audience: authenticated

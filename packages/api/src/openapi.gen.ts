@@ -2305,6 +2305,7 @@ export interface components {
             fat_g?: number;
             /** Format: double */
             fibre_g?: number;
+            source?: string;
         };
         RecipeItemOut: {
             food?: components["schemas"]["FoodOut"];

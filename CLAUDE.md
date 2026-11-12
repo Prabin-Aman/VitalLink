@@ -200,6 +200,9 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   upload-only token (`POST /me/phones/shortcut`) and lists the Shortcut steps (`IphoneDialog`, `SHORTCUT_TYPES`);
   the Shortcut posts `start|metric|value|end|unit|source` lines to `POST /v1/phone/import` (stored as `healthkit`,
   last 36 h of a 48 h window). Not tried on a real iPhone; the Shortcut itself has to be built by hand on the phone.
+- Food search (12 Nov 2026): USDA FoodData Central behind `GET /foods/search` (`nutrition/FoodDataCentral`,
+  USDA_API_KEY on Render; free data.gov key; DEMO_KEY in the local `api` launch config allows only ~10 calls at a
+  time, so expect gaps locally). V23 adds the `usda` food source, V24 `foods.fdc_id`. Log Food shows "· USDA".
 - Apple Health (Nov 2026): HealthKit has no web API and no native app exists now, so data arrives as the Health
   app's export.zip through Connected Devices › Add › Import (`POST /me/health/import`, exempt from the 2 MB body limit,
   up to 300 MB, streamed; JDK entity caps are lifted because every record's `device` attribute is full of `&lt;` and
