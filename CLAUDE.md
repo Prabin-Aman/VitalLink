@@ -189,7 +189,8 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   sync. Web: Add a device › "Fitbit or Pixel Watch" (no Figma frame), callback page `/devices/google/callback`.
   Needs GOOGLE_HEALTH_CLIENT_SECRET + CONNECTION_KEY on Render, the Google Health API enabled and the callback URL
   added to the OAuth client. Checked against a fake Google in `GoogleHealthTest`, not the real API.
-- Android helper (12 Nov 2026, owner's request): `android/` "VitalLink Sync", Kotlin, Health Connect → 5-minute
+- Android helper (12 Nov 2026, owner's request): `android/` "VitalLink Sync", Java (one Kotlin file,
+  `HealthConnectBridge.kt`, because the Health Connect client is Kotlin-only), Health Connect → 5-minute
   buckets (`Buckets.kt` mirrors the server's import rules and catalogue ranges) → `POST /v1/phone/ingest`. Linking:
   Connected Devices › Add › Android phone shows a code (`POST /me/phones/code`, 10 min, one use) → the app calls
   `POST /v1/phone/link` and gets an upload-only token (`Authorization: Phone <token>`, `PhoneCaller`, V22

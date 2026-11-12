@@ -16,19 +16,26 @@ exists on the phone.
    retries never double anything. Readings are stored with the source `health_connect`.
 5. Removing the phone on the website voids the token; the app notices on its next upload and unlinks itself.
 
+Written in Java, except `HealthConnectBridge.kt`: Google's Health Connect client is Kotlin-only (every read is a
+suspend function), so that one small file wraps the calls the Java code needs as ordinary blocking methods.
+
 | File | What it does |
 |---|---|
-| `MainActivity.kt` | The one screen: link, allow access, sync now, unlink |
-| `Reader.kt` | Health Connect → buckets (totals through Health Connect's own 5-minute aggregation) |
-| `Buckets.kt` | 5-minute buckets, one source per total, ranges matching `backend/…/health/Catalogue.java` |
-| `Api.kt` | The three calls (HttpURLConnection + org.json, no extra libraries) |
-| `SyncWorker.kt` | The background sync |
-| `PrivacyActivity.kt` | Why the app reads health data (shown from Health Connect's permission screens) |
+| `MainActivity.java` | The one screen: link, allow access, sync now, unlink |
+| `Reader.java` | Health Connect → buckets (totals through Health Connect's own 5-minute aggregation) |
+| `Buckets.java` | 5-minute buckets, one source per total, ranges matching `backend/…/health/Catalogue.java` |
+| `Api.java` | The three calls (HttpURLConnection + org.json, no extra libraries) |
+| `SyncWorker.java` | The background sync (WorkManager) |
+| `PrivacyActivity.java` | Why the app reads health data (shown from Health Connect's permission screens) |
+| `HealthConnectBridge.kt` | The Kotlin-only Health Connect calls, as blocking methods for Java |
 
 ## Build
 No Android SDK is needed on your computer: GitHub Actions (`.github/workflows/android.yml`) runs the unit tests and
 builds `app-debug.apk` on every push to `android/`. Download it from the run's **Artifacts**, copy it to the phone and
-open it (allow "Install unknown apps" for your file manager or browser). It's free; publishing on Google Play would
+open it (allow "Install unknown apps" for your file manager or browser). Every build on `main` also replaces the
+APK on the `android-latest` release, the link Settings › Connected Devices › Android phone offers:
+https://github.com/zeutonx/VitalLink/releases/download/android-latest/vitallink-sync.apk. All builds are signed with
+the same debug key (`app/debug.keystore`), so a newer APK installs over the old one. It's free; publishing on Google Play would
 cost a one-time $25 and a review of the health permissions.
 
 Locally, with Android Studio or the command-line SDK and Gradle 8.11: `gradle -p android testDebugUnitTest assembleDebug`.

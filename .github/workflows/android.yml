@@ -41,3 +41,25 @@ jobs:
           name: vitallink-sync-debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
+
+  # On main, the APK replaces the one on the "android-latest" release, so the web portal can link to a fixed
+  # public URL: https://github.com/zeutonx/VitalLink/releases/download/android-latest/vitallink-sync.apk
+  publish:
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: vitallink-sync-debug
+      - name: Publish to the android-latest release
+        run: |
+          mv app-debug.apk vitallink-sync.apk
+          gh release view android-latest >/dev/null 2>&1 || gh release create android-latest --title "VitalLink Sync (Android)" --prerelease --target "$GITHUB_SHA" --notes "The Android helper app that sends Health Connect data to VitalLink. Install the APK on the phone, then link it with a code from Settings › Connected Devices › Add a device › Android phone. Rebuilt on every change to android/."
+          gh release upload android-latest vitallink-sync.apk --clobber

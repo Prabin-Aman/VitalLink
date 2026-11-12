@@ -18,6 +18,17 @@ android {
         buildConfigField("String", "DEFAULT_SERVER", "\"https://vitallink-9p4d.onrender.com\"")
     }
 
+    // One debug key for every build (CI included), so a newer APK installs over the old one. It's a debug key
+    // with the standard Android debug passwords, not a release secret.
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     buildFeatures {
         buildConfig = true
     }

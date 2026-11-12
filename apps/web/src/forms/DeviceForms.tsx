@@ -112,6 +112,10 @@ export function syncSummary(r: ConnectionSync): string {
 
 // ---------------------------------------------------------------- Android phone (Health Connect)
 
+/** The APK the Android CI publishes on every change (.github/workflows/android.yml); VITE_ANDROID_APK_URL overrides it. */
+export const ANDROID_APK_URL: string =
+  import.meta.env.VITE_ANDROID_APK_URL || "https://github.com/zeutonx/VitalLink/releases/download/android-latest/vitallink-sync.apk";
+
 /** Shows a one-time code for the VitalLink Sync app and the phones already linked (no Figma frame). */
 export function AndroidPhoneDialog({ onClose }: { onClose: () => void }) {
   const api = useApi();
@@ -140,8 +144,12 @@ export function AndroidPhoneDialog({ onClose }: { onClose: () => void }) {
   return (
     <FormDialog overline="Connected Devices › Android phone" title="Link an Android phone" subtitle="Send Health Connect data from your phone with the VitalLink Sync app." onClose={onClose}>
       <Note>
-        1. Install VitalLink Sync on the phone (the APK from the project's Android build). 2. Open it and type the code below. 3. Tap Allow access and choose what to share. It then syncs about every 3 hours.
+        1. On the phone, download VitalLink Sync and install it (allow installing from your browser when Android asks). 2. Open it and type the code below. 3. Tap Allow access and choose what to share. It then syncs about every 3 hours. Android 8 or later; Health Connect comes with Android 14 and later, and is a free app from Google Play before that.
       </Note>
+      <span>
+        <Button variant="secondary" onClick={() => window.open(ANDROID_APK_URL, "_blank", "noopener")}>Download the app (APK)</Button>
+      </span>
+      <Txt s="caption" c="textTertiary">{ANDROID_APK_URL}</Txt>
       {code && tz ? (
         <KeyValueList label="Link code" rows={[{ label: "Code", value: <Txt s="h5">{code.code}</Txt> }, { label: "Works until", value: timeOfDay(code.expires_at, tz) }]} />
       ) : null}
