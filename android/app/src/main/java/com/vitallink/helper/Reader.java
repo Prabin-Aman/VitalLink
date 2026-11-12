@@ -117,7 +117,7 @@ public final class Reader {
         }
         if (allowed(OxygenSaturationRecord.class)) {
             for (OxygenSaturationRecord r : HealthConnectBridge.records(context, OxygenSaturationRecord.class, from, to)) {
-                b.sample("oxygen_saturation", source(r), r.getTime(), r.getPercentage().getValue());
+                b.sample("oxygen_saturation", source(r), r.getTime(), HealthConnectBridge.percent(r.getPercentage()));
             }
             read.add("oxygen_saturation");
         }
@@ -129,32 +129,32 @@ public final class Reader {
         }
         if (allowed(BloodPressureRecord.class)) {
             for (BloodPressureRecord r : HealthConnectBridge.records(context, BloodPressureRecord.class, from, to)) {
-                b.sample("bp_systolic", source(r), r.getTime(), r.getSystolic().getInMillimetersOfMercury());
-                b.sample("bp_diastolic", source(r), r.getTime(), r.getDiastolic().getInMillimetersOfMercury());
+                b.sample("bp_systolic", source(r), r.getTime(), HealthConnectBridge.mmHg(r.getSystolic()));
+                b.sample("bp_diastolic", source(r), r.getTime(), HealthConnectBridge.mmHg(r.getDiastolic()));
             }
             read.add("blood_pressure");
         }
         if (allowed(BloodGlucoseRecord.class)) {
             for (BloodGlucoseRecord r : HealthConnectBridge.records(context, BloodGlucoseRecord.class, from, to)) {
-                b.sample("glucose", source(r), r.getTime(), r.getLevel().getInMilligramsPerDeciliter());
+                b.sample("glucose", source(r), r.getTime(), HealthConnectBridge.mgPerDl(r.getLevel()));
             }
             read.add("glucose");
         }
         if (allowed(BodyTemperatureRecord.class)) {
             for (BodyTemperatureRecord r : HealthConnectBridge.records(context, BodyTemperatureRecord.class, from, to)) {
-                b.sample("body_temperature", source(r), r.getTime(), r.getTemperature().getInCelsius());
+                b.sample("body_temperature", source(r), r.getTime(), HealthConnectBridge.celsius(r.getTemperature()));
             }
             read.add("body_temperature");
         }
         if (allowed(WeightRecord.class)) {
             for (WeightRecord r : HealthConnectBridge.records(context, WeightRecord.class, from, to)) {
-                b.sample("weight", source(r), r.getTime(), r.getWeight().getInKilograms());
+                b.sample("weight", source(r), r.getTime(), HealthConnectBridge.kg(r.getWeight()));
             }
             read.add("weight");
         }
         if (allowed(BodyFatRecord.class)) {
             for (BodyFatRecord r : HealthConnectBridge.records(context, BodyFatRecord.class, from, to)) {
-                b.sample("body_fat", source(r), r.getTime(), r.getPercentage().getValue());
+                b.sample("body_fat", source(r), r.getTime(), HealthConnectBridge.percent(r.getPercentage()));
             }
             read.add("body_fat");
         }

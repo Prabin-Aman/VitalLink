@@ -50,7 +50,9 @@ android {
 
 dependencies {
     implementation("androidx.health.connect:connect-client:1.1.0")
-    implementation("androidx.work:work-runtime-ktx:2.10.0")
+    implementation("androidx.work:work-runtime:2.10.0")
+    // WorkManager's Java Worker API names Guava's ListenableFuture; this is just that interface.
+    implementation("com.google.guava:listenablefuture:1.0")
     implementation("androidx.activity:activity-ktx:1.9.3")
     testImplementation("junit:junit:4.13.2")
     // org.json is part of Android; unit tests on the JVM need the real implementation.

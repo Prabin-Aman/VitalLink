@@ -13,6 +13,11 @@ import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.request.AggregateGroupByDurationRequest
 import androidx.health.connect.client.request.ReadRecordsRequest
 import androidx.health.connect.client.time.TimeRangeFilter
+import androidx.health.connect.client.units.BloodGlucose
+import androidx.health.connect.client.units.Mass
+import androidx.health.connect.client.units.Percentage
+import androidx.health.connect.client.units.Pressure
+import androidx.health.connect.client.units.Temperature
 import java.time.Duration
 import java.time.Instant
 import kotlinx.coroutines.runBlocking
@@ -30,6 +35,13 @@ object HealthConnectBridge {
 
     /** One 5-minute window from Health Connect's own aggregation (it removes overlap between apps). */
     data class Window(val start: Instant, val end: Instant, val value: Double)
+
+    // Unit values: Kotlin names them differently for Java, so Java asks here.
+    @JvmStatic fun mmHg(p: Pressure): Double = p.inMillimetersOfMercury
+    @JvmStatic fun mgPerDl(g: BloodGlucose): Double = g.inMilligramsPerDeciliter
+    @JvmStatic fun celsius(t: Temperature): Double = t.inCelsius
+    @JvmStatic fun kg(m: Mass): Double = m.inKilograms
+    @JvmStatic fun percent(p: Percentage): Double = p.value
 
     @JvmStatic
     fun status(context: Context): Int = HealthConnectClient.getSdkStatus(context)
