@@ -7,7 +7,7 @@ import { Icon, type IconName } from "../../components/Icon";
 import { RowButton, Txt } from "../../components/kit";
 import { Button, Chip } from "../../components/ui";
 import { useApi, useReloadableScreen } from "../../data";
-import { AddDeviceDialog, AndroidPhoneDialog, BluetoothDialog, ImportDataDialog, type DeviceDialog } from "../../forms/DeviceForms";
+import { AddDeviceDialog, AndroidPhoneDialog, BluetoothDialog, ImportDataDialog, IphoneDialog, type DeviceDialog } from "../../forms/DeviceForms";
 import { ScreenState } from "../ScreenState";
 import s from "./Devices.module.css";
 
@@ -63,6 +63,7 @@ export function Devices() {
       {dialog === "import" && <ImportDataDialog onClose={() => setDialog(null)} onImported={setImported} />}
       {dialog === "bluetooth" && <BluetoothDialog onClose={() => setDialog(null)} />}
       {dialog === "android" && <AndroidPhoneDialog onClose={() => setDialog(null)} />}
+      {dialog === "iphone" && <IphoneDialog onClose={() => setDialog(null)} />}
       {imported && tz && (
         <Note>
           {importSummary(imported, tz)}.{imported.problems.length > 0 && ` Skipped, for example: ${imported.problems.slice(0, 3).join("; ")}.`}

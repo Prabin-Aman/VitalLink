@@ -31,7 +31,7 @@ import { Button } from "../components/ui";
 import { notifyChanged, useApi } from "../data";
 import { saveFile } from "../download";
 
-export type DeviceDialog = "add" | "import" | "bluetooth" | "android";
+export type DeviceDialog = "add" | "import" | "bluetooth" | "android" | "iphone";
 
 export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPick: (d: DeviceDialog) => void }) {
   const api = useApi();
@@ -92,6 +92,7 @@ export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPi
         add={null}
         items={[
           { key: "google", title: "Fitbit or Pixel Watch", caption: googleCaption, ...googleAction },
+          { key: "iphone", title: "iPhone (Apple Health)", caption: "Every night through an Apple Shortcut: steps, heart rate, sleep, weight and more. No app needed", onRemove: () => onPick("iphone"), removeLabel: "Set up" },
           { key: "android", title: "Android phone", caption: "Health Connect: Samsung Health, Google Fit and other Android apps, through the VitalLink Sync app", onRemove: () => onPick("android"), removeLabel: "Link phone" },
           { key: "import", title: "Apple Health or a file", caption: "An Apple Health export (export.zip) or a CSV of readings", onRemove: () => onPick("import"), removeLabel: "Import file" },
           { key: "bluetooth", title: "Bluetooth", caption: "Strap, cuff, scale, oximeter or glucose meter · Chrome or Edge", onRemove: () => onPick("bluetooth"), removeLabel: "Pair device" },
@@ -115,6 +116,78 @@ export function syncSummary(r: ConnectionSync): string {
 /** The APK the Android CI publishes on every change (.github/workflows/android.yml); VITE_ANDROID_APK_URL overrides it. */
 export const ANDROID_APK_URL: string =
   import.meta.env.VITE_ANDROID_APK_URL || "https://github.com/zeutonx/VitalLink/releases/download/android-latest/vitallink-sync.apk";
+
+/** The lines the Shortcut builds: one "Find Health Samples" + "Repeat with Each" per row (Health type, our code). */
+export const SHORTCUT_TYPES: [string, string][] = [
+  ["Steps", "steps"],
+  ["Walking + Running Distance", "distance"],
+  ["Active Energy", "active_energy"],
+  ["Flights Climbed", "flights_climbed"],
+  ["Heart Rate", "heart_rate"],
+  ["Resting Heart Rate", "resting_heart_rate"],
+  ["Heart Rate Variability", "hrv"],
+  ["Blood Oxygen", "oxygen_saturation"],
+  ["Respiratory Rate", "respiratory_rate"],
+  ["Blood Pressure Systolic", "bp_systolic"],
+  ["Blood Pressure Diastolic", "bp_diastolic"],
+  ["Blood Glucose", "glucose"],
+  ["Weight", "weight"],
+  ["Body Fat Percentage", "body_fat"],
+  ["Sleep", "sleep"],
+];
+
+/** An Apple Shortcut sends Apple Health data every night (no Figma frame; there's no web API for HealthKit). */
+export function IphoneDialog({ onClose }: { onClose: () => void }) {
+  const api = useApi();
+  const [token, setToken] = useState<string | null>(null);
+  const [problem, setProblem] = useState<string | null>(null);
+  const url = api.shortcutUploadUrl();
+  const copy = (text: string) => navigator.clipboard?.writeText(text).catch(() => undefined);
+  const make = () => {
+    setProblem(null);
+    api.shortcutToken().then(
+      (r) => {
+        if (r) {
+          setToken(r.token);
+          notifyChanged();
+        } else setProblem("Setting up an iPhone needs the live server; sample data can't link.");
+      },
+      (e: Error) => setProblem(e.message),
+    );
+  };
+  return (
+    <FormDialog overline="Connected Devices › iPhone" title="Send Apple Health from your iPhone" subtitle="A Shortcut on the iPhone sends the last 2 days of readings every night. Set it up once; it runs on its own." onClose={onClose}>
+      <span>
+        <Button variant={token ? "secondary" : "primary"} onClick={make}>{token ? "Make a new key" : "1. Make a key for the Shortcut"}</Button>
+      </span>
+      {problem && <Note>{problem}</Note>}
+      {token && (
+        <KeyValueList
+          label="For the Shortcut"
+          labelWidth={110}
+          rows={[
+            { label: "Key", value: <span style={{ wordBreak: "break-all" }}>Phone {token} <Button variant="tertiary" size="sm" onClick={() => copy(`Phone ${token}`)}>Copy</Button></span> },
+            { label: "Address", value: <span style={{ wordBreak: "break-all" }}>{url} <Button variant="tertiary" size="sm" onClick={() => copy(url)}>Copy</Button></span> },
+          ]}
+        />
+      )}
+      {token && <Note>The key is shown only now. It can only send readings; remove the iPhone in Connected Devices to stop it.</Note>}
+      <Note>
+        2. On the iPhone, open Shortcuts, tap +, and name it VitalLink. Add a Text action with: start|metric|value|end|unit|source, and Set Variable "Lines" to it.
+      </Note>
+      <Note>
+        3. For each type below: add Find Health Samples (Type = the Health type, Start Date is in the last 2 days), then Repeat with Each. Inside the repeat, add a Text action with: Start Date|code|Value|End Date|Unit|Source (tap Start Date and End Date and choose ISO 8601 with time; use the code from the list), then Add to Variable "Lines".
+      </Note>
+      <KeyValueList label="Health types and codes" labelWidth={210} rows={SHORTCUT_TYPES.map(([type, code]) => ({ label: type, value: code }))} />
+      <Note>
+        4. After the repeats, add Combine Text (Lines, with New Lines), then Get Contents of URL: the address above, Method POST, Header Authorization = the key above, Header Content-Type = text/plain, Request Body File = Combined Text. Run it once and allow Health access.
+      </Note>
+      <Note>
+        5. In Shortcuts › Automation, tap +, choose Time of Day (for example 9:00 PM, Daily), choose Run Immediately, and pick VitalLink. Sleep and readings from the last 36 hours are kept each night; for older history, use Import with an Apple Health export.
+      </Note>
+    </FormDialog>
+  );
+}
 
 /** Shows a one-time code for the VitalLink Sync app and the phones already linked (no Figma frame). */
 export function AndroidPhoneDialog({ onClose }: { onClose: () => void }) {

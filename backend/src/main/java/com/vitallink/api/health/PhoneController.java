@@ -59,6 +59,25 @@ public class PhoneController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/v1/me/phones/shortcut")
+    @ResponseStatus(HttpStatus.CREATED)
+    @Operation(
+            summary = "An upload-only token for the iPhone Shortcut, shown once (the phone is linked straight away).")
+    public PhoneLinkOut shortcut(CurrentUser me) {
+        return phones.newShortcutToken(me);
+    }
+
+    @PostMapping(value = "/v1/phone/import", consumes = org.springframework.http.MediaType.ALL_VALUE)
+    @Operation(
+            summary =
+                    "The iPhone Shortcut's readings: lines of start|metric|value|end|unit|source (a header first), the"
+                            + " last 2 days. Stored as Apple Health readings; only the last 36 hours are written.")
+    public HealthDtos.ImportOut importShortcut(PhoneCaller phone, jakarta.servlet.http.HttpServletRequest request)
+            throws java.io.IOException {
+        return health.importShortcut(
+                phone.me(), request.getInputStream(), phone.linkId().toString(), "iPhone (Shortcut)");
+    }
+
     @PostMapping("/v1/phone/link")
     @Operation(summary = "The Android app exchanges a code for an upload token (no account token). 400 invalid_code.")
     public PhoneLinkOut link(@Valid @RequestBody PhoneLinkIn body) {

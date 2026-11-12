@@ -24,5 +24,11 @@ manual readings, series, latest readings, the dashboard with the readiness score
   (the ingest body, platform `health_connect`) and `GET /v1/phone/status` with `Authorization: Phone <token>`
   (`PhoneCaller`, resolved in WebConfig, counted as ingest by the rate limiter). Only SHA-256 hashes are stored.
 
+- iPhone (Apple Shortcut; HealthKit has no web API): `POST /me/phones/shortcut` returns an upload-only token at
+  once (`phone_links` row named "iPhone (Shortcut)"); the Shortcut posts `start|metric|value|end|unit|source` lines
+  for the last 2 days to `POST /v1/phone/import` (`HealthService.importShortcut`, the CSV reader in `HealthImport`
+  with units, sources and sleep stages). Stored as `healthkit`, so it merges with an Apple export; only buckets from
+  the last 36 hours are written, so every written bucket is complete. Its device card unlinks it like Android's.
+
 Tables: `metrics`, `health_readings`, `ingest_batches`, `devices`, `device_connections` (V21), `phone_links` (V22). Classes:
 `Catalogue`, `HealthService`, `HealthTabsService`, `GoogleHealth` and their controllers.

@@ -203,6 +203,10 @@ export class VitalLinkClient {
   /** A one-time code for the app; null in mock mode. */
   phoneCode = () => this.send<PhoneCode>("POST", "/me/phones/code", {});
   removePhone = (id: string) => this.send("DELETE", `/me/phones/${id}`);
+  /** An upload-only token for the iPhone Shortcut, shown once; null in mock mode. */
+  shortcutToken = () => this.send<{ token: string; email: string }>("POST", "/me/phones/shortcut", {});
+  /** Where the iPhone Shortcut posts its readings. */
+  shortcutUploadUrl = () => `${this.opts.baseUrl ?? "https://vitallink-9p4d.onrender.com"}/v1/phone/import`;
   /** POST /me/health/ingest: 5-minute buckets (a Bluetooth device paired in the browser). */
   ingest = (body: object) => this.send<IngestResult>("POST", "/me/health/ingest", body);
   /** Doctors from the public NPI Registry; mock mode filters a short sample. */

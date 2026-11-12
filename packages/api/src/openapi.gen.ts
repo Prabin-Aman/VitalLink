@@ -88,6 +88,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/phone/import": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** The iPhone Shortcut's readings: lines of start|metric|value|end|unit|source (a header first), the last 2 days. Stored as Apple Health readings; only the last 36 hours are written. */
+        post: operations["importShortcut"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/me/workouts": {
         parameters: {
             query?: never;
@@ -216,6 +233,23 @@ export interface paths {
         put?: never;
         /** Log servings as a meal named after the recipe; macros are copied as for any meal. */
         post: operations["log"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/phones/shortcut": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** An upload-only token for the iPhone Shortcut, shown once (the phone is linked straight away). */
+        post: operations["shortcut"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2038,6 +2072,26 @@ export interface components {
             unchanged?: number;
             replayed?: boolean;
         };
+        ImportOut: {
+            format?: string;
+            /** Format: int32 */
+            records?: number;
+            /** Format: int32 */
+            readings?: number;
+            /** Format: int32 */
+            inserted?: number;
+            /** Format: int32 */
+            updated?: number;
+            /** Format: int32 */
+            unchanged?: number;
+            /** Format: int32 */
+            skipped?: number;
+            problems?: string[];
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+        };
         SetIn: {
             exercise: string;
             /** Format: int32 */
@@ -2417,26 +2471,6 @@ export interface components {
             /** Format: date-time */
             at?: string;
             assessment?: string;
-        };
-        ImportOut: {
-            format?: string;
-            /** Format: int32 */
-            records?: number;
-            /** Format: int32 */
-            readings?: number;
-            /** Format: int32 */
-            inserted?: number;
-            /** Format: int32 */
-            updated?: number;
-            /** Format: int32 */
-            unchanged?: number;
-            /** Format: int32 */
-            skipped?: number;
-            problems?: string[];
-            /** Format: date-time */
-            from?: string;
-            /** Format: date-time */
-            to?: string;
         };
         GoalIn: {
             title: string;
@@ -3490,6 +3524,26 @@ export interface operations {
             };
         };
     };
+    importShortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description OK */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ImportOut"];
+                };
+            };
+        };
+    };
     listWorkouts: {
         parameters: {
             query?: {
@@ -3784,6 +3838,26 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["Meal"];
+                };
+            };
+        };
+    };
+    shortcut: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Created */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PhoneLinkOut"];
                 };
             };
         };

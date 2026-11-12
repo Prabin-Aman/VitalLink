@@ -59,15 +59,7 @@ public class PhoneLinks implements UserData {
     // ---------------------------------------------------------------- the signed-in person
 
     public PhoneCodeOut newCode(CurrentUser me) {
-        int linked = jdbc.sql(
-                        "SELECT count(*) FROM vitallink.phone_links WHERE user_id = :u AND token_hash IS NOT NULL")
-                .param("u", me.id())
-                .query(Integer.class)
-                .single();
-        if (linked >= MAX_PHONES) {
-            throw new ApiError(
-                    409, "too_many_phones", "Remove a phone before linking another (at most " + MAX_PHONES + ").");
-        }
+        requireRoom(me.id());
         // One waiting code at a time: a new one replaces the old.
         jdbc.sql("DELETE FROM vitallink.phone_links WHERE user_id = :u AND token_hash IS NULL")
                 .param("u", me.id())
@@ -87,6 +79,38 @@ public class PhoneLinks implements UserData {
                 .param("exp", expires)
                 .update();
         return new PhoneCodeOut(code.substring(0, 4) + "-" + code.substring(4), expires);
+    }
+
+    /**
+     * For the iPhone Shortcut: a linked entry straight away, and its token to paste into the Shortcut (shown once).
+     * Shortcuts can't run a code exchange, and the person is already signed in on the website.
+     */
+    public PhoneLinkOut newShortcutToken(CurrentUser me) {
+        requireRoom(me.id());
+        byte[] tokenBytes = new byte[32];
+        random.nextBytes(tokenBytes);
+        String token = Base64.getUrlEncoder().withoutPadding().encodeToString(tokenBytes);
+        jdbc.sql("""
+                        INSERT INTO vitallink.phone_links (id, user_id, token_hash, code_expires_at, name, linked_at)
+                        VALUES (:id, :u, :t, now(), 'iPhone (Shortcut)', now())
+                        """)
+                .param("id", Ids.uuid7())
+                .param("u", me.id())
+                .param("t", sha256(token))
+                .update();
+        return new PhoneLinkOut(token, me.user().email());
+    }
+
+    private void requireRoom(UUID userId) {
+        int linked = jdbc.sql(
+                        "SELECT count(*) FROM vitallink.phone_links WHERE user_id = :u AND token_hash IS NOT NULL")
+                .param("u", userId)
+                .query(Integer.class)
+                .single();
+        if (linked >= MAX_PHONES) {
+            throw new ApiError(
+                    409, "too_many_phones", "Remove a phone before linking another (at most " + MAX_PHONES + ").");
+        }
     }
 
     public List<PhoneOut> list(UUID userId) {
@@ -113,7 +137,7 @@ public class PhoneLinks implements UserData {
             throw ApiError.notFound("No such phone.");
         }
         jdbc.sql(
-                        "DELETE FROM vitallink.devices WHERE user_id = :u AND platform = 'health_connect' AND external_id = :id")
+                        "DELETE FROM vitallink.devices WHERE user_id = :u AND platform IN ('health_connect', 'healthkit') AND external_id = :id")
                 .param("u", userId)
                 .param("id", id.toString())
                 .update();
@@ -123,7 +147,7 @@ public class PhoneLinks implements UserData {
     public void unlinkDevice(UUID userId, UUID deviceId) {
         jdbc.sql("""
                         DELETE FROM vitallink.phone_links p USING vitallink.devices d
-                        WHERE d.id = :dev AND d.user_id = :u AND d.platform = 'health_connect'
+                        WHERE d.id = :dev AND d.user_id = :u AND d.platform IN ('health_connect', 'healthkit')
                           AND p.user_id = :u AND p.id::text = d.external_id
                         """).param("dev", deviceId).param("u", userId).update();
     }

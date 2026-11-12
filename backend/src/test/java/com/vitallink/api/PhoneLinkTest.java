@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpHeaders;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import tools.jackson.databind.JsonNode;
 
 /**
  * The Android helper app's link: a one-time code from the website, an upload-only token, Health Connect buckets
@@ -141,6 +142,79 @@ class PhoneLinkTest extends ApiTest {
         assertThat(delete(t, "/v1/me/devices/" + id).status()).isEqualTo(204);
         assertThat(get(t, "/v1/me/phones").body().size()).isZero();
         assertThat(phone(token, "GET", "/v1/phone/status", null).status()).isEqualTo(401);
+    }
+
+    Res shortcutUpload(String token, String body) {
+        var req = MockMvcRequestBuilders.post("/v1/phone/import")
+                .header(HttpHeaders.AUTHORIZATION, "Phone " + token)
+                .contentType("text/plain")
+                .content(body);
+        return call(req, null, null);
+    }
+
+    @Test
+    void theIphoneShortcutSendsReadingsAsAppleHealth() {
+        String t = user();
+        Res made = post(t, "/v1/me/phones/shortcut", Map.of());
+        assertThat(made.status()).isEqualTo(201);
+        String token = made.at("/token").asString();
+
+        var day = LocalDate.now(AFTERNOON);
+        String nine = day.atTime(9, 0).atZone(AFTERNOON).toOffsetDateTime().toString();
+        String nineTen = day.atTime(9, 10).atZone(AFTERNOON).toOffsetDateTime().toString();
+        String one = day.atTime(1, 0).atZone(AFTERNOON).toOffsetDateTime().toString();
+        String oneThirty =
+                day.atTime(1, 30).atZone(AFTERNOON).toOffsetDateTime().toString();
+        String old = day.minusDays(3)
+                .atTime(9, 0)
+                .atZone(AFTERNOON)
+                .toOffsetDateTime()
+                .toString();
+        String body = String.join(
+                "\n",
+                "start|metric|value|end|unit|source",
+                // The iPhone and the Watch count the same walk: one source per bucket, not both.
+                nine + "|steps|600|" + nineTen + "|count|Abhi's iPhone",
+                nine + "|steps|500|" + nineTen + "|count|Abhi's Apple Watch",
+                nine + "|heart_rate|72||count/min|Abhi's Apple Watch",
+                nine + "|weight|154.32||lb|Health",
+                nine + "|distance|0.5|" + nineTen + "|mi|Abhi's iPhone",
+                one + "|sleep|Deep|" + oneThirty + "||Abhi's Apple Watch",
+                old + "|steps|999|" + old + "|count|Abhi's iPhone",
+                nine + "|nonsense|1||count|x");
+        Res up = shortcutUpload(token, body);
+        assertThat(up.status()).as(up.text()).isEqualTo(200);
+        assertThat(up.at("/skipped").asInt()).isEqualTo(1);
+
+        assertThat(get(t, "/v1/me/health/series/steps?days=1&interval=day")
+                        .at("/points/0/value")
+                        .asDouble())
+                .isEqualTo(600.0);
+        JsonNode latest =
+                get(t, "/v1/me/health/latest?metrics=weight,heart_rate").body();
+        assertThat(latest.toString()).contains("\"value\":70.0").contains("\"value\":72");
+        assertThat(get(t, "/v1/me/health/series/distance?days=1&interval=day")
+                        .at("/points/0/value")
+                        .asDouble())
+                .isCloseTo(804.672, org.assertj.core.data.Offset.offset(0.1));
+        // Three days ago is outside what the Shortcut may write.
+        assertThat(get(t, "/v1/me/health/series/steps?days=5&interval=day").text())
+                .doesNotContain("999");
+
+        // Sending the same lines again changes nothing.
+        Res again = shortcutUpload(token, body);
+        assertThat(again.at("/inserted").asInt() + again.at("/updated").asInt()).isZero();
+
+        // Its card is "iPhone (Shortcut)"; Disconnect there unlinks it.
+        String id = null;
+        for (var d : get(t, "/v1/me/devices").body()) {
+            if (d.get("name").asString().equals("iPhone (Shortcut)")) {
+                id = d.get("id").asString();
+            }
+        }
+        assertThat(id).isNotNull();
+        assertThat(delete(t, "/v1/me/devices/" + id).status()).isEqualTo(204);
+        assertThat(shortcutUpload(token, body).status()).isEqualTo(401);
     }
 
     @Test

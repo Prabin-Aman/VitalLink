@@ -295,19 +295,29 @@ public final class HealthImport {
     static final DateTimeFormatter LOCAL = DateTimeFormatter.ofPattern("yyyy-MM-dd[ ]['T']HH:mm[:ss]", Locale.ROOT);
 
     /** {@code start,metric,value}: start in ISO 8601 with an offset, or local "YYYY-MM-DD HH:MM" in the account's zone. */
+    /**
+     * {@code start,metric,value}, and optionally {@code end}, {@code unit} and {@code source} (an Apple Shortcut sends
+     * all of them, separated by {@code |} so commas in numbers or device names can't split a line). With a unit the
+     * value is converted like an Apple export's; with an end a total is spread over the buckets it covers; with a
+     * source, totals take one source per bucket. Metric {@code sleep} takes a stage name as its value (Deep, Core,
+     * REM, Asleep, Awake; In Bed is skipped) and needs an end.
+     */
     private void csv(InputStream in) throws IOException {
         BufferedReader r = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
         String header = r.readLine();
         if (header == null) {
             throw new ApiError(422, "unreadable_file", "The file is empty.");
         }
-        List<String> cols = List.of(header.replace("﻿", "")
-                .toLowerCase(Locale.ROOT)
-                .replace(" ", "")
-                .split(","));
+        header = header.replace("﻿", "");
+        String sep = header.contains("|") ? "\\|" : ",";
+        List<String> cols =
+                List.of(header.toLowerCase(Locale.ROOT).replace(" ", "").split(sep));
         int ts = cols.indexOf("start");
         int mc = cols.indexOf("metric");
         int vc = cols.indexOf("value");
+        int ec = cols.indexOf("end");
+        int uc = cols.indexOf("unit");
+        int sc = cols.indexOf("source");
         if (ts < 0 || mc < 0 || vc < 0) {
             throw new ApiError(
                     422,
@@ -320,19 +330,48 @@ public final class HealthImport {
             if (l.isBlank()) {
                 continue;
             }
-            String[] f = l.split(",", -1);
+            String[] f = l.split(sep, -1);
             if (f.length <= Math.max(ts, Math.max(mc, vc))) {
                 skip("line " + line + ": missing a column");
                 continue;
             }
-            Metric m = Catalogue.get(f[mc].strip());
-            if (m == null) {
-                skip("line " + line + ": unknown metric \"" + f[mc].strip() + "\"");
-                continue;
-            }
+            String code = f[mc].strip();
             Instant at = csvTime(f[ts].strip());
             if (at == null) {
                 skip("line " + line + ": unreadable start \"" + f[ts].strip() + "\"");
+                continue;
+            }
+            Instant until_ = at;
+            if (ec >= 0 && ec < f.length && !f[ec].isBlank()) {
+                until_ = csvTime(f[ec].strip());
+                if (until_ == null || until_.isBefore(at)) {
+                    skip("line " + line + ": unreadable end \"" + f[ec].strip() + "\"");
+                    continue;
+                }
+            }
+            String src = sc >= 0 && sc < f.length ? f[sc].strip() : "";
+            if (at.isBefore(since) || !at.isBefore(until)) {
+                continue;
+            }
+            if (code.equals("sleep")) {
+                String stage = f[vc].strip().toLowerCase(Locale.ROOT);
+                records++;
+                if (stage.contains("deep")) {
+                    minutes(src, at, until_, "sleep_deep", "sleep_asleep");
+                } else if (stage.contains("core") || stage.contains("light")) {
+                    minutes(src, at, until_, "sleep_core", "sleep_asleep");
+                } else if (stage.contains("rem")) {
+                    minutes(src, at, until_, "sleep_rem", "sleep_asleep");
+                } else if (stage.contains("awake")) {
+                    minutes(src, at, until_, "sleep_awake");
+                } else if (stage.contains("asleep")) {
+                    minutes(src, at, until_, "sleep_asleep");
+                } // in bed: time in bed isn't sleep
+                continue;
+            }
+            Metric m = Catalogue.get(code);
+            if (m == null) {
+                skip("line " + line + ": unknown metric \"" + code + "\"");
                 continue;
             }
             Double v = number(f[vc]);
@@ -340,12 +379,43 @@ public final class HealthImport {
                 skip("line " + line + ": value isn't a number");
                 continue;
             }
-            if (at.isBefore(since) || !at.isBefore(until)) {
-                continue;
+            if (uc >= 0 && uc < f.length && !f[uc].isBlank()) {
+                Double converted = convert(code, appleUnit(f[uc]), v);
+                if (converted == null) {
+                    skip(code + " in an unknown unit (" + f[uc].strip() + ")");
+                    continue;
+                }
+                v = converted;
             }
             records++;
-            add(m, "", at, at, v);
+            add(m, src, at, until_, v);
         }
+    }
+
+    /** The unit names an iPhone shows (Shortcuts) mapped to the ones in an Apple export. */
+    static String appleUnit(String unit) {
+        String u = unit.strip();
+        return switch (u.toLowerCase(Locale.ROOT)) {
+            case "bpm", "beats/min", "count/min", "/min", "breaths/min" -> "count/min";
+            case "count", "steps", "step", "floors", "flights" -> "count";
+            case "lbs", "lb", "pound", "pounds" -> "lb";
+            case "kg", "kilograms" -> "kg";
+            case "mi", "miles" -> "mi";
+            case "km", "kilometers", "kilometres" -> "km";
+            case "m", "meters", "metres" -> "m";
+            case "ft", "feet" -> "ft";
+            case "kcal", "cal", "calories", "kilocalories" -> "kcal";
+            case "kj" -> "kJ";
+            case "%", "percent" -> "%";
+            case "mmhg" -> "mmHg";
+            case "mg/dl" -> "mg/dL";
+            case "mmol/l", "mmol<180.1558800000541>/l" -> "mmol/L";
+            case "°f", "degf", "f" -> "degF";
+            case "°c", "degc", "c" -> "degC";
+            case "ms" -> "ms";
+            case "min", "minutes" -> "min";
+            default -> u;
+        };
     }
 
     private Instant csvTime(String s) {
@@ -372,8 +442,17 @@ public final class HealthImport {
         if (s == null) {
             return null;
         }
+        // An iPhone writes numbers in its region's style: "1,234.5", "1 234,5" or "1,5".
+        String t = s.strip().replace(" ", "").replace(" ", "").replace(" ", "");
+        if (t.matches("-?\\d{1,3}(,\\d{3})+(\\.\\d+)?")) {
+            t = t.replace(",", "");
+        } else if (t.matches("-?\\d{1,3}(\\.\\d{3})+,\\d+")) {
+            t = t.replace(".", "").replace(",", ".");
+        } else if (t.matches("-?\\d+,\\d+")) {
+            t = t.replace(",", ".");
+        }
         try {
-            double d = Double.parseDouble(s.strip());
+            double d = Double.parseDouble(t);
             return Double.isFinite(d) ? d : null;
         } catch (NumberFormatException e) {
             return null;

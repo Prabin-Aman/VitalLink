@@ -334,6 +334,63 @@ public class HealthService {
                 p.to() == null ? null : p.to().atOffset(ZoneOffset.UTC));
     }
 
+    /** The iPhone Shortcut sends the last 2 days; buckets older than this are left alone, as they'd be incomplete. */
+    static final Duration SHORTCUT_SENDS = Duration.ofHours(48);
+
+    static final Duration SHORTCUT_KEEPS = Duration.ofHours(36);
+
+    /**
+     * Readings from the iPhone Shortcut ({@code start|metric|value|end|unit|source} lines, see {@link HealthImport}),
+     * stored as {@code healthkit} so they merge with an Apple Health export instead of doubling it. Only buckets from
+     * the last 36 hours are written: the samples cover 48, so each of those buckets is complete.
+     */
+    public ImportOut importShortcut(CurrentUser me, InputStream body, String deviceExternalId, String deviceName)
+            throws IOException {
+        Instant until = now().toInstant().plus(FUTURE_SLACK);
+        HealthImport.Parsed p = HealthImport.parse(
+                body, until.minus(SHORTCUT_SENDS), until, ZoneId.of(me.user().timezone()));
+        if (p.kind() != HealthImport.Kind.csv) {
+            throw new ApiError(422, "unreadable_file", "The Shortcut should send lines of start|metric|value.");
+        }
+        Instant keepFrom = until.minus(SHORTCUT_KEEPS);
+        List<Row> rows =
+                p.rows().stream().filter(r -> !r.start().isBefore(keepFrom)).toList();
+        int inserted = 0;
+        int updated = 0;
+        for (int i = 0; i < rows.size(); i += MAX_BUCKETS) {
+            int[] c = upsert(me.id(), "healthkit", rows.subList(i, Math.min(rows.size(), i + MAX_BUCKETS)));
+            inserted += c[0];
+            updated += c[1];
+        }
+        Integer[] metricIds =
+                rows.stream().map(Row::metricId).distinct().sorted().toArray(Integer[]::new);
+        jdbc.sql("""
+                        INSERT INTO vitallink.devices (id, user_id, platform, external_id, name, kind, metric_ids)
+                        VALUES (:id, :u, 'healthkit', :ext, :name, 'phone', CAST(:m AS smallint[]))
+                        ON CONFLICT (user_id, platform, external_id) DO UPDATE
+                          SET name = EXCLUDED.name, last_sync_at = now(),
+                              metric_ids = (SELECT coalesce(array_agg(DISTINCT x ORDER BY x), '{}')
+                                            FROM unnest(devices.metric_ids || EXCLUDED.metric_ids) AS x)
+                        """)
+                .param("id", Ids.uuid7())
+                .param("u", me.id())
+                .param("ext", deviceExternalId)
+                .param("name", deviceName)
+                .param("m", metricIds)
+                .update();
+        return new ImportOut(
+                "shortcut",
+                p.records(),
+                rows.size(),
+                inserted,
+                updated,
+                rows.size() - inserted - updated,
+                p.skipped(),
+                p.problems(),
+                rows.isEmpty() ? null : rows.get(0).start().atOffset(ZoneOffset.UTC),
+                rows.isEmpty() ? null : rows.get(rows.size() - 1).start().atOffset(ZoneOffset.UTC));
+    }
+
     public ReadingOut addManual(CurrentUser me, ManualIn body) {
         Metric m = metric(body.metric());
         if (!m.manualAllowed()) {

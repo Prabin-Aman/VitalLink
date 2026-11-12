@@ -196,6 +196,10 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   `POST /v1/phone/link` and gets an upload-only token (`Authorization: Phone <token>`, `PhoneCaller`, V22
   `phone_links`, hashes only). The phone's device card is named by the link id, so Disconnect unlinks it. No Android
   SDK on this machine: `.github/workflows/android.yml` runs the unit tests and builds the debug APK (artifact).
+- iPhone Shortcut (12 Nov 2026, owner chose it over a native iOS app): Connected Devices › Add › iPhone makes an
+  upload-only token (`POST /me/phones/shortcut`) and lists the Shortcut steps (`IphoneDialog`, `SHORTCUT_TYPES`);
+  the Shortcut posts `start|metric|value|end|unit|source` lines to `POST /v1/phone/import` (stored as `healthkit`,
+  last 36 h of a 48 h window). Not tried on a real iPhone; the Shortcut itself has to be built by hand on the phone.
 - Apple Health (Nov 2026): HealthKit has no web API and no native app exists now, so data arrives as the Health
   app's export.zip through Connected Devices › Add › Import (`POST /me/health/import`, exempt from the 2 MB body limit,
   up to 300 MB, streamed; JDK entity caps are lifted because every record's `device` attribute is full of `&lt;` and
