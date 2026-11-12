@@ -26,10 +26,16 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "8.11.1"
-      - name: Unit tests (buckets, upload body)
-        run: gradle -p android testDebugUnitTest
-      - name: Build the debug APK
-        run: gradle -p android assembleDebug
+      # Errors are also written as annotations, which anyone can read through the API without signing in.
+      - name: Unit tests (buckets, upload body) and the debug APK
+        run: |
+          set -o pipefail
+          if ! gradle -p android testDebugUnitTest assembleDebug --console=plain 2>&1 | tee build.log; then
+            grep -E '^e: |error:|FAILED|What went wrong|Could not|> ' build.log | head -40 | while IFS= read -r line; do
+              echo "::error title=android build::${line//%/%25}"
+            done
+            exit 1
+          fi
       - uses: actions/upload-artifact@v4
         with:
           name: vitallink-sync-debug
