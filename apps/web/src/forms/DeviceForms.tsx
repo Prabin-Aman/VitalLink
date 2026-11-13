@@ -27,6 +27,7 @@ import {
 import { useEffect, useRef, useState } from "react";
 import { Choices, DropZone, FormDialog, FormProblem, ItemList, KeyValueList, must, Note, useZone } from "../components/Form";
 import { Txt } from "../components/kit";
+import { QrCode } from "../components/QrCode";
 import { Button } from "../components/ui";
 import { notifyChanged, useApi } from "../data";
 import { saveFile } from "../download";
@@ -170,6 +171,11 @@ export function IphoneDialog({ onClose }: { onClose: () => void }) {
             { label: "Address", value: <span style={{ wordBreak: "break-all" }}>{url} <Button variant="tertiary" size="sm" onClick={() => copy(url)}>Copy</Button></span> },
           ]}
         />
+      )}
+      {token && (
+        <span>
+          <QrCode value={`Phone ${token}`} label="Scan with the iPhone camera, then tap Copy" />
+        </span>
       )}
       {token && <Note>The key is shown only now. It can only send readings; remove the iPhone in Connected Devices to stop it.</Note>}
       <Note>

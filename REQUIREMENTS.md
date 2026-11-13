@@ -79,12 +79,14 @@ Installed by `npm install` at the root (npm workspaces). Versions are what `pack
 | `react`, `react-dom` | 19.2.3 | UI |
 | `react-router-dom` | 6.30.6 | Routing |
 | `@supabase/supabase-js` | 2.118.0 | Sign-in in production |
+| `qrcode` | 1.5.4 | QR codes (the iPhone Shortcut key), MIT licence |
 | `@fontsource/inter`, `@fontsource/roboto-mono` | 5.3.0 | Fonts, served locally |
 | `vite` | 5.4.21 | Dev server and build |
 | `@vitejs/plugin-react` | 4.7.0 | React support for Vite |
 | `vite-plugin-svgr` | 4.5.0 | Icons as React components (`?react` imports) |
 | `typescript` | 5.9.3 | Type checking |
 | `@types/react`, `@types/react-dom` | 19.2.18, 19.2.7 | React types |
+| `@types/qrcode` | 1.5.6 | qrcode types |
 
 **`packages/*`** — `@vitallink/api` (client, view-models, form rules), `@vitallink/tokens` (design tokens),
 `@vitallink/assets` (icons): workspace packages with no outside dependencies.

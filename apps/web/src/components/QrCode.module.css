@@ -1,0 +1,20 @@
+.qr {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--vl-spacing-2);
+  margin: 0;
+  padding: var(--vl-spacing-3);
+  border: 1px solid var(--vl-border-subtle);
+  border-radius: var(--vl-radius-lg);
+  background: var(--vl-bg-surface);
+  color: var(--vl-text-secondary);
+}
+
+.paper {
+  fill: var(--vl-bg-surface);
+}
+
+.ink {
+  fill: var(--vl-text-primary);
+}
