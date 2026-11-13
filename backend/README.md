@@ -109,6 +109,12 @@ docker run --rm --network host --env-file .env -e PORT=8100 vitallink-api   # ht
 | `STORAGE_BUCKET` | Private bucket for record files (default `records`) |
 | `JOB_SECRET` | Shared with the nightly workflow |
 | `DEV_JWT_SECRET` | Local/test only: signs dev tokens |
+| `WEB_URL` | The web portal's address, for links in emails and the Google Health callback |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` | Email (Mailpit locally, Brevo in production) |
+| `GOOGLE_CLIENT_ID` | Google sign-in's OAuth client id; unset = no Google button |
+| `GOOGLE_HEALTH_CLIENT_SECRET` | That client's secret, for Fitbit and Pixel Watch through Google Health (`GOOGLE_HEALTH_CLIENT_ID` defaults to `GOOGLE_CLIENT_ID`) |
+| `CONNECTION_KEY` | 32 random bytes, base64: seals stored Google Health tokens. Required in production for Google Health |
+| `USDA_API_KEY` | USDA FoodData Central key for food search; unset = VitalLink's own food list only |
 | `PORT` | Render sets it; 8000 locally |
 
 ## In one paragraph

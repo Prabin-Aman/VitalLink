@@ -11,6 +11,20 @@ Group capstone, The University of Texas at Arlington, Group 2.
 | **Website** | https://vital-link-flax.vercel.app |
 | **API** | https://vitallink-9p4d.onrender.com (`/ready` for health) |
 | **Design** | Figma file `JuPJkw5r1aAtdgRQk2UuaA` |
+| **Android app** | [vitallink-sync.apk](https://github.com/zeutonx/VitalLink/releases/download/android-latest/vitallink-sync.apk) (latest build) |
+
+## What it does
+
+- **Dashboard and My Health:** a health score, today's vitals, activity, sleep, heart, body and wellbeing views,
+  computed from the person's own readings in 5-minute blocks.
+- **Health data in:** Apple Health export, an iPhone Shortcut, the Android app (Health Connect), Fitbit and Pixel
+  Watch (Google Health), Bluetooth devices in Chrome or Edge, a CSV, or typed readings.
+- **Workouts, nutrition and goals:** training plans and personal records; food search (VitalLink's list plus USDA
+  FoodData Central), barcode scanning (Open Food Facts), recipes and water; goals checked against real data.
+- **Care and records:** medications with dose reminders, appointments with a doctor search (NPI Registry), lab
+  results, medical documents and an Emergency Medical ID.
+- **Sharing and security:** share chosen kinds of data with a doctor or family member for a set time, revoke at any
+  time, see every access in a log. Google sign-in, two-step verification, data export and account deletion.
 
 ## How it fits together
 
@@ -23,9 +37,13 @@ flowchart LR
   A -->|signed links| S3[(Supabase Storage)]
   B -. files via signed links .-> S3
   G[GitHub Actions] -->|nightly job, checks, backups| A
+  P[Android app and<br/>iPhone Shortcut] -->|upload-only token| A
+  A --> X[Google Health, USDA FoodData Central,<br/>Open Food Facts, NPI Registry, Brevo email]
 ```
 
-Everything runs on free plans. All server code is Java. Only the API talks to the database.
+Everything runs on free plans. The server is Java; the Android app is Java with one small Kotlin file. Only the API
+talks to the database. Outside services get only what they need: search words, a barcode, or (for Google Health)
+the person's own consent.
 
 ## Repository
 
@@ -35,7 +53,9 @@ packages/api/    API client, sample data, form rules, screen view-models        
 packages/tokens/ Design tokens generated from Figma variables
 packages/assets/ Icons generated from the Figma icon components
 backend/         The API (Java 25, Spring Boot 4.1, PostgreSQL, Flyway)          → backend/README.md
+android/         VitalLink Sync, the Android helper app (Health Connect)          → android/README.md
 scripts/         Icon generator and the screenshot tool
+presentation/    The final presentation
 ```
 
 ## Install and run
@@ -243,6 +263,9 @@ standard but haven't been run on those setups, so please report anything that di
 | `cd backend && ./mvnw verify` | All backend tests with coverage (needs Postgres) |
 | `cd backend && ./mvnw spotless:apply` | Format the Java code |
 
+The Android app needs no local setup: GitHub Actions tests and builds it on every change to `android/` and
+publishes the APK linked above. To build it yourself, see [android/README.md](android/README.md).
+
 ## Configuration
 
 **Vercel (website)**
@@ -253,21 +276,39 @@ standard but haven't been run on those setups, so please report anything that di
 | `VITE_SUPABASE_URL` | The Supabase project's address |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | The public key. Never the secret key. |
 | `VITE_SUPABASE_GOOGLE` | `1` to offer Google sign-in |
+| `VITE_ANDROID_APK_URL` | Optional: where Android phone › Download the app points (default: the latest release) |
 
 These are built into the site, so redeploy after changing them.
 
-**Render (API):** see the configuration table in [backend/README.md](backend/README.md).
+**Render (API):** see the configuration table in [backend/README.md](backend/README.md). Optional features stay off
+until their variable is set:
+
+| Feature | Variables |
+|---|---|
+| Google sign-in | `GOOGLE_CLIENT_ID` |
+| Fitbit and Pixel Watch (Google Health) | `GOOGLE_HEALTH_CLIENT_SECRET`, `CONNECTION_KEY` (32 random bytes, base64) |
+| Food search from USDA | `USDA_API_KEY` (free at https://fdc.nal.usda.gov/api-key-signup) |
+| Email (password resets, sign-up) | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `MAIL_FROM` |
 
 **Supabase:** a private `records` bucket, email confirmation on, the site's address under URL Configuration, and an
 SMTP provider for email. Never commit secrets: `.env*` files are ignored by git, and this repository is public.
 
 ## Health data
 
-A website can't read data from a phone, so it arrives in three ways, all under Settings › Connected Devices:
+A website can't read a phone's health store directly, so data arrives in these ways, all under Settings › Connected
+Devices › Add a device. Sending the same readings again updates them instead of doubling them.
 
-- **Apple Health export:** upload `export.zip` from the Health app. Importing again updates readings.
-- **Bluetooth:** pair a strap, cuff, scale, oximeter or glucose meter in Chrome or Edge.
-- **CSV file or typed readings.**
+| Way | How it works |
+|---|---|
+| **iPhone (Apple Health)** | An Apple Shortcut on the phone sends the last 2 days every night with an upload-only key from the website. No app needed |
+| **Apple Health export** | Upload `export.zip` from the Health app, for the full history |
+| **Android phone** | The VitalLink Sync app reads Health Connect (Samsung Health, Google Fit and others) every 3 hours. Link it with a one-time code from the website |
+| **Fitbit or Pixel Watch** | Connect a Google account once (Google Health API); it syncs every night and on Sync now |
+| **Bluetooth** | Pair a strap, cuff, scale, oximeter or glucose meter in Chrome or Edge |
+| **CSV or typed readings** | A file of `start,metric,value`, or Add Reading |
+
+The iPhone Shortcut and the Android app have been tested only against the API, not yet on real phones. Google
+Health has been tested against a stand-in for Google, not the real service.
 
 ## Documentation
 
@@ -277,4 +318,5 @@ A website can't read data from a phone, so it arrives in three ways, all under S
 | [packages/api/README.md](packages/api/README.md) | Client, view-models, form rules, sample data |
 | [backend/README.md](backend/README.md) | Running, configuring and deploying the API |
 | [backend/docs/README.md](backend/docs/README.md) | Index of the design docs and test report |
+| [android/README.md](android/README.md) | The Android helper app: how it links, reads and syncs |
 | [REQUIREMENTS.md](REQUIREMENTS.md) | Every tool and library, with versions |
