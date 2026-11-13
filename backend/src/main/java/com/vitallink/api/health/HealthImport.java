@@ -10,6 +10,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -47,6 +48,12 @@ public final class HealthImport {
 
     static final long MAX_XML_BYTES = 2L * 1024 * 1024 * 1024;
     static final int MAX_PROBLEMS = 10;
+
+    /**
+     * The longest one sample may cover. Real ones are minutes to a night long; an end date years away would be spread
+     * over millions of 5-minute buckets and exhaust memory.
+     */
+    static final Duration MAX_SAMPLE = Duration.ofDays(2);
 
     public enum Kind {
         apple,
@@ -225,6 +232,10 @@ public final class HealthImport {
         if (e.isBefore(s) || s.isBefore(since) || !s.isBefore(until)) {
             return; // outside the chosen period
         }
+        if (Duration.between(s, e).compareTo(MAX_SAMPLE) > 0) {
+            skip("a record that covers more than 2 days (" + start + ")");
+            return;
+        }
         records++;
         String src = source == null ? "" : source;
         if (sleep) {
@@ -294,9 +305,9 @@ public final class HealthImport {
 
     static final DateTimeFormatter LOCAL = DateTimeFormatter.ofPattern("yyyy-MM-dd[ ]['T']HH:mm[:ss]", Locale.ROOT);
 
-    /** {@code start,metric,value}: start in ISO 8601 with an offset, or local "YYYY-MM-DD HH:MM" in the account's zone. */
     /**
-     * {@code start,metric,value}, and optionally {@code end}, {@code unit} and {@code source} (an Apple Shortcut sends
+     * {@code start,metric,value} (start in ISO 8601 with an offset, or local "YYYY-MM-DD HH:MM" in the account's
+     * zone), and optionally {@code end}, {@code unit} and {@code source} (an Apple Shortcut sends
      * all of them, separated by {@code |} so commas in numbers or device names can't split a line). With a unit the
      * value is converted like an Apple export's; with an end a total is spread over the buckets it covers; with a
      * source, totals take one source per bucket. Metric {@code sleep} takes a stage name as its value (Deep, Core,
@@ -346,6 +357,10 @@ public final class HealthImport {
                 until_ = csvTime(f[ec].strip());
                 if (until_ == null || until_.isBefore(at)) {
                     skip("line " + line + ": unreadable end \"" + f[ec].strip() + "\"");
+                    continue;
+                }
+                if (Duration.between(at, until_).compareTo(MAX_SAMPLE) > 0) {
+                    skip("line " + line + ": covers more than 2 days");
                     continue;
                 }
             }

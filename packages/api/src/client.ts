@@ -123,12 +123,14 @@ export class VitalLinkClient {
     const res = await this.reach(`${this.opts.baseUrl}/v1${path}`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
-    if (!res.ok) {
-      const body = await res.json().catch(() => ({}));
-      const e = body?.error ?? {};
-      throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
-    }
+    if (!res.ok) throw await this.problem(res);
     return (await res.json()) as T;
+  }
+
+  /** The API's error envelope ({ error: { code, message, request_id } }) as an ApiError. */
+  private async problem(res: Response): Promise<ApiError> {
+    const e = (await res.json().catch(() => ({})))?.error ?? {};
+    return new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
   }
 
   /** A write. Mock mode has nothing to write to, so it changes nothing and resolves with null. */
@@ -145,20 +147,16 @@ export class VitalLinkClient {
       },
       body: body === undefined ? undefined : raw ? body : JSON.stringify(body),
     });
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({}));
-      const e = err?.error ?? {};
-      throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
-    }
+    if (!res.ok) throw await this.problem(res);
     // 202/204 (and any empty reply) have no body.
     const text = await res.text();
     return text ? (JSON.parse(text) as T) : null;
   }
 
   // ---- Writes.
-  /** PATCH /me/account: only the fields given change; null clears an optional one. */
   /** Create Account's setup steps are finished or left for later. */
   completeOnboarding = () => this.send("POST", "/me/onboarding/complete");
+  /** PATCH /me/account: only the fields given change; null clears an optional one. */
   updateAccount = (patch: Partial<Omit<AccountProfile, "email" | "member_since" | "two_factor">>) =>
     this.send<AccountProfile>("PATCH", "/me/account", patch);
   /** Mark one scheduled dose taken or skipped (idempotent). `at` is the dose's scheduled time. */
@@ -171,7 +169,6 @@ export class VitalLinkClient {
   /** The user cancels a visit (it stays in the Cancelled list). */
   cancelAppointment = (id: string) => this.send<Appointment>("PATCH", `/me/appointments/${id}`, { state: "cancelled" });
   // ---- Entry forms (Figma page "15 — Proposed · Entry forms"); bodies are built in forms.ts.
-  /** One manual reading (POST /me/health/manual); blood pressure is two calls, systolic and diastolic. */
   /** POST /v1/auth/sign-up and /sign-in (local email/password accounts): an access token, or null in mock mode. */
   signUp = (body: object) => this.send<{ access_token: string; expires_at: string }>("POST", "/auth/sign-up", body);
   /** GET /v1/auth/config: what Sign In can offer. Mock mode has no accounts. */
@@ -184,6 +181,7 @@ export class VitalLinkClient {
   /** Settings › Security (Figma 221:2114): 204; 422 wrong_password, 409 no_password (a Google-only account). */
   changePassword = (current: string, next: string) => this.send("POST", "/auth/change-password", { current_password: current, new_password: next });
   signIn = (email: string, password: string) => this.send<{ access_token: string; expires_at: string }>("POST", "/auth/sign-in", { email, password });
+  /** One manual reading (POST /me/health/manual); blood pressure is two calls, systolic and diastolic. */
   addReading = (metric: string, value: number, at: string) => this.send("POST", "/me/health/manual", { metric, value, at });
   /** POST /me/health/import: an Apple Health export or a CSV, readings from the last `days`. Null in mock mode. */
   importHealthFile = (file: Blob, days: number) => this.send<ImportResult>("POST", `/me/health/import?days=${days}`, file);
@@ -247,7 +245,7 @@ export class VitalLinkClient {
       `/me/records/${created.id}/upload`,
       { file_name: name, content_type: file.type, size: file.size },
     );
-    const put = await fetch(target!.upload_url, { method: target!.method, headers: target!.headers, body: file });
+    const put = await this.reach(target!.upload_url, { method: target!.method, headers: target!.headers, body: file });
     if (!put.ok) throw new ApiError(put.status, "upload_failed", "The file didn't upload. Try again.");
     await this.send("POST", `/me/records/${created.id}/confirm`);
     return created.id;
@@ -341,10 +339,7 @@ export class VitalLinkClient {
     if (this.isMock) return null;
     const token = await this.opts.getToken?.();
     const res = await this.reach(`${this.opts.baseUrl}/v1/me/export`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
-    if (!res.ok) {
-      const e = (await res.json().catch(() => ({})))?.error ?? {};
-      throw new ApiError(res.status, e.code ?? "error", e.message ?? res.statusText, e.request_id);
-    }
+    if (!res.ok) throw await this.problem(res);
     const name = /filename="([^"]+)"/.exec(res.headers.get("Content-Disposition") ?? "")?.[1] ?? "vitallink-export.json";
     return { blob: await res.blob(), filename: name };
   };

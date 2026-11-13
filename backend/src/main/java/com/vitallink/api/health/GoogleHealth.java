@@ -325,13 +325,19 @@ public class GoogleHealth implements UserData {
         Collector c = new Collector(ZoneId.of(tz));
         List<String> problems = new ArrayList<>();
         final Instant f = start;
+        // A data type that failed for now (Google busy or unreachable) is asked for again from the same point.
+        boolean incomplete = false;
         try {
             for (RollUp r : ROLL_UPS) {
-                each(problems, r.type(), () -> rollUp(token, r, c, f, to));
+                incomplete |= each(problems, r.type(), () -> rollUp(token, r, c, f, to));
             }
-            each(problems, "weight", () -> samples(token, "weight", "weight", "weightGrams", 0.001, "weight", f, c));
-            each(problems, "body-fat", () -> samples(token, "body-fat", "bodyFat", "percentage", 1, "body_fat", f, c));
-            each(
+            incomplete |= each(
+                    problems, "weight", () -> samples(token, "weight", "weight", "weightGrams", 0.001, "weight", f, c));
+            incomplete |= each(
+                    problems,
+                    "body-fat",
+                    () -> samples(token, "body-fat", "bodyFat", "percentage", 1, "body_fat", f, c));
+            incomplete |= each(
                     problems,
                     "daily-resting-heart-rate",
                     () -> daily(
@@ -342,7 +348,7 @@ public class GoogleHealth implements UserData {
                             "resting_heart_rate",
                             f,
                             c));
-            each(
+            incomplete |= each(
                     problems,
                     "daily-heart-rate-variability",
                     () -> daily(
@@ -353,7 +359,7 @@ public class GoogleHealth implements UserData {
                             "hrv",
                             f,
                             c));
-            each(problems, "sleep", () -> sleep(token, f, c));
+            incomplete |= each(problems, "sleep", () -> sleep(token, f, c));
         } catch (Reconnect e) {
             markError(userId, "Google access was removed. Connect Google Health again.");
             throw new ApiError(409, "reconnect_needed", "Google access was removed. Connect Google Health again.");
@@ -379,7 +385,7 @@ public class GoogleHealth implements UserData {
                         SET last_sync_at = now(), synced_through = :to, last_error = :e
                         WHERE user_id = :u AND service = :s
                         """)
-                .param("to", to.atOffset(ZoneOffset.UTC))
+                .param("to", incomplete ? through : to.atOffset(ZoneOffset.UTC))
                 .param("e", error)
                 .param("u", userId)
                 .param("s", SERVICE)
@@ -431,8 +437,12 @@ public class GoogleHealth implements UserData {
 
     /** A data type Google refused or that failed: report it and carry on with the rest. */
     static final class Skipped extends RuntimeException {
-        Skipped(String message) {
+        /** True when asking again later can work (Google busy), false when it can't (no permission, no data). */
+        final boolean retry;
+
+        Skipped(String message, boolean retry) {
             super(message, null, false, false);
+            this.retry = retry;
         }
     }
 
@@ -440,13 +450,16 @@ public class GoogleHealth implements UserData {
         void run() throws IOException, InterruptedException;
     }
 
-    private static void each(List<String> problems, String type, Work w) {
+    /** Runs one data type; true when it failed in a way the next sync should make up for. */
+    private static boolean each(List<String> problems, String type, Work w) {
         try {
             w.run();
+            return false;
         } catch (Reconnect e) {
             throw e;
         } catch (Skipped e) {
             problems.add(type + ": " + e.getMessage());
+            return e.retry;
         } catch (IOException e) {
             problems.add(type + ": Google Health didn't answer");
         } catch (InterruptedException e) {
@@ -456,6 +469,7 @@ public class GoogleHealth implements UserData {
             log.warn("google health: {} failed", type, e);
             problems.add(type + ": couldn't be read");
         }
+        return true;
     }
 
     private String accessToken(UUID userId) {
@@ -531,20 +545,20 @@ public class GoogleHealth implements UserData {
             throw new Reconnect();
         }
         if (s == 403) {
-            throw new Skipped("not allowed (was this permission left unticked?)");
+            throw new Skipped("not allowed (was this permission left unticked?)", false);
         }
         if (s == 404) {
-            throw new Skipped("not available");
+            throw new Skipped("not available", false);
         }
         if (s == 429) {
-            throw new Skipped("Google asked us to slow down; the next sync will catch up");
+            throw new Skipped("Google asked us to slow down; the next sync will catch up", true);
         }
         if (s / 100 != 2) {
-            throw new Skipped("Google answered " + s);
+            throw new Skipped("Google answered " + s, s >= 500);
         }
         JsonNode n = parse(res.body());
         if (n == null) {
-            throw new Skipped("unreadable answer");
+            throw new Skipped("unreadable answer", true);
         }
         return n;
     }
@@ -631,7 +645,11 @@ public class GoogleHealth implements UserData {
             for (JsonNode st : p.path("sleep").path("stages")) {
                 Instant s = time(text(st, "startTime"));
                 Instant e = time(text(st, "endTime"));
-                if (s == null || e == null || !e.isAfter(s)) {
+                // A stage is minutes or hours long; an absurd end time would fill millions of buckets.
+                if (s == null
+                        || e == null
+                        || !e.isAfter(s)
+                        || Duration.between(s, e).toDays() >= 2) {
                     continue;
                 }
                 switch (String.valueOf(text(st, "type"))) {

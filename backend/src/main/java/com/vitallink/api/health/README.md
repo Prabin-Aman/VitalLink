@@ -15,8 +15,9 @@ manual readings, series, latest readings, the dashboard with the readiness score
   AES-256-GCM, `core/security/Sealer`; first sync 30 days), `…/sync` (since the last sync minus a day; ≤ 90
   days), `DELETE /me/connections/google-health` (revokes at Google; readings stay). Steps, distance, active
   energy and heart rate from 5-minute roll-ups; weight, body fat, resting HR, HRV and sleep stages from data
-  points; stored as source `google_health`. A refused data type is reported and skipped; a revoked grant is
-  409 `reconnect_needed` and shows on the card. The nightly job syncs everyone connected.
+  points; stored as source `google_health`. A refused data type is reported and skipped; one that failed for
+  now (Google busy or unreachable) leaves `synced_through` where it was, so the next sync asks for the same period
+  again; a revoked grant is 409 `reconnect_needed` and shows on the card. The nightly job syncs everyone connected.
 
 - Android helper (`android/`, Health Connect), `PhoneLinks` + `PhoneController`: `POST /me/phones/code` (8
   characters, 10 minutes, one use; a new code replaces the last), `GET /me/phones`, `DELETE /me/phones/{id}`;
@@ -28,7 +29,9 @@ manual readings, series, latest readings, the dashboard with the readiness score
   once (`phone_links` row named "iPhone (Shortcut)"); the Shortcut posts `start|metric|value|end|unit|source` lines
   for the last 2 days to `POST /v1/phone/import` (`HealthService.importShortcut`, the CSV reader in `HealthImport`
   with units, sources and sleep stages). Stored as `healthkit`, so it merges with an Apple export; only buckets from
-  the last 36 hours are written, so every written bucket is complete. Its device card unlinks it like Android's.
+  the last 36 hours are written, so every written bucket is complete. The body is capped at 2 MB and counted as ingest
+  by the rate limiter. Its device card unlinks it like Android's. In any import, a sample covering more than 2 days
+  is skipped (`HealthImport.MAX_SAMPLE`), so a far-off end date can't fill memory with buckets.
 
 Tables: `metrics`, `health_readings`, `ingest_batches`, `devices`, `device_connections` (V21), `phone_links` (V22). Classes:
 `Catalogue`, `HealthService`, `HealthTabsService`, `GoogleHealth` and their controllers.

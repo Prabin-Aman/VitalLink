@@ -32,6 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "health")
 public class PhoneController {
 
+    static final long MAX_SHORTCUT_BYTES = 2L * 1024 * 1024;
+
     private final PhoneLinks phones;
     private final HealthService health;
 
@@ -74,8 +76,9 @@ public class PhoneController {
                             + " last 2 days. Stored as Apple Health readings; only the last 36 hours are written.")
     public HealthDtos.ImportOut importShortcut(PhoneCaller phone, jakarta.servlet.http.HttpServletRequest request)
             throws java.io.IOException {
-        return health.importShortcut(
-                phone.me(), request.getInputStream(), phone.linkId().toString(), "iPhone (Shortcut)");
+        // Two days of readings are well under 2 MB; a body sent in chunks has no Content-Length for SafetyChecks.
+        var body = new HealthImport.Capped(request.getInputStream(), MAX_SHORTCUT_BYTES, "upload");
+        return health.importShortcut(phone.me(), body, phone.linkId().toString(), "iPhone (Shortcut)");
     }
 
     @PostMapping("/v1/phone/link")

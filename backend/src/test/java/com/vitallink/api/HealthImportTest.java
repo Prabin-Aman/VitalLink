@@ -187,6 +187,30 @@ class HealthImportTest extends ApiTest {
     }
 
     @Test
+    void aSampleWithAnEndYearsAwayIsSkippedNotSpreadOverEveryBucket() {
+        String u = user();
+        String csv = "start|metric|value|end\n"
+                + T0 + "|steps|500|9999-12-31T00:00:00Z\n"
+                + T0 + "|sleep|Deep|9999-12-31T00:00:00Z\n"
+                + T0 + "|weight|72.4|\n";
+        Res r = upload(u, csv.getBytes(StandardCharsets.UTF_8), "");
+        assertThat(r.status()).as(r.text()).isEqualTo(200);
+        assertThat(r.at("/inserted").asInt()).isEqualTo(1);
+        assertThat(r.at("/skipped").asInt()).isEqualTo(2);
+        assertThat(r.at("/problems").toString()).contains("covers more than 2 days");
+
+        String xml = "<HealthData>"
+                + "<Record type=\"HKQuantityTypeIdentifierStepCount\" sourceName=\"Watch\" unit=\"count\" value=\"500\""
+                + " startDate=\"" + at(T0) + "\" endDate=\"9999-12-31 00:00:00 +0000\"/>"
+                + record("HKQuantityTypeIdentifierBodyMass", "Scale", "kg", "72.4", T0, T0)
+                + "</HealthData>";
+        Res apple = upload(user(), xml.getBytes(StandardCharsets.UTF_8), "");
+        assertThat(apple.status()).as(apple.text()).isEqualTo(200);
+        assertThat(apple.at("/readings").asInt()).isEqualTo(1);
+        assertThat(apple.at("/problems").toString()).contains("covers more than 2 days");
+    }
+
+    @Test
     void refusesFilesItCantRead() {
         String u = user();
         Res other = upload(u, "name,age\nAlex,30\n".getBytes(StandardCharsets.UTF_8), "");

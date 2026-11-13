@@ -79,7 +79,10 @@ public final class SyncWorker extends Worker {
         }
         Instant to = Instant.now();
         Instant through = store.syncedThrough();
-        Instant from = through != null ? through.minus(OVERLAP) : to.minus(FIRST_SYNC);
+        // Start on a 5-minute boundary: the server replaces a bucket with what's sent, so a read that began partway
+        // through one would overwrite its earlier, complete value with part of it.
+        Instant from = Instant.ofEpochSecond(
+                Buckets.bucketOf(through != null ? through.minus(OVERLAP) : to.minus(FIRST_SYNC)));
         try {
             Reader.Result r = new Reader(context).read(from, to);
             if (r.read.isEmpty()) {
@@ -127,6 +130,10 @@ public final class SyncWorker extends Worker {
         } catch (SecurityException e) {
             store.lastResult("Health Connect refused access: open the app and tap Allow access.");
             return Result.failure();
+        } catch (RuntimeException e) {
+            // Health Connect's own failures (busy, its read quota used up): say so and let the next run try.
+            store.lastResult("Health Connect couldn't be read; it will try again.");
+            return Result.retry();
         }
     }
 }

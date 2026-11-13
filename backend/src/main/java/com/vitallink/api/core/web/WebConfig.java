@@ -127,7 +127,9 @@ public class WebConfig implements WebMvcConfigurer {
                 MethodParameter p, ModelAndViewContainer m, NativeWebRequest web, WebDataBinderFactory b) {
             HttpServletRequest request = web.getNativeRequest(HttpServletRequest.class);
             var phone = phones.caller(request.getHeader("Authorization"));
-            limits.check(phone.me().claims().subject(), request.getRequestURI().equals("/v1/phone/ingest"));
+            String uri = request.getRequestURI();
+            limits.check(
+                    phone.me().claims().subject(), uri.equals("/v1/phone/ingest") || uri.equals("/v1/phone/import"));
             return phone;
         }
     }
