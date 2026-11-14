@@ -1,7 +1,7 @@
 // Share your data (Figma 206:1452), Manage access (206:1516) and Access details (211:1577) — Dialog 560.
 import { checkShare, loadManageAccess, SHARE_ENDS, SHARE_KINDS, SHARE_SCOPES, todayIn, type AccessRowVM } from "@vitallink/api";
 import { useCallback, useState } from "react";
-import { Choices, FormDialog, ItemList, KeyValueList, must, Note, Row, TextField, useZone } from "../components/Form";
+import { Choices, FormDialog, Help, ItemList, KeyValueList, must, Note, Row, TextField, useZone } from "../components/Form";
 import { Button } from "../components/ui";
 import { notifyChanged, useApi, useScreen } from "../data";
 
@@ -49,6 +49,15 @@ function Share({ tz, preset, onClose }: { tz: string; preset?: SharePreset; onCl
       <Note>
         They see only what you pick, read-only, once they sign in to VitalLink with this email. Every time they look shows in your access history, and you can stop sharing any time.
       </Note>
+      <Help
+        title="How sharing works"
+        items={[
+          { q: "How do they see it?", a: "They create a free VitalLink account with the email you type here, or sign in if they have one. VitalLink doesn't send them a link, so tell them yourself." },
+          { q: "What can they do?", a: "Look only. They can't add, change or delete anything, and they see just the parts you ticked." },
+          { q: "Can I change my mind?", a: "Yes. Open Privacy, choose Manage on the card, and Stop sharing. They lose access straight away. Access also ends by itself on the day you pick here." },
+          { q: "How do I know they looked?", a: "Privacy shows an access history: who looked, at what, and when." },
+        ]}
+      />
     </FormDialog>
   );
 }

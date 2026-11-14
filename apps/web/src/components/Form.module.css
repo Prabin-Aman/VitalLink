@@ -253,3 +253,115 @@ dl.items {
   border-radius: var(--vl-radius-lg);
   background: var(--vl-bg-inverse);
 }
+
+/* Help (no Figma frame): a closed row in the Note colours that opens to questions and answers. */
+.help {
+  border-radius: var(--vl-radius-md);
+  background: var(--vl-bg-subtle);
+  color: var(--vl-text-secondary);
+}
+.helpSummary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  border-radius: var(--vl-radius-md);
+  color: var(--vl-text-primary);
+  cursor: pointer;
+  list-style: none;
+}
+.helpSummary::-webkit-details-marker {
+  display: none;
+}
+.helpSummary::after {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-left: auto;
+  margin-right: 4px;
+  border-right: 2px solid var(--vl-icon-subtle);
+  border-bottom: 2px solid var(--vl-icon-subtle);
+  transform: rotate(45deg);
+}
+.help[open] > .helpSummary::after {
+  transform: rotate(-135deg);
+}
+.helpSummary:focus-visible {
+  outline: 2px solid var(--vl-border-focus);
+  outline-offset: 2px;
+}
+.helpBody {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 0 14px 14px;
+}
+.helpItems {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin: 0;
+}
+.helpItems dt {
+  color: var(--vl-text-primary);
+}
+.helpAnswer {
+  margin: 2px 0 0;
+}
+
+/* Steps (no Figma frame): a numbered mark, then the step's title and content. */
+.steps {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: step;
+}
+.step {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr);
+  gap: 12px;
+  counter-increment: step;
+}
+.stepMark {
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--vl-radius-full);
+  background: var(--vl-bg-brand-subtle);
+  color: var(--vl-text-brand);
+}
+.stepMark:empty::before {
+  content: counter(step);
+}
+.stepDone > .stepMark {
+  background: var(--vl-range-normal-bg);
+  color: var(--vl-range-normal);
+}
+.stepMain {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  min-width: 0;
+  padding-top: 3px;
+  color: var(--vl-text-secondary);
+}
+.stepMain > :first-child {
+  color: var(--vl-text-primary);
+}
+.stepMain > dl,
+.stepMain > details,
+.stepMain > p {
+  align-self: stretch;
+}
+.subSteps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding-left: 20px;
+}

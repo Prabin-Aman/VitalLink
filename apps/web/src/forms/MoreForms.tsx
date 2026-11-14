@@ -18,7 +18,7 @@ import {
   type NutritionTargets,
 } from "@vitallink/api";
 import { useEffect, useRef, useState } from "react";
-import { FormDialog, ItemList, must, Note, Row, TextField, useZone } from "../components/Form";
+import { FormDialog, Help, ItemList, must, Note, Row, TextField, useZone } from "../components/Form";
 import { Button } from "../components/ui";
 import { notifyChanged, useApi } from "../data";
 import formCss from "../components/Form.module.css";
@@ -278,6 +278,15 @@ function AddLabResults({ tz, onClose }: { tz: string; onClose: () => void }) {
         </Button>
       </span>
       {problem && <Note>{problem}</Note>}
+      <Help
+        title="Reading a lab report"
+        items={[
+          { q: "Where is the normal range?", a: "Next to each result, often headed Reference range or Ref. interval, as two numbers such as 13.0 to 17.0. Type the lower one in Normal low and the higher one in Normal high." },
+          { q: "The range has only one number", a: "For a result like \"under 200\", use 0 for Normal low and 200 for Normal high. For \"over 40\", use 40 for Normal low and a high number the result can't reach for Normal high." },
+          { q: "What are Panel and Short name?", a: "The Panel is the report's title, such as Lipid Panel. The Short name is what its tab says, such as Lipids." },
+          { q: "Can I keep the report itself?", a: "Yes. Upload the PDF or a photo in Medical Records with Upload Document." },
+        ]}
+      />
     </FormDialog>
   );
 }
@@ -355,6 +364,13 @@ export function ScanBarcodeDialog({ onClose, onFound }: { onClose: () => void; o
         </span>
       )}
       <Note>Looked up in Open Food Facts (only the barcode is sent). A food found is saved to your foods and opens Log Food.</Note>
+      <Help
+        items={[
+          { q: "There's no Use camera button", a: "Reading barcodes with the camera works in Chrome on Android and on a Mac. In other browsers, type the digits printed under the bars." },
+          { q: "The camera doesn't read it", a: "Hold the barcode flat, in good light, a hand's width from the camera. If the browser asked for the camera and you said no, allow it in the site settings next to the address." },
+          { q: "The product wasn't found", a: "Not every product is in Open Food Facts. Use Log Food, then Add it as a new food, and copy the numbers from the label. It's saved for next time." },
+        ]}
+      />
     </FormDialog>
   );
 }

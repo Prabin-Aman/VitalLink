@@ -15,8 +15,12 @@ describe("Bluetooth health profiles", () => {
 
   it("reads heart rate in 8 and 16 bits", () => {
     expect(decodeBle("heart_rate", view(0x00, 72), NOW)).toEqual({ at: NOW, values: [{ metric: "heart_rate", value: 72 }] });
-    expect(decodeBle("heart_rate", view(0x01, ...le16(301)), NOW)!.values[0].value).toBe(301);
+    expect(decodeBle("heart_rate", view(0x01, ...le16(181)), NOW)!.values[0].value).toBe(181);
     expect(decodeBle("heart_rate", view(0x00, 0), NOW)).toBeNull(); // no contact
+    expect(decodeBle("heart_rate", view(0x04, 72), NOW)).toBeNull(); // the strap says it isn't on skin
+    expect(decodeBle("heart_rate", view(0x06, 72), NOW)!.values[0].value).toBe(72); // on skin
+    expect(decodeBle("heart_rate", view(0x01, ...le16(301)), NOW)).toBeNull(); // the API would refuse the upload
+    expect(decodeBle("heart_rate", view(0x01, 72), NOW)).toBeNull(); // cut short
   });
 
   it("reads a cuff's pressure, device time and pulse", () => {
@@ -40,6 +44,29 @@ describe("Bluetooth health profiles", () => {
     // flags: concentration present, kg/L; seq 1; 2026-10-30 07:00:00; 0.00104 kg/L = 104 mg/dL (104 × 10⁻⁵)
     const g = decodeBle("glucose", view(0x02, ...le16(1), ...le16(2026), 10, 30, 7, 0, 0, ...le16(0xb068), 0x11), NOW, 0)!;
     expect(g).toEqual({ at: "2026-10-30T07:00:00.000Z", values: [{ metric: "glucose", value: 104 }] });
+  });
+
+  it("doesn't trust a device clock that is unset or ahead", () => {
+    const cuff = (year: number, hour: number) => view(0x02, ...le16(121), ...le16(79), ...le16(93), ...le16(year), 10, 30, hour, 0, 0);
+    expect(decodeBle("blood_pressure", cuff(2026, 8), NOW, 0)!.at).toBe("2026-10-30T08:00:00.000Z");
+    expect(decodeBle("blood_pressure", cuff(2000, 8), NOW, 0)!.at).toBe(NOW); // factory date
+    expect(decodeBle("blood_pressure", cuff(2026, 23), NOW, 0)!.at).toBe(NOW); // later today
+    // A meter's stored records can't be placed without a time.
+    expect(decodeBle("glucose", view(0x02, ...le16(1), ...le16(2000), 1, 1, 0, 0, 0, ...le16(0xb068), 0x11), NOW, 0)).toBeNull();
+  });
+
+  it("keeps a reading whose pulse is off, and drops one whose main value is", () => {
+    const pulse = (bpm: number) => view(0x04, ...le16(121), ...le16(79), ...le16(93), ...le16(bpm));
+    expect(decodeBle("blood_pressure", pulse(68), NOW)!.values).toHaveLength(3);
+    expect(decodeBle("blood_pressure", pulse(0), NOW)!.values.map((x) => x.metric)).toEqual(["bp_systolic", "bp_diastolic"]);
+    expect(decodeBle("blood_pressure", view(0x00, ...le16(300), ...le16(79), ...le16(93)), NOW)).toBeNull();
+    expect(decodeBle("weight", view(0x00, ...le16(200)), NOW)).toBeNull(); // 1 kg: something set on the scale
+  });
+
+  it("reads a streaming oximeter without taking its extra readings for a time", () => {
+    // Continuous (0x2A5F), flags bit 0: SpO2PR-Fast follows the normal pair.
+    const stream = view(0x01, ...le16(97), ...le16(66), ...le16(96), ...le16(65), 0, 0, 0);
+    expect(decodeBle("pulse_oximeter", stream, NOW, 0, true)).toEqual({ at: NOW, values: [{ metric: "oxygen_saturation", value: 97 }, { metric: "heart_rate", value: 66 }] });
   });
 
   it("averages readings into 5-minute buckets and names the device", () => {

@@ -3,7 +3,7 @@
 import { ApiError, checkPasswordChange } from "@vitallink/api";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
-import { FormDialog, FormProblem, must, Note, TextField } from "../../components/Form";
+import { FormDialog, FormProblem, Help, must, Note, TextField } from "../../components/Form";
 import { cx, Panel, RowButton, Txt } from "../../components/kit";
 import { Button } from "../../components/ui";
 import { accountAccess, changeEmail, changePassword, confirmTwoStep, hostedSignIn, removeTwoStep, signOutEverywhere, startTwoStep } from "../../auth";
@@ -277,6 +277,14 @@ function TwoStepSetupDialog({ onClose }: { onClose: () => void }) {
       {setup ? <img className={cx("vl-light", s.qr)} src={setup.qr} alt="QR code for your authenticator app" /> : <Txt s="bodyS" c={problem ? "textCritical" : "textTertiary"} as="p">{problem ?? "Preparing your code…"}</Txt>}
       <TextField label="6-digit code" inputMode="numeric" autoComplete="one-time-code" value={code} onChange={setCode} />
       {setup && <Note>If you lose the app, you'll need its key to get back in. Keep this key safe: {setup.key}</Note>}
+      <Help
+        items={[
+          { q: "What is an authenticator app?", a: "A free app that shows a new 6-digit code every 30 seconds, such as Google Authenticator, Microsoft Authenticator or Authy. Install one on your phone first." },
+          { q: "I can't scan the code", a: "In the app, choose to enter a setup key by hand and type the key shown above." },
+          { q: "The code isn't accepted", a: "Codes change every 30 seconds, so type the newest one. Check that your phone's clock is set automatically." },
+          { q: "What if I get a new phone?", a: "Add the same key to the authenticator app on the new phone, or turn two-step verification off here before you switch and set it up again afterwards." },
+        ]}
+      />
     </FormDialog>
   );
 }

@@ -277,6 +277,7 @@ publishes the APK linked above. To build it yourself, see [android/README.md](an
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | The public key. Never the secret key. |
 | `VITE_SUPABASE_GOOGLE` | `1` to offer Google sign-in |
 | `VITE_ANDROID_APK_URL` | Optional: where Android phone › Download the app points (default: the latest release) |
+| `VITE_IPHONE_SHORTCUT_URL` | Optional: an iCloud link to a built VitalLink Shortcut. With it, the iPhone dialog offers the Shortcut to install (link and QR code); without it, the dialog explains how to build one |
 
 These are built into the site, so redeploy after changing them.
 

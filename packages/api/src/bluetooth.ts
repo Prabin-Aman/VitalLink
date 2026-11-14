@@ -49,27 +49,68 @@ export function sfloat(raw: number): number | null {
   return Number((mantissa * 10 ** exponent).toPrecision(6));
 }
 
-/** Date Time (7 bytes: year u16, month, day, hours, minutes, seconds), device-local; null when unset. */
-function dateTime(v: DataView, at: number, offsetMinutes: number): string | null {
+/** A device clock may run this far ahead of the browser's before its time is taken as wrong. */
+const CLOCK_SLACK_MS = 10 * 60000;
+
+/**
+ * Date Time (7 bytes: year u16, month, day, hours, minutes, seconds), device-local. Null when the clock is unset
+ * or plainly wrong (a year before 2010, or a time still to come): a device whose clock was never set reports its
+ * factory date, and the API refuses a whole upload over one reading from the future.
+ */
+function dateTime(v: DataView, at: number, offsetMinutes: number, now: string): string | null {
   const year = v.getUint16(at, true);
   const month = v.getUint8(at + 2);
   const day = v.getUint8(at + 3);
-  if (!year || !month || !day) return null;
+  if (year < 2010 || !month || !day) return null;
   const local = Date.UTC(year, month - 1, day, v.getUint8(at + 4), v.getUint8(at + 5), v.getUint8(at + 6));
-  // Devices keep wall-clock time; treat it as the browser's zone at that moment.
-  return new Date(local + offsetMinutes * 60000).toISOString();
+  // Devices keep wall-clock time; treat it as the browser's zone.
+  const t = local + offsetMinutes * 60000;
+  if (!Number.isFinite(t) || t > Date.parse(now) + CLOCK_SLACK_MS) return null;
+  return new Date(t).toISOString();
 }
+
+/** What the API accepts for each metric (backend health/Catalogue.java); it refuses a whole upload over one value outside. */
+const ACCEPTED: Record<string, [number, number]> = {
+  heart_rate: [25, 250],
+  bp_systolic: [60, 260],
+  bp_diastolic: [30, 160],
+  oxygen_saturation: [50, 100],
+  glucose: [20, 600],
+  weight: [20, 400],
+};
+const accepted = (x: { metric: string; value: number }) => {
+  const r = ACCEPTED[x.metric];
+  return !!r && Number.isFinite(x.value) && x.value >= r[0] && x.value <= r[1];
+};
 
 const round = (n: number, d = 1) => Math.round(n * 10 ** d) / 10 ** d;
 
 /**
  * Decodes one notification/indication of a profile's measurement characteristic. `now` is when it arrived (used
- * when the device sends no time); `tzOffset` is `new Date().getTimezoneOffset()` for device-local times.
+ * when the device sends no time, or one that can't be right); `tzOffset` is `new Date().getTimezoneOffset()` for
+ * device-local times. `continuous` is an oximeter's streaming characteristic (0x2A5F), which has no timestamp.
+ * Null when there's nothing to keep: a failed or cut-short measurement, or a main value no person can have. A
+ * pulse outside the accepted range is dropped on its own.
  */
-export function decodeBle(kind: BleKind, v: DataView, now: string, tzOffset = 0): BleReading | null {
+export function decodeBle(kind: BleKind, v: DataView, now: string, tzOffset = 0, continuous = false): BleReading | null {
+  let r: BleReading | null;
+  try {
+    r = decode(kind, v, now, tzOffset, continuous);
+  } catch {
+    return null; // shorter than its flags say
+  }
+  if (!r || !accepted(r.values[0])) return null;
+  // Blood pressure is a pair: one number without the other isn't a reading.
+  if (kind === "blood_pressure" && !accepted(r.values[1])) return null;
+  return { at: r.at, values: r.values.filter(accepted) };
+}
+
+function decode(kind: BleKind, v: DataView, now: string, tzOffset: number, continuous: boolean): BleReading | null {
   const flags = v.getUint8(0);
   switch (kind) {
     case "heart_rate": {
+      // Bits 1-2: a strap that can tell (bit 2) and isn't on skin (bit 1 clear) sends numbers that mean nothing.
+      if ((flags & 0x06) === 0x04) return null;
       const bpm = flags & 0x01 ? v.getUint16(1, true) : v.getUint8(1);
       return bpm > 0 ? { at: now, values: [{ metric: "heart_rate", value: bpm }] } : null;
     }
@@ -81,7 +122,7 @@ export function decodeBle(kind: BleKind, v: DataView, now: string, tzOffset = 0)
       let i = 7;
       let at = now;
       if (flags & 0x02) {
-        at = dateTime(v, i, tzOffset) ?? now;
+        at = dateTime(v, i, tzOffset, now) ?? now;
         i += 7;
       }
       const pulse = flags & 0x04 ? sfloat(v.getUint16(i, true)) : null;
@@ -97,14 +138,15 @@ export function decodeBle(kind: BleKind, v: DataView, now: string, tzOffset = 0)
       const raw = v.getUint16(1, true);
       if (raw === 0xffff) return null; // measurement unsuccessful
       const kg = flags & 0x01 ? raw * 0.01 * 0.45359237 : raw * 0.005;
-      const at = flags & 0x02 ? (dateTime(v, 3, tzOffset) ?? now) : now;
+      const at = flags & 0x02 ? (dateTime(v, 3, tzOffset, now) ?? now) : now;
       return { at, values: [{ metric: "weight", value: round(kg, 2) }] };
     }
     case "pulse_oximeter": {
-      // Spot-check (0x2A5E): flags, SpO2, PR, [timestamp]. Continuous (0x2A5F) has the same first two values.
+      // Spot-check (0x2A5E): flags, SpO2, PR, [timestamp]. Continuous (0x2A5F) has the same first two values, but
+      // its flag bit 0 means more readings follow, not a timestamp.
       const spo2 = sfloat(v.getUint16(1, true));
       const pr = sfloat(v.getUint16(3, true));
-      const at = flags & 0x01 && v.byteLength >= 12 ? (dateTime(v, 5, tzOffset) ?? now) : now;
+      const at = !continuous && flags & 0x01 && v.byteLength >= 12 ? (dateTime(v, 5, tzOffset, now) ?? now) : now;
       if (spo2 === null) return null;
       const values = [{ metric: "oxygen_saturation", value: spo2 }];
       if (pr !== null) values.push({ metric: "heart_rate", value: pr });
@@ -112,8 +154,11 @@ export function decodeBle(kind: BleKind, v: DataView, now: string, tzOffset = 0)
     }
     case "glucose": {
       // flags, sequence u16, base time (7), [time offset s16], [concentration SFLOAT, type/location u8].
+      // A meter sends every stored record at once, so a record without a usable time can't be placed: skip it.
       let i = 3;
-      let at = dateTime(v, i, tzOffset) ?? now;
+      const base = dateTime(v, i, tzOffset, now);
+      if (base === null) return null;
+      let at = base;
       i += 7;
       if (flags & 0x01) {
         at = new Date(Date.parse(at) + v.getInt16(i, true) * 60000).toISOString();

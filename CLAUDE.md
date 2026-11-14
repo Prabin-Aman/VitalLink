@@ -200,8 +200,14 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   upload-only token (`POST /me/phones/shortcut`) and lists the Shortcut steps (`IphoneDialog`, `SHORTCUT_TYPES`);
   the Shortcut posts `start|metric|value|end|unit|source` lines to `POST /v1/phone/import` (stored as `healthkit`,
   last 36 h of a 48 h window). Not tried on a real iPhone; the Shortcut itself has to be built by hand on the phone.
-  The key is also shown as a QR code (`components/QrCode.tsx`, `qrcode` library, always dark on light); the
-  install QR waits for the owner's iCloud link of a built Shortcut (with the key as an Import Question).
+  The key is also shown as a QR code (`components/QrCode.tsx`, `qrcode` library, always dark on light). The dialog
+  is three steps (make a key, add the Shortcut, run it nightly); building the Shortcut by hand is folded away, and
+  `VITE_IPHONE_SHORTCUT_URL` (the owner's iCloud link of a built Shortcut, with the key as an Import Question)
+  replaces it with an install link and QR code.
+- Help (14 Nov 2026, owner's request; no Figma frame): `Help` in `components/Form.tsx` is a closed "Need help?"
+  row that opens to questions and answers; `Steps`/`Step`/`SubSteps` are numbered steps. Help is in Add a device,
+  iPhone, Android phone, Import, Bluetooth, Share your data, two-step set-up, Add lab results and Scan a barcode.
+  Add one wherever a step happens outside VitalLink; keep answers to what the app really does.
 - Food search (12 Nov 2026): USDA FoodData Central behind `GET /foods/search` (`nutrition/FoodDataCentral`,
   USDA_API_KEY on Render; free data.gov key; DEMO_KEY in the local `api` launch config allows only ~10 calls at a
   time, so expect gaps locally). V23 adds the `usda` food source, V24 `foods.fdc_id`. Log Food shows "· USDA".
@@ -251,7 +257,8 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   Bluetooth device (213:1754: Web Bluetooth in Chrome/Edge, standard GATT profiles decoded in
   `packages/api/src/bluetooth.ts`, saved through ingest with `platform: "bluetooth"`). Dialogs in
   `apps/web/src/forms/DeviceForms.tsx`. Bluetooth was checked with a stand-in `navigator.bluetooth`, not a real
-  device. Edit and delete (Figma 214:2165 Edit Medication — Stop/Restart, Delete; 214:2210 Edit Appointment;
+  device. `decodeBle` drops what the API would refuse (values outside the catalogue ranges, a device clock
+  that is unset or ahead falls back to now; glucose records without a usable time are skipped). Edit and delete (Figma 214:2165 Edit Medication — Stop/Restart, Delete; 214:2210 Edit Appointment;
   214:2245 Edit Goal — target, end, Active/Paused, Delete; 214:2324 Edit record details — Delete Record;
   214:2058 Daily targets → PATCH /me/targets) in `apps/web/src/forms/EditForms.tsx`; opened from the row title
   (`EditTitle` in kit: medications, goals), an Edit button (appointment cards, records rows), Document Viewer

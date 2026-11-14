@@ -25,7 +25,7 @@ import {
   type PhoneCode,
 } from "@vitallink/api";
 import { useEffect, useRef, useState } from "react";
-import { Choices, DropZone, FormDialog, FormProblem, ItemList, KeyValueList, must, Note, useZone } from "../components/Form";
+import { Choices, DropZone, FormDialog, FormProblem, Help, ItemList, KeyValueList, must, Note, Step, Steps, SubSteps, useZone } from "../components/Form";
 import { Txt } from "../components/kit";
 import { QrCode } from "../components/QrCode";
 import { Button } from "../components/ui";
@@ -101,6 +101,16 @@ export function AddDeviceDialog({ onClose, onPick }: { onClose: () => void; onPi
       />
       {result && <Note>{result}</Note>}
       <Note>VitalLink only reads from your devices; it never changes their settings. Google Health access is read-only, and you can stop it any time with Disconnect.</Note>
+      <Help
+        title="Which one should I choose?"
+        items={[
+          { q: "Fitbit or Pixel Watch", a: "Choose Fitbit or Pixel Watch. You sign in with Google once and readings arrive every night." },
+          { q: "Apple Watch or iPhone", a: "Choose iPhone (Apple Health) for nightly updates. To bring in your past history as well, also import an Apple Health export." },
+          { q: "Samsung, Garmin, Oura and other Android apps", a: "If the app writes to Health Connect on your Android phone, choose Android phone." },
+          { q: "A cuff, scale, oximeter or glucose meter", a: "Choose Bluetooth and take a reading with the device next to this computer or phone. No Bluetooth? Type the reading in with Add Reading on My Health." },
+          { q: "Anything else", a: "If its app can save a CSV file, choose Apple Health or a file and use the CSV template there." },
+        ]}
+      />
     </FormDialog>
   );
 }
@@ -118,13 +128,18 @@ export function syncSummary(r: ConnectionSync): string {
 export const ANDROID_APK_URL: string =
   import.meta.env.VITE_ANDROID_APK_URL || "https://github.com/zeutonx/VitalLink/releases/download/android-latest/vitallink-sync.apk";
 
-/** The lines the Shortcut builds: one "Find Health Samples" + "Repeat with Each" per row (Health type, our code). */
+/** A built VitalLink Shortcut to install (an iCloud link), when the deployment has one; else it's built by hand. */
+export const IPHONE_SHORTCUT_URL: string = import.meta.env.VITE_IPHONE_SHORTCUT_URL || "";
+
+/** What the Shortcut can send: the Health type to pick in "Find Health Samples", and VitalLink's code for it. */
 export const SHORTCUT_TYPES: [string, string][] = [
   ["Steps", "steps"],
+  ["Heart Rate", "heart_rate"],
+  ["Sleep", "sleep"],
+  ["Weight", "weight"],
   ["Walking + Running Distance", "distance"],
   ["Active Energy", "active_energy"],
   ["Flights Climbed", "flights_climbed"],
-  ["Heart Rate", "heart_rate"],
   ["Resting Heart Rate", "resting_heart_rate"],
   ["Heart Rate Variability", "hrv"],
   ["Blood Oxygen", "oxygen_saturation"],
@@ -132,18 +147,38 @@ export const SHORTCUT_TYPES: [string, string][] = [
   ["Blood Pressure Systolic", "bp_systolic"],
   ["Blood Pressure Diastolic", "bp_diastolic"],
   ["Blood Glucose", "glucose"],
-  ["Weight", "weight"],
   ["Body Fat Percentage", "body_fat"],
-  ["Sleep", "sleep"],
 ];
 
-/** An Apple Shortcut sends Apple Health data every night (no Figma frame; there's no web API for HealthKit). */
+/** Copies text and says so for a moment. */
+function CopyButton({ text, label = "Copy" }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () =>
+    navigator.clipboard?.writeText(text).then(
+      () => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 2000);
+      },
+      () => undefined,
+    );
+  return (
+    <Button variant="tertiary" size="sm" onClick={copy}>
+      {copied ? "Copied" : label}
+    </Button>
+  );
+}
+
+/**
+ * An Apple Shortcut sends Apple Health data every night (no Figma frame; there's no web API for HealthKit).
+ * Three steps: make a key, add the Shortcut on the iPhone, set it to run nightly. The long part (building the
+ * Shortcut by hand) stays folded away, and isn't needed at all when IPHONE_SHORTCUT_URL has one to install.
+ */
 export function IphoneDialog({ onClose }: { onClose: () => void }) {
   const api = useApi();
   const [token, setToken] = useState<string | null>(null);
   const [problem, setProblem] = useState<string | null>(null);
   const url = api.shortcutUploadUrl();
-  const copy = (text: string) => navigator.clipboard?.writeText(text).catch(() => undefined);
+  const key = token ? `Phone ${token}` : "";
   const make = () => {
     setProblem(null);
     api.shortcutToken().then(
@@ -157,40 +192,76 @@ export function IphoneDialog({ onClose }: { onClose: () => void }) {
     );
   };
   return (
-    <FormDialog overline="Connected Devices › iPhone" title="Send Apple Health from your iPhone" subtitle="A Shortcut on the iPhone sends the last 2 days of readings every night. Set it up once; it runs on its own." onClose={onClose}>
-      <span>
-        <Button variant={token ? "secondary" : "primary"} onClick={make}>{token ? "Make a new key" : "1. Make a key for the Shortcut"}</Button>
-      </span>
-      {problem && <Note>{problem}</Note>}
-      {token && (
-        <KeyValueList
-          label="For the Shortcut"
-          labelWidth={110}
-          rows={[
-            { label: "Key", value: <span style={{ wordBreak: "break-all" }}>Phone {token} <Button variant="tertiary" size="sm" onClick={() => copy(`Phone ${token}`)}>Copy</Button></span> },
-            { label: "Address", value: <span style={{ wordBreak: "break-all" }}>{url} <Button variant="tertiary" size="sm" onClick={() => copy(url)}>Copy</Button></span> },
-          ]}
-        />
-      )}
-      {token && (
-        <span>
-          <QrCode value={`Phone ${token}`} label="Scan with the iPhone camera, then tap Copy" />
-        </span>
-      )}
-      {token && <Note>The key is shown only now. It can only send readings; remove the iPhone in Connected Devices to stop it.</Note>}
-      <Note>
-        2. On the iPhone, open Shortcuts, tap +, and name it VitalLink. Add a Text action with: start|metric|value|end|unit|source, and Set Variable "Lines" to it.
-      </Note>
-      <Note>
-        3. For each type below: add Find Health Samples (Type = the Health type, Start Date is in the last 2 days), then Repeat with Each. Inside the repeat, add a Text action with: Start Date|code|Value|End Date|Unit|Source (tap Start Date and End Date and choose ISO 8601 with time; use the code from the list), then Add to Variable "Lines".
-      </Note>
-      <KeyValueList label="Health types and codes" labelWidth={210} rows={SHORTCUT_TYPES.map(([type, code]) => ({ label: type, value: code }))} />
-      <Note>
-        4. After the repeats, add Combine Text (Lines, with New Lines), then Get Contents of URL: the address above, Method POST, Header Authorization = the key above, Header Content-Type = text/plain, Request Body File = Combined Text. Run it once and allow Health access.
-      </Note>
-      <Note>
-        5. In Shortcuts › Automation, tap +, choose Time of Day (for example 9:00 PM, Daily), choose Run Immediately, and pick VitalLink. Sleep and readings from the last 36 hours are kept each night; for older history, use Import with an Apple Health export.
-      </Note>
+    <FormDialog
+      overline="Connected Devices › iPhone"
+      title="Send Apple Health from your iPhone"
+      subtitle="Your iPhone sends its Apple Health readings to VitalLink every night. Set it up once, in three steps."
+      onClose={onClose}
+    >
+      <Steps>
+        <Step title="Make your key" done={!!token}>
+          <span className="vl-body-s">The key lets your iPhone send readings to your account. It can't read anything.</span>
+          {!token && <Button onClick={make}>Make a key</Button>}
+          {problem && <Note>{problem}</Note>}
+          {token && (
+            <>
+              <QrCode value={key} label="Scan with the iPhone camera to copy the key" />
+              <KeyValueList
+                label="For the Shortcut"
+                labelWidth={72}
+                rows={[
+                  { label: "Key", value: <>{key} <CopyButton text={key} /></> },
+                  { label: "Address", value: <>{url} <CopyButton text={url} /></> },
+                ]}
+              />
+              <span className="vl-caption">The key is shown only now. Keep this window open until the Shortcut has it.</span>
+            </>
+          )}
+        </Step>
+        {IPHONE_SHORTCUT_URL ? (
+          <Step title="Add the VitalLink Shortcut on your iPhone">
+            <span className="vl-body-s">Scan this with the iPhone camera and tap Add Shortcut. When it asks for the key, paste the one from step 1.</span>
+            <QrCode value={IPHONE_SHORTCUT_URL} label="Scan to get the VitalLink Shortcut" />
+            <CopyButton text={IPHONE_SHORTCUT_URL} label="Copy the link" />
+          </Step>
+        ) : (
+          <Step title="Build the VitalLink Shortcut on your iPhone">
+            <span className="vl-body-s">A one-time job in the Shortcuts app, about 10 minutes. Start with one or two kinds of data; you can add more later.</span>
+            <Help title="Show me how to build it">
+              <SubSteps
+                items={[
+                  <>Open Shortcuts, tap +, and name the Shortcut VitalLink.</>,
+                  <>Add a Text action containing <strong>start|metric|value|end|unit|source</strong>, then Set Variable, named <strong>Lines</strong>.</>,
+                  <>Add Find Health Samples. Set Type to a Health type from the list below, and add the filter Start Date is in the last 2 days.</>,
+                  <>Add Repeat with Each. Inside it, add a Text action: <strong>Start Date|code|Value|End Date|Unit|Source</strong>. Pick each part from the Repeat Item, type the code from the list in place of "code", and set both dates to ISO 8601 with time. Then Add to Variable, Lines.</>,
+                  <>Repeat the last two steps for every kind of data you want to send.</>,
+                  <>At the end, add Combine Text (Lines, with New Lines), then Get Contents of URL: the Address from step 1, Method POST, Headers <strong>Authorization</strong> = the Key and <strong>Content-Type</strong> = text/plain, Request Body = File, the Combined Text.</>,
+                  <>Tap play once and allow Health access when the iPhone asks.</>,
+                ]}
+              />
+              <KeyValueList label="Health types and codes" labelWidth={210} rows={SHORTCUT_TYPES.map(([type, code]) => ({ label: type, value: code }))} />
+            </Help>
+          </Step>
+        )}
+        <Step title="Make it run every night">
+          <SubSteps
+            items={[
+              <>In Shortcuts, open Automation and tap +.</>,
+              <>Choose Time of Day, pick a time such as 9:00 PM, Daily.</>,
+              <>Choose Run Immediately, then pick VitalLink.</>,
+            ]}
+          />
+        </Step>
+      </Steps>
+      <Help
+        items={[
+          { q: "How do I know it worked?", a: "Run the Shortcut once on the iPhone. An iPhone (Shortcut) card appears in Connected Devices and says when it last sent readings." },
+          { q: "The Shortcut says the phone isn't linked", a: "The key is wrong or was removed. The Authorization header must be the whole key, starting with the word Phone. If you lost it, remove the iPhone in Connected Devices and make a new key here." },
+          { q: "Some readings are missing", a: "Each night sends the last 2 days and keeps readings from the last 36 hours, so a skipped night is filled in by the next one. Check that the Shortcut has a block for that kind of data and that Health access is allowed for it." },
+          { q: "Can I bring in older history?", a: "Yes. Use Add a device, then Apple Health or a file, with an export from the Health app. Readings update rather than double." },
+          { q: "How do I stop it?", a: "Disconnect the iPhone (Shortcut) card in Connected Devices. Its key stops working at once; readings already sent stay." },
+        ]}
+      />
     </FormDialog>
   );
 }
@@ -222,20 +293,23 @@ export function AndroidPhoneDialog({ onClose }: { onClose: () => void }) {
   };
   return (
     <FormDialog overline="Connected Devices › Android phone" title="Link an Android phone" subtitle="Send Health Connect data from your phone with the VitalLink Sync app." onClose={onClose}>
-      <Note>
-        1. On the phone, download VitalLink Sync and install it (allow installing from your browser when Android asks). 2. Open it and type the code below. 3. Tap Allow access and choose what to share. It then syncs about every 3 hours. Android 8 or later; Health Connect comes with Android 14 and later, and is a free app from Google Play before that.
-      </Note>
-      <span>
-        <Button variant="secondary" onClick={() => window.open(ANDROID_APK_URL, "_blank", "noopener")}>Download the app (APK)</Button>
-      </span>
-      <Txt s="caption" c="textTertiary">{ANDROID_APK_URL}</Txt>
-      {code && tz ? (
-        <KeyValueList label="Link code" rows={[{ label: "Code", value: <Txt s="h5">{code.code}</Txt> }, { label: "Works until", value: timeOfDay(code.expires_at, tz) }]} />
-      ) : null}
-      <span>
-        <Button variant={code ? "secondary" : "primary"} onClick={newCode}>{code ? "Get a new code" : "Get a code"}</Button>
-      </span>
-      {problem && <Note>{problem}</Note>}
+      <Steps>
+        <Step title="Install VitalLink Sync on the phone">
+          <span className="vl-body-s">Open this page on the phone and download the app. Allow installing from your browser when Android asks.</span>
+          <Button variant="secondary" onClick={() => window.open(ANDROID_APK_URL, "_blank", "noopener")}>Download the app (APK)</Button>
+          <span className="vl-caption">{ANDROID_APK_URL}</span>
+        </Step>
+        <Step title="Type a code into the app">
+          {code && tz ? (
+            <KeyValueList label="Link code" rows={[{ label: "Code", value: <Txt s="h5">{code.code}</Txt> }, { label: "Works until", value: timeOfDay(code.expires_at, tz) }]} />
+          ) : null}
+          <Button variant={code ? "secondary" : "primary"} onClick={newCode}>{code ? "Get a new code" : "Get a code"}</Button>
+          {problem && <Note>{problem}</Note>}
+        </Step>
+        <Step title="Tap Allow access in the app">
+          <span className="vl-body-s">Choose what to share. The app then sends new readings about every 3 hours.</span>
+        </Step>
+      </Steps>
       <ItemList
         label="Linked phones"
         empty="No phones linked yet."
@@ -246,6 +320,15 @@ export function AndroidPhoneDialog({ onClose }: { onClose: () => void }) {
           caption: p.last_upload_at ? `Last sent ${ago(p.last_upload_at, api.now())}` : "Linked, nothing sent yet",
           onRemove: () => remove(p),
         }))}
+      />
+      <Help
+        items={[
+          { q: "Which phones work?", a: "Android 8 or later. Health Connect is built into Android 14 and later; on older phones it is a free app from Google Play, and VitalLink Sync offers to open it." },
+          { q: "The app says the code isn't right", a: "A code works once and for 10 minutes. Get a new code here and type it again; dashes and capitals don't matter." },
+          { q: "Nothing is arriving", a: "Open the app and tap Allow access, then Sync now. If your watch or fitness app isn't writing to Health Connect, turn that on in that app's settings first." },
+          { q: "It only syncs when I open the app", a: "Allow background reading when Android asks (Allow access shows it again), and take the app out of battery saving." },
+          { q: "How do I stop a phone?", a: "Remove it in the list above, or disconnect its card in Connected Devices. Readings already sent stay." },
+        ]}
       />
     </FormDialog>
   );
@@ -273,7 +356,16 @@ export function ImportDataDialog({ onClose, onImported }: { onClose: () => void;
     >
       <DropZone file={file} onFile={setFile} accept={IMPORT_TYPES} prompt="Drop export.zip, export.xml or a .csv here" hint="Up to 300 MB" />
       <Choices label="Period" options={IMPORT_PERIODS} selected={[days]} onChange={([d]) => setDays(d)} />
-      <Note>On iPhone: Health app › your picture › Export All Health Data. It can take a few minutes. Save export.zip to Files, then choose it here, on the iPhone or on a computer you sent it to. Import again whenever you want newer data: readings update rather than double.</Note>
+      <Note>Import again whenever you want newer data: readings update rather than double.</Note>
+      <Help
+        title="How do I get the file?"
+        items={[
+          { q: "From an iPhone", a: "Open the Health app, tap your picture, then Export All Health Data. It can take a few minutes. Save export.zip to Files, then choose it here, on the iPhone or on a computer you sent it to." },
+          { q: "From another app or a spreadsheet", a: "Save a CSV with the columns start, metric, value. Download the template below to see the format and the metric names." },
+          { q: "Some readings were skipped", a: "After an import the page says what was left out and why, for example a kind of data VitalLink doesn't track or a value outside the range a person can have." },
+          { q: "The file is too big", a: "Files can be up to 300 MB. The Period here only chooses which readings are kept, so a larger export has to be trimmed before it is sent." },
+        ]}
+      />
       <span>
         <Button variant="tertiary" size="sm" onClick={() => saveFile(new Blob(["﻿" + IMPORT_CSV_TEMPLATE], { type: "text/csv" }), "vitallink-readings-template.csv")}>
           Download the CSV template
@@ -336,15 +428,17 @@ function Bluetooth_({ tz, onClose }: { tz: string; onClose: () => void }) {
       const gatt = await d.gatt!.connect();
       const service = await gatt.getPrimaryService(profile.service);
       let ch: Characteristic;
+      let continuous = false;
       try {
         ch = await service.getCharacteristic(profile.characteristic);
       } catch (e) {
         if (kind !== "pulse_oximeter") throw e;
         ch = await service.getCharacteristic(PLX_CONTINUOUS); // oximeters that only stream
+        continuous = true;
       }
       ch.addEventListener("characteristicvaluechanged", () => {
         if (!ch.value) return;
-        const r = decodeBle(kind, ch.value, new Date().toISOString(), new Date().getTimezoneOffset());
+        const r = decodeBle(kind, ch.value, new Date().toISOString(), new Date().getTimezoneOffset(), continuous);
         if (r) setReadings((all) => [...all.slice(-5000), r]);
       });
       await ch.startNotifications();
@@ -412,6 +506,13 @@ function Bluetooth_({ tz, onClose }: { tz: string; onClose: () => void }) {
       <Note>
         Works in Chrome and Edge on a computer or Android phone, with devices that use the standard Bluetooth health profiles. Take a reading on the device; nothing is saved until you press Save.
       </Note>
+      <Help
+        items={[
+          { q: "My device isn't in the list", a: "Wake it up first (step on the scale, press the cuff's button) and keep it within a few steps. If it is paired with a phone app, close that app or turn the phone's Bluetooth off for a moment: most devices talk to one thing at a time." },
+          { q: "It paired but shows no reading", a: "Take a new reading while this window is open. Glucose meters send their stored readings as soon as they connect." },
+          { q: "It still doesn't work", a: "Some devices only talk to their own app. Type the reading in with Add Reading on My Health, or connect the maker's app through Android phone or iPhone instead." },
+        ]}
+      />
     </FormDialog>
   );
 }

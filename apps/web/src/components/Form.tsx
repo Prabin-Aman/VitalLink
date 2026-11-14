@@ -293,6 +293,68 @@ export function Note({ children }: { children: ReactNode }) {
   return <p className={cx("vl-body-s", s.note)}>{children}</p>;
 }
 
+/**
+ * A closed "Need help?" row that opens to short questions and answers (no Figma frame; built from the Note
+ * and list styles). Used wherever a step happens outside VitalLink or the wording alone may not be enough.
+ * `children` come before the questions, for help that is a list of steps.
+ */
+export function Help({ title = "Need help?", items = [], children }: { title?: string; items?: { q: string; a: ReactNode }[]; children?: ReactNode }) {
+  return (
+    <details className={s.help}>
+      <summary className={cx("vl-label-l", s.helpSummary)}>
+        <Icon name="help-18" color="iconSubtle" />
+        {title}
+      </summary>
+      <div className={s.helpBody}>
+        {children}
+        {items.length > 0 && (
+          <dl className={s.helpItems}>
+            {items.map((it) => (
+              <div key={it.q}>
+                <dt className="vl-body-s-strong">{it.q}</dt>
+                <dd className={cx("vl-body-s", s.helpAnswer)}>{it.a}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </div>
+    </details>
+  );
+}
+
+/** Numbered steps, each with a title and its own content (no Figma frame). `done` ticks a step off. */
+export function Steps({ children }: { children: ReactNode }) {
+  return <ol className={s.steps}>{children}</ol>;
+}
+
+export function Step({ title, done, children }: { title: string; done?: boolean; children?: ReactNode }) {
+  return (
+    <li className={cx(s.step, done && s.stepDone)}>
+      <span className={cx("vl-label-l", s.stepMark)} aria-hidden="true">
+        {done && <Icon name="check-16" />}
+      </span>
+      <div className={s.stepMain}>
+        <span className="vl-body-m-strong">
+          {title}
+          {done && <span className="sr-only"> (done)</span>}
+        </span>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+/** A plain numbered list inside a Step or Help (things to tap, in order). */
+export function SubSteps({ items }: { items: ReactNode[] }) {
+  return (
+    <ol className={cx("vl-body-s", s.subSteps)}>
+      {items.map((it, i) => (
+        <li key={i}>{it}</li>
+      ))}
+    </ol>
+  );
+}
+
 /** Upload Document drop zone: drag a file in, or Choose File. */
 /** `prompt`/`hint` default to Upload Document's wording. */
 export function DropZone({ file, onFile, accept, prompt = "Drop a PDF or image here", hint = "PDF, JPG or PNG · up to 25 MB" }: { file: File | null; onFile: (f: File) => void; accept: string; prompt?: string; hint?: string }) {
