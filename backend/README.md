@@ -89,8 +89,9 @@ The test database is recreated automatically.
 - `.github/workflows/backend.yml` runs on every push or PR that touches `backend/`: formatting check,
   all tests on a Postgres service container (fresh database, so every migration runs from scratch),
   coverage, and the image build.
-- `.github/workflows/nightly.yml` wakes the API and calls the nightly job at 09:00 UTC. It needs the
-  repository secrets `API_URL` and `JOB_SECRET`.
+- The nightly job has no scheduler now: `.github/workflows/nightly.yml` (and `backup.yml`, `deploy-check.yml`) were
+  removed on 14 Nov 2026. Call `POST /internal/jobs/nightly` with `X-Job-Secret` by hand, or restore the workflow
+  from git history (it needs the repository secrets `API_URL` and `JOB_SECRET`).
 
 ```bash
 docker build -t vitallink-api .
@@ -160,7 +161,7 @@ phases 1–5b. The Markdown docs above describe the current Java build; regenera
 | Files | Supabase Storage, one private bucket, 5-minute signed URLs |
 | API docs | springdoc-openapi: `/openapi.json`, Swagger UI at `/docs` |
 | Hosting | Render free web service (Virginia), one Docker image |
-| Scheduled work | GitHub Actions cron → `POST /internal/jobs/nightly` |
+| Scheduled work | `POST /internal/jobs/nightly`, called by hand (the GitHub Actions cron was removed 14 Nov 2026) |
 | Tests | JUnit 5 + MockMvc + AssertJ against a real Postgres; JaCoCo coverage; Spotless formatting |
 
 ## Layout

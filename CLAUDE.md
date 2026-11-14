@@ -152,7 +152,7 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   `POST /v1/auth/google` verifies a Google ID token (`account/GoogleSignIn`, Google JWKS, GOOGLE_CLIENT_ID;
   `GET /v1/auth/config` tells the page) and counts as email confirmation; the page renders Google's own button
   when configured. Apple isn't offered (paid developer programme), and its button was removed at the owner's request (Figma 24:2 still shows it). Nightly: `POST /internal/jobs/nightly` with `X-Job-Secret`
-  (`.github/workflows/nightly.yml`).
+  (nothing calls it on a schedule now; see Workflows below).
 - Decisions applied by default (owner hasn't decided): D2 (QR on the phone), D4 (doctor/family/other),
   D5 (user confirms appointments), D6 (labs typed in), D9 (no push), D14 (no reviewer names). Messages (D1)
   and dependents (D3) are not built. Compliance: FTC Health Breach Notification Rule (not HIPAA).
@@ -222,7 +222,9 @@ It was first written in Python (FastAPI) through phase 5b and ported on 23 Oct 2
   gets step 1 without email or password (proposed Figma 235:15), name pre-filled, Terms required, then steps 2-8.
 - Rate limits: `core/web/RateLimiter` (60 ingest / 3,000 other per user per hour → 429). `LoadCheck <url>`
   checks the load targets. Workflows: `backend.yml` (also fails if
-  `openapi.gen.ts` is stale), `frontend.yml`, `nightly.yml`, `backup.yml`, `deploy-check.yml`.
+  `openapi.gen.ts` is stale), `frontend.yml`, `android.yml`.
+  The timed GitHub workflows (`nightly.yml`, `backup.yml`, `deploy-check.yml`) were removed on 14 Nov 2026 at the owner's request (failure emails), so nothing calls the nightly job or backs up the database on a schedule now
+  (reminders, the nightly Google Health sync and clean-up only run when the job is called by hand; the files are in git history).
 - Frontend writes: Mark Taken, Settings Save/theme, notifications read, appointment Cancel
   and Directions, device Disconnect, Document Viewer Download, Export Data, Goal History, and the nine web
   entry forms (Add Reading, Log Food, Log Workout, New Goal, Add Medication, Book Appointment, Reschedule,

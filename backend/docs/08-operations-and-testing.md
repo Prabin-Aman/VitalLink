@@ -44,12 +44,14 @@ commit it). `frontend.yml` runs `npm run typecheck`, which includes `contract.ts
 
 ## 8.4 Scheduled workflows (GitHub Actions)
 
+The timed GitHub workflows (`nightly.yml`, `backup.yml`, `deploy-check.yml`) were removed on 14 Nov 2026 at the owner's request (failure emails), so nothing calls the nightly job or backs up the database on a schedule now. The rows below say what each did.
+
 | Workflow | Schedule | Does |
 |---|---|---|
 | `frontend.yml` (built) | push / PR touching `apps/`, `packages/` | `npm ci`, typecheck (web and mobile, each with its own TypeScript, plus the API contract), web build |
-| `nightly.yml` (built) | 09:00 UTC (≈ 03:00–04:00 Central) | Wake `/ready` (retries for the cold start), then `POST /internal/jobs/nightly`; any failed user or step makes it answer 500, so the run fails (8.8) |
-| `backup.yml` (built) | weekly | `pg_dump` → `gpg` AES-256 (`BACKUP_PASSPHRASE`) → workflow artifact kept 90 days. **Repo must be private** |
-| `deploy-check.yml` (built) | on merge + daily | The lockdown checks in 6.2 against the live project |
+| `nightly.yml` (removed 14 Nov 2026; in git history) | 09:00 UTC (≈ 03:00–04:00 Central) | Wake `/ready` (retries for the cold start), then `POST /internal/jobs/nightly`; any failed user or step makes it answer 500, so the run fails (8.8) |
+| `backup.yml` (removed 14 Nov 2026; in git history) | weekly | `pg_dump` → `gpg` AES-256 (`BACKUP_PASSPHRASE`) → workflow artifact kept 90 days. **Repo must be private** |
+| `deploy-check.yml` (removed 14 Nov 2026; in git history) | on merge + daily | The lockdown checks in 6.2 against the live project |
 
 **Restore drill** (`backend/scripts/restore-drill.sh`, run 27 Oct 2026 on the local demo database): the
 same dump and encryption as `backup.yml`, then decrypt, `pg_restore` into `<db>_restore`, and compare
